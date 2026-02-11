@@ -1,0 +1,12 @@
+DEBUG: Processing Blockquote at 14. Content: '[!WARNING]\nThis is a warning without a specific title.'
+  Next tokens: paragraph_open, inline
+DEBUG: MATCHED WARNING
+DEBUG: Processing Blockquote at 14. Content: '[!WARNING]\nThis is a warning without a specific title.'
+  Next tokens: paragraph_open, inline
+DEBUG: MATCHED WARNING
+DEBUG: Processing Blockquote at 9. Content: '[!NOTE] Test Note\nThis is a note callout.\nIt works like Obsidian.'
+  Next tokens: paragraph_open, inline
+DEBUG: MATCHED NOTE
+DEBUG: Processing Blockquote at 20. Content: '[!WARNING]\nThis is a warning without a specific title.'
+  Next tokens: paragraph_open, inline
+DEBUG: MATCHED WARNING

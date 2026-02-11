@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+jinja2
+markdown-it-py[plugins]
+python-multipart
+PyYAML
