@@ -19,14 +19,13 @@ ObsidianのようなインターフェースでMarkdownファイルをブラウ�
 ## 動作環境
 
 - Windows / Mac / Linux
-- Python 3.8 以上
+- Docker Desktop (または Docker Engine + Docker Compose)
 
 ## セットアップ手順（新しいPCでの環境構築）
 
-### 1. Pythonのインストール
+### 1. Dockerのインストール
 
-Pythonがインストールされていない場合は、[公式サイト](https://www.python.org/downloads/)からインストーラーをダウンロードしてインストールしてください。
-※ インストール時に「Add Python to PATH」にチェックを入れることを忘れないでください。
+まだインストールしていない場合は、[公式サイト](https://www.docker.com/products/docker-desktop/)からDocker Desktopをダウンロードしてインストールしてください。
 
 ### 2. プロジェクトの準備
 
@@ -34,35 +33,31 @@ Pythonがインストールされていない場合は、[公式サイト](https
 コマンドプロンプト（またはPowerShell、ターミナル）を開き、プロジェクトのフォルダに移動します。
 
 ```bash
-cd パス/to/Obsidian-Render
+cd パス/to/Obsidian-Viewer
 ```
 
-### 3. ライブラリのインストール
+### 3. アプリケーションの起動
 
-以下のコマンドを実行して、必要なライブラリをインストールします。
+以下のコマンドを実行して、コンテナをビルド・起動します。
+初回は時間がかかる場合があります。
 
 ```bash
-pip install -r requirements.txt
+docker-compose up -d --build
 ```
 
-### 4. アプリケーションの起動
-
-以下のコマンドでサーバーを起動します。
-
-```bash
-uvicorn main:app --reload
-```
-
-※ ポートを指定したい場合（例: 8080）は以下のようにします：
-```bash
-uvicorn main:app --reload --port 8080
-```
-
-### 5. ブラウザでアクセス
+### 4. ブラウザでアクセス
 
 ブラウザを開き、以下のURLにアクセスしてください。
 
-http://127.0.0.1:8000
+http://localhost:8000
+
+### 5. コンテナの停止
+
+アプリケーションを終了する場合は、以下のコマンドを実行します。
+
+```bash
+docker-compose down
+```
 
 ## 使い方
 
