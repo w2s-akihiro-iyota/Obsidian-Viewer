@@ -404,4 +404,93 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error('View toggle elements not found!', { listViewBtn, gridViewBtn, fileList });
     }
+    // Mobile Search Modal Logic
+    const mobileSearchBtn = document.getElementById('mobile-search-toggle');
+    const searchModal = document.getElementById('search-modal');
+    const closeSearchModalBtn = document.getElementById('close-search-modal');
+    const modalSearchInput = document.getElementById('modal-search-input');
+    const modalSearchResults = document.getElementById('modal-search-results');
+
+    if (mobileSearchBtn && searchModal && closeSearchModalBtn) {
+        // Open Modal
+        mobileSearchBtn.addEventListener('click', () => {
+            searchModal.classList.add('active');
+            setTimeout(() => modalSearchInput.focus(), 100);
+        });
+
+        // Close Modal
+        const closeModal = () => {
+            searchModal.classList.remove('active');
+            modalSearchInput.value = '';
+            modalSearchResults.innerHTML = '';
+        };
+
+        closeSearchModalBtn.addEventListener('click', closeModal);
+
+        // Close on click outside
+        searchModal.addEventListener('click', (e) => {
+            if (e.target === searchModal) {
+                closeModal();
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && searchModal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        // Search within Modal
+        let modalDebounceTimer;
+        if (modalSearchInput) {
+            modalSearchInput.addEventListener('input', (e) => {
+                clearTimeout(modalDebounceTimer);
+                const query = e.target.value;
+
+                if (query.trim() === '') {
+                    modalSearchResults.innerHTML = '';
+                    return;
+                }
+
+                modalDebounceTimer = setTimeout(() => {
+                    fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            modalSearchResults.innerHTML = '';
+                            if (data.length > 0) {
+                                data.forEach(item => {
+                                    const link = document.createElement('a');
+                                    link.href = `/view/${item.path}`;
+                                    link.className = 'search-result-item';
+                                    
+                                    // Title
+                                    const titleSpan = document.createElement('div');
+                                    titleSpan.textContent = item.title;
+                                    titleSpan.style.fontWeight = 'bold';
+                                    link.appendChild(titleSpan);
+
+                                    // Path/Meta
+                                    const meta = document.createElement('div');
+                                    meta.className = 'file-meta';
+                                    meta.textContent = item.path;
+                                    meta.style.fontSize = '0.8em';
+                                    link.appendChild(meta);
+                                    
+                                    // Close modal when result clicked
+                                    link.addEventListener('click', closeModal);
+                                    
+                                    modalSearchResults.appendChild(link);
+                                });
+                            } else {
+                                const empty = document.createElement('div');
+                                empty.className = 'search-result-empty';
+                                empty.textContent = 'No results found';
+                                modalSearchResults.appendChild(empty);
+                            }
+                        });
+                }, 300);
+            });
+        }
+    }
 });

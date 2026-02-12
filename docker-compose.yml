@@ -9,4 +9,5 @@ services:
     volumes:
       - ./content:/app/content
       - ./static:/app/static
+      - ./templates:/app/templates
     restart: always
