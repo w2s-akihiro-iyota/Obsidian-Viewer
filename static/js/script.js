@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const link = document.createElement('a');
                                     link.href = `/view/${item.path}`;
                                     link.className = 'search-result-item';
-                                    
+
                                     // Title
                                     const titleSpan = document.createElement('div');
                                     titleSpan.textContent = item.title;
@@ -476,10 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     meta.textContent = item.path;
                                     meta.style.fontSize = '0.8em';
                                     link.appendChild(meta);
-                                    
+
                                     // Close modal when result clicked
                                     link.addEventListener('click', closeModal);
-                                    
+
                                     modalSearchResults.appendChild(link);
                                 });
                             } else {
@@ -493,4 +493,297 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
+    // Sidebar Logic (Toggle, Tabs, TOC)
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggleBtns = document.querySelectorAll('.sidebar-toggle-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    // 1. Sidebar Toggle & Persistence
+    if (sidebar) {
+        // Initial state logic is now handled in base.html head script to prevent FOUC
+
+        function toggleSidebar() {
+            if (window.innerWidth <= 768) {
+                // Mobile: Toggle Overlay/Active
+                sidebar.classList.toggle('active');
+                if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
+            } else {
+                // Desktop: Toggle Collapsed on HTML element
+                document.documentElement.classList.toggle('sidebar-collapsed');
+                const isCollapsed = document.documentElement.classList.contains('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+                // Dispatch resize event for charts/graphs
+                window.dispatchEvent(new Event('resize'));
+            }
+        }
+
+        if (sidebarToggleBtns.length > 0) {
+            sidebarToggleBtns.forEach(btn => {
+                btn.addEventListener('click', toggleSidebar);
+            });
+        }
+
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+    }
+
+    // 2. Sidebar Tabs
+    const tabButtons = document.querySelectorAll('.sidebar-tab');
+    const tabPanels = document.querySelectorAll('.sidebar-panel');
+
+    if (tabButtons.length > 0 && tabPanels.length > 0) {
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Deactivate all
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabPanels.forEach(p => p.classList.remove('active'));
+
+                // Activate clicked
+                btn.classList.add('active');
+                const tabName = btn.dataset.tab;
+                const panel = document.getElementById(`sidebar-${tabName}`);
+                if (panel) panel.classList.add('active');
+            });
+        });
+    }
+
+    // 3. TOC Generator
+    function generateTOC() {
+        const outlineContainer = document.getElementById('sidebar-outline');
+        const content = document.querySelector('.markdown-body');
+
+        if (!outlineContainer || !content) return;
+
+        const headers = Array.from(content.querySelectorAll('h1, h2, h3'));
+
+        if (headers.length === 0) {
+            outlineContainer.innerHTML = '<div class="toc-empty">No headers found</div>';
+            return;
+        }
+
+        const ul = document.createElement('ul');
+        ul.className = 'toc-list';
+
+        headers.forEach((header, index) => {
+            // Add ID if missing for anchoring
+            if (!header.id) {
+                header.id = `toc-${index}`;
+            }
+
+            const li = document.createElement('li');
+            li.className = `toc-item toc-${header.tagName.toLowerCase()}`;
+            li.textContent = header.textContent;
+
+            li.addEventListener('click', () => {
+                // Close sidebar on TOC selection (Both Mobile and Desktop)
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('active');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+                } else {
+                    // Desktop: Force collapse
+                    document.documentElement.classList.add('sidebar-collapsed');
+                    localStorage.setItem('sidebarCollapsed', 'true');
+                    // Dispatch resize to adjust layout if needed
+                    window.dispatchEvent(new Event('resize'));
+                }
+
+                header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Highlight active (simple version)
+                document.querySelectorAll('.toc-item').forEach(i => i.classList.remove('active'));
+                li.classList.add('active');
+            });
+
+            ul.appendChild(li);
+        });
+
+        outlineContainer.innerHTML = '';
+        outlineContainer.appendChild(ul);
+    }
+
+    // Run TOC generation after a slight delay
+    setTimeout(generateTOC, 100);
+
+    // 4. Auto-close sidebar on File Link click
+    // This ensures that when the user navigates to a new file, the sidebar is closed on the new page
+    // (or closes immediately for visual feedback)
+    const fileLinks = document.querySelectorAll('.tree-file');
+    fileLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('active');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+            } else {
+                // Desktop: Mark as collapsed for the next page load
+                // We also add the class immediately for visual feedback before navigation
+                document.documentElement.classList.add('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'true');
+            }
+        });
+    });
+
+    // Link Preview Logic
+    const previewCache = new Map();
+    let previewTooltip = null;
+    let previewTimeout = null;
+    let hideTimeout = null;
+
+    function createPreviewTooltip() {
+        if (previewTooltip) return previewTooltip;
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'preview-tooltip';
+        tooltip.innerHTML = '<div class="preview-loading">Loading...</div>';
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
+    function showPreview(link, path) {
+        // Cancel any pending hide
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+
+        // If tooltip exists but showing different path, remove it or reuse?
+        // Reuse is complex with positioning. Remove for simplicity.
+        if (previewTooltip && previewTooltip.dataset.activePath !== path) {
+            hidePreview(0); // Force remove immediately
+        }
+
+        previewTooltip = createPreviewTooltip();
+
+        // Position immediately (basic positioning)
+        updateTooltipPosition(link);
+
+        if (previewCache.has(path)) {
+            renderPreviewContent(previewCache.get(path), link);
+        } else {
+            previewTooltip.innerHTML = '<div class="preview-loading">Loading...</div>';
+            fetch(`/api/preview?path=${encodeURIComponent(path)}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to load');
+                    return res.json();
+                })
+                .then(data => {
+                    previewCache.set(path, data);
+                    // Only render if still hovering the same link
+                    if (previewTooltip && previewTooltip.dataset.activePath === path) {
+                        renderPreviewContent(data, link);
+                    }
+                })
+                .catch(err => {
+                    if (previewTooltip && previewTooltip.dataset.activePath === path) {
+                        previewTooltip.innerHTML = '<div class="preview-error">Failed to load preview</div>';
+                    }
+                });
+        }
+
+        previewTooltip.classList.add('active');
+        previewTooltip.dataset.activePath = path;
+
+        // Handle tooltip mouse events
+        previewTooltip.addEventListener('mouseenter', () => {
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+        });
+
+        previewTooltip.addEventListener('mouseleave', () => {
+            hidePreview();
+        });
+    }
+
+    function renderPreviewContent(data, link) {
+        if (!previewTooltip) return;
+        previewTooltip.innerHTML = `
+            <div class="preview-header">
+                <span class="preview-title">${data.title}</span>
+            </div>
+            <div class="preview-content markdown-body">${data.content}</div>
+        `;
+        // Recalculate position as height has changed
+        if (link) {
+            updateTooltipPosition(link);
+        }
+    }
+
+    function updateTooltipPosition(link) {
+        if (!previewTooltip) return;
+        const rect = link.getBoundingClientRect();
+        const tooltipRect = previewTooltip.getBoundingClientRect();
+
+        const gap = 10;
+        // Default: Show above
+        let top = rect.top - tooltipRect.height - gap;
+        let left = rect.left;
+
+        // Check overflow top
+        if (top < 10) {
+            // Show below
+            top = rect.bottom + gap;
+        }
+
+        // Check overflow right
+        if (left + 400 > window.innerWidth) {
+            left = window.innerWidth - 410;
+        }
+
+        previewTooltip.style.top = `${top + window.scrollY}px`;
+        previewTooltip.style.left = `${left + window.scrollX}px`;
+    }
+
+    function hidePreview(delay = 300) {
+        if (hideTimeout) clearTimeout(hideTimeout);
+
+        hideTimeout = setTimeout(() => {
+            if (previewTooltip) {
+                previewTooltip.remove();
+                previewTooltip = null;
+            }
+        }, delay);
+    }
+
+    // Attach to listeners
+    // Use event delegation for dynamic content
+    document.addEventListener('mouseover', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && link.href.includes('/view/') && !link.closest('.file-list') && !link.closest('.file-tree')) {
+            // Extract path
+            const url = new URL(link.href);
+            const path = decodeURIComponent(url.pathname.replace('/view/', ''));
+
+            clearTimeout(previewTimeout);
+
+            // If we are already showing this tooltip, cancel hide
+            if (previewTooltip && previewTooltip.dataset.activePath === path) {
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+                return;
+            }
+
+            previewTimeout = setTimeout(() => {
+                showPreview(link, path);
+            }, 500); // 500ms delay to start showing
+        }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && link.href.includes('/view/')) {
+            clearTimeout(previewTimeout);
+
+            // Checking if moving to the tooltip
+            if (e.relatedTarget && previewTooltip && previewTooltip.contains(e.relatedTarget)) {
+                return;
+            }
+
+            hidePreview();
+        }
+    });
+
 });

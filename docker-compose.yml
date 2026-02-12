@@ -10,4 +10,5 @@ services:
       - ./content:/app/content
       - ./static:/app/static
       - ./templates:/app/templates
+      - ./main.py:/app/main.py
     restart: always
