@@ -1939,7 +1939,8 @@ details>summary::-webkit-details-marker {
         /* Force width */
         transform: translateX(-100%);
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
+        z-index: 1100;
+        /* Above header (z-index: 1000) on mobile */
         border-right: none;
         visibility: visible !important;
         /* Always visible for transition */
@@ -1988,6 +1989,19 @@ details>summary::-webkit-details-marker {
     .container {
         width: 100%;
         padding: 16px;
+    }
+
+    /* Mobile Sidebar: Outline Only */
+    .sidebar-tabs {
+        display: none !important;
+    }
+
+    #sidebar-files {
+        display: none !important;
+    }
+
+    #sidebar-outline.sidebar-panel {
+        display: block !important;
     }
 }
 
