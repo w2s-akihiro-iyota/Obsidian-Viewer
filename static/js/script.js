@@ -576,16 +576,10 @@ document.addEventListener('DOMContentLoaded', () => {
             li.textContent = header.textContent;
 
             li.addEventListener('click', () => {
-                // Close sidebar on TOC selection (Both Mobile and Desktop)
+                // Close sidebar on TOC selection (Mobile Only)
                 if (window.innerWidth <= 768) {
                     sidebar.classList.remove('active');
                     if (sidebarOverlay) sidebarOverlay.classList.remove('active');
-                } else {
-                    // Desktop: Force collapse
-                    document.documentElement.classList.add('sidebar-collapsed');
-                    localStorage.setItem('sidebarCollapsed', 'true');
-                    // Dispatch resize to adjust layout if needed
-                    window.dispatchEvent(new Event('resize'));
                 }
 
                 header.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -610,16 +604,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // (or closes immediately for visual feedback)
     const fileLinks = document.querySelectorAll('.tree-file');
     fileLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.remove('active');
-                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
-            } else {
-                // Desktop: Mark as collapsed for the next page load
-                // We also add the class immediately for visual feedback before navigation
-                document.documentElement.classList.add('sidebar-collapsed');
-                localStorage.setItem('sidebarCollapsed', 'true');
-            }
+        fileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('active');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+                }
+            });
         });
     });
 

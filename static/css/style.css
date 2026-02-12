@@ -1690,21 +1690,16 @@ header {
     flex-direction: column;
 }
 
-/* Sidebar Logo Area */
-.sidebar-header {
-    padding: 16px;
-    flex-shrink: 0;
-}
-
-/* Brand Logo Spacing (Inside Sidebar) */
+/* Brand Logo Spacing (in Header) */
 .brand {
     margin-left: 0;
-    /* Reset margin */
     display: flex;
     align-items: center;
     gap: 10px;
     text-decoration: none;
     color: var(--text-normal);
+    padding-left: 12px;
+    /* Add padding inside header */
 }
 
 /* Collapsed State: Reset Layout */
@@ -1894,24 +1889,7 @@ details>summary::-webkit-details-marker {
 
 
 
-/* Header Adjustments for Desktop */
-header {
-    position: fixed;
-    top: 0;
-    right: 0;
-    /* Width is calculated based on sidebar state */
-    width: calc(100% - 280px);
-    height: 60px;
-    z-index: 1000;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* No margin-left needed if we use right: 0 and width calc, 
-       but let's use left positioning to match the push effect */
-    left: 280px;
-    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Ensure header content is aligned */
-    padding-left: 0;
-}
 
 /* When sidebar occupies the left, the button sits on top of it.
    When sidebar is closed, button sits on top of collapsed content/white space.
