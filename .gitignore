@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+*.log
+
+# Content
+# Exclude everything in content
+content/*
+# But keep the samples directory and its contents
+!content/samples/
+
+# Images (Static)
+# Exclude everything in static/images
+static/images/*
+# But keep the samples directory and its contents
+!static/images/samples/
+
+# Images (Root - precautionary)
+images/*
+!images/samples/
