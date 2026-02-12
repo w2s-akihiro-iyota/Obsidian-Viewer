@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  viewer:
+    build: .
+    container_name: obsidian-viewer-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./content:/app/content
+      - ./static:/app/static
+    restart: always
