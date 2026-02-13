@@ -609,6 +609,7 @@ footer {
 /* Link Card */
 .link-card {
     display: flex;
+    flex-direction: row;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
@@ -644,7 +645,6 @@ footer {
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--text-normal);
-    margin-left: auto;
 }
 
 /* Mermaid Diagrams */
@@ -708,10 +708,12 @@ footer {
 }
 
 .link-card-image {
-    width: 200px;
+    width: 300px;
+    height: 120px;
     background-size: cover;
     background-position: center;
     flex-shrink: 0;
+    order: -1;
 }
 
 @media (max-width: 600px) {

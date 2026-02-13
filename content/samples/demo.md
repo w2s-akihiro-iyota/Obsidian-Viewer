@@ -1,7 +1,5 @@
 ﻿# Demo Document
 
-## H1 Heading (Centered, Brown)
-
 # H1 Heading (Centered, Brown)
 
 ## H2 Heading (Underline, Orange)
@@ -14,7 +12,7 @@
 
 ###### H6 Heading (Dark Green Uppercase)
 
-Another H2 Section
+### Another H2 Section
 
 ### Another H3
 
