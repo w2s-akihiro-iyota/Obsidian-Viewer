@@ -10,6 +10,7 @@ from datetime import datetime
 import yaml
 import re
 import math
+from urllib.parse import quote
 
 app = FastAPI(title="Obsidian Viewer")
 
@@ -157,6 +158,65 @@ def process_admonition_blocks(content: str) -> str:
     # Replace all admonition blocks
     result = re.sub(pattern, replace_admonition, content, flags=re.DOTALL)
     return result
+
+def process_obsidian_images(content: str) -> str:
+    """
+    Process Obsidian-style image syntax ![[filename.png]] and convert to standard Markdown.
+    Images are expected to be in the static/images directory.
+    
+    Supports: PNG, JPG, JPEG, GIF, SVG, WEBP (case-insensitive)
+    Options: |WIDTH or |WIDTHxHEIGHT (spaces around | are allowed)
+    """
+    # Pattern to match ![[filename.ext]] or ![[filename.ext|options]] or ![[filename.ext | options]]
+    # Group 1: filename with extension
+    # Group 2: extension
+    # Group 3: options (optional)
+    # \s* allows spaces before and after the pipe
+    pattern = r'!\[\[([^|\]]+\.(png|jpg|jpeg|gif|svg|webp))\s*(?:\|\s*([^\]]+))?\]\]'
+    
+    def replace_image(match):
+        filename = match.group(1)
+        extension = match.group(2)
+        options = match.group(3)  # May be None
+        
+        # Extract basename (handles paths like "subfolder/image.png")
+        basename = os.path.basename(filename)
+        # URL-encode the filename (handles spaces and special characters)
+        encoded_basename = quote(basename)
+        
+        # Parse options for size
+        style_attrs = ""
+        if options:
+            options = options.strip()
+            # Pattern 1: WIDTHxHEIGHT (e.g., "500x300")
+            # Pattern 2: WIDTH only (e.g., "500")
+            if 'x' in options.lower():
+                # Width x Height format
+                parts = options.lower().split('x')
+                if len(parts) == 2:
+                    width = parts[0].strip()
+                    height = parts[1].strip()
+                    # Validate that both are numeric
+                    if width.isdigit() and height.isdigit():
+                        style_attrs = f' width="{width}" height="{height}"'
+            else:
+                # Width only format
+                width = options.strip()
+                if width.isdigit():
+                    style_attrs = f' width="{width}"'
+        
+        # Generate HTML img tag with size attributes if options were provided
+        alt_text = basename
+        if style_attrs:
+            # Return HTML img tag directly with obsidian-image class for styling
+            return f'<img src="/static/images/{encoded_basename}" alt="{alt_text}" class="obsidian-image"{style_attrs}>'
+        else:
+            # Return standard Markdown syntax (for backward compatibility)
+            # Add class via markdown-it rendering if needed
+            return f'![{basename}](/static/images/{encoded_basename})'
+    
+    return re.sub(pattern, replace_image, content, flags=re.IGNORECASE)
+
 
 # Icons mapping (SVG content)
 CALLOUT_ICONS = {
@@ -619,6 +679,9 @@ async def read_item(request: Request, file_path: str):
 
     # Process admonition-style code blocks (```ad-XXX)
     content = process_admonition_blocks(content)
+
+    # Process Obsidian-style image syntax (![[image.png]])
+    content = process_obsidian_images(content)
 
     html_content = md.render(content)
     

@@ -2233,3 +2233,32 @@ html.sidebar-collapsed .sidebar {
        If we want it totally gone on mobile index page too, display: none is fine.
     */
 }
+
+/* Obsidian Image Styling */
+.obsidian-image {
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.obsidian-image:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2),
+        0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .obsidian-image {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
+        0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="light"] .obsidian-image:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12),
+        0 4px 8px rgba(0, 0, 0, 0.08);
+}
