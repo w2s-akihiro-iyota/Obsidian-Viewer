@@ -2429,3 +2429,172 @@ details[open] .accordion-icon {
     color: var(--accent-purple);
     font-weight: 600;
 }
+
+/* Print Styles */
+@media print {
+
+    /* 1. Print Color Adjustment - Essential for Dark Mode Backgrounds */
+    html,
+    body {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        /* Do NOT force white background here, let the theme variable take effect */
+        background-color: var(--bg-primary) !important;
+        color: var(--text-normal) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* 2. Hide ALL UI elements */
+    header,
+    footer,
+    nav,
+    #sidebar,
+    .sidebar-overlay,
+    .activity-bar,
+    .page-menu-container,
+    .breadcrumb,
+    .view-toggle,
+    .index-header-top,
+    .search-container,
+    .theme-toggle-btn,
+    .mobile-search-btn,
+    .sidebar-toggle-btn,
+    .table-copy-container,
+    .copy-button,
+    .scroll-to-top,
+    .page-menu-dropdown {
+        display: none !important;
+    }
+
+    /* 3. Main Layout Reset */
+    .app-wrapper,
+    main {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        /* Ensure transparency so body background shows through */
+        background-color: transparent !important;
+    }
+
+    .container,
+    .container-wide {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 40px !important;
+        box-shadow: none !important;
+        background-color: transparent !important;
+    }
+
+    /* 4. Markdown Body */
+    .markdown-body {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 !important;
+        /* Inherit colors from theme */
+        color: var(--text-normal) !important;
+        font-size: 11pt;
+        background-color: transparent !important;
+    }
+
+    /* Headings - Let Theme colors apply */
+    .markdown-body h1,
+    .markdown-body h2,
+    .markdown-body h3,
+    .markdown-body h4,
+    .markdown-body h5,
+    .markdown-body h6 {
+        page-break-after: avoid;
+        /* Remove color overrides so H1/H2 colors (orange/brown) show up */
+    }
+
+    /* Text Elements */
+    p,
+    ul,
+    ol,
+    li,
+    blockquote {
+        color: inherit !important;
+    }
+
+    /* Links */
+    a {
+        text-decoration: underline;
+        color: var(--accent-purple) !important;
+        /* Keep link color */
+    }
+
+    a::after {
+        content: "";
+        /* Clean links for dark mode usually look better without URLs */
+    }
+
+    /* 5. Code Blocks */
+    pre {
+        /* Use theme colors or specific dark mode override if needed */
+        background-color: var(--bg-secondary) !important;
+        border: 1px solid var(--border-color) !important;
+        white-space: pre-wrap !important;
+        page-break-inside: avoid;
+    }
+
+    code {
+        color: inherit;
+        /* Let syntax highlighting work */
+        background-color: transparent !important;
+        border: none !important;
+    }
+
+    /* 6. Tables - Respect Theme */
+    .markdown-body table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        /* Theme colors */
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-normal) !important;
+    }
+
+    .markdown-body table th,
+    .markdown-body table td {
+        border: 1px solid var(--border-color) !important;
+        padding: 8px !important;
+        background-color: transparent !important;
+        color: inherit !important;
+    }
+
+    .markdown-body table th {
+        /* Let the theme's default TH style apply (purple header from previous CSS) */
+        background-color: var(--accent-purple) !important;
+        color: white !important;
+        font-weight: bold !important;
+    }
+
+    /* Rows alternations handled by main CSS */
+
+    /* 7. Callouts */
+    .callout {
+        /* Respect main CSS colors */
+        box-shadow: none !important;
+    }
+
+    /* 8. Images / Diagrams */
+    img,
+    svg {
+        max-width: 100% !important;
+        page-break-inside: avoid;
+    }
+
+    .mermaid {
+        background-color: var(--bg-secondary) !important;
+        border: 1px solid var(--border-color) !important;
+        /* Invert colors for dark mode mermaid if needed, usually default SVG lines are black so careful here. 
+           If the diagram lines are black, they might be invisible on dark bg. 
+           Usually Mermaid handles this via theme, or we trust the SVG colors. */
+    }
+}
