@@ -2097,12 +2097,25 @@ details>summary::-webkit-details-marker {
     border-radius: 8px;
     text-align: center;
     border-bottom: none;
-    /* Remove old style */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* Space between icon and text */
+}
+
+.sidebar-tab svg {
+    opacity: 0.7;
+    transition: opacity 0.2s;
 }
 
 .sidebar-tab:hover {
     color: var(--text-normal);
     background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-tab:hover svg {
+    opacity: 1;
 }
 
 [data-theme="light"] .sidebar-tab:hover {
@@ -2113,6 +2126,10 @@ details>summary::-webkit-details-marker {
     color: white;
     background-color: var(--accent-purple);
     box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+}
+
+.sidebar-tab.active svg {
+    opacity: 1;
 }
 
 /* Sidebar Panels (Tab Content) */
@@ -2136,18 +2153,36 @@ details>summary::-webkit-details-marker {
     }
 }
 
-/* TOC (Table of Contents) Styles */
-.toc-list {
+/* TOC (Table of Contents) Tree Styles */
+.toc-tree,
+.toc-sublist {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
+.toc-tree {
+    padding-left: 8px;
+}
+
+.toc-sublist {
+    padding-left: 20px;
+    /* Indent for children */
+    border-left: 1px solid #3d3d3d;
+    /* Guide line */
+    margin-left: 9px;
+    /* Align guide line with parent icon center approximately */
+}
+
+.toc-item-wrapper {
+    position: relative;
+}
+
 .toc-item {
-    display: block;
-    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
     color: var(--text-muted);
-    text-decoration: none;
     font-size: 0.85rem;
     border-radius: 4px;
     transition: all 0.2s;
@@ -2155,35 +2190,65 @@ details>summary::-webkit-details-marker {
     line-height: 1.4;
     user-select: none;
     margin-bottom: 2px;
+    gap: 8px;
 }
 
 .toc-item:hover {
     color: var(--text-normal);
     background-color: rgba(255, 255, 255, 0.05);
-    text-decoration: none;
 }
 
 .toc-item.active {
-    color: var(--accent-purple);
+    color: #a390ff;
+    /* Light purple active text */
     background-color: rgba(123, 97, 255, 0.1);
-    border-left: 3px solid var(--accent-purple);
-    padding-left: 9px;
-    /* Adjust for border */
 }
 
-/* TOC Indentation */
-.toc-h1 {
-    font-weight: 600;
-    padding-left: 12px;
+/* Icons */
+.toc-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    font-weight: bold;
+    flex-shrink: 0;
 }
 
-.toc-h2 {
-    padding-left: 24px;
+.type-header {
+    color: #ff6b6b;
+    /* Reddish color for 'H' as in simple mock or adjust to specific design */
+    /* User asked for purple? "Design to be purple". 
+       The image shows red 'H' and blue text for headers, or maybe it's just syntax highlighting logic.
+       The user said "purple tree structure". Let's make the H purple? 
+       Or maybe the H is red like the image provided in prompt (looks like H is red, text is blue/white)?
+       Let's stick to the image colors for icons if possible, or general purple theme.
+       Image: Red 'H', Blue 'Sizing'/Text for active?
+       User request: "Design to be purple".
+       Let's go High-Contrast Purple theme.
+    */
+    color: #ff5252;
+    /* Red 'H' like in image */
 }
 
-.toc-h3 {
-    padding-left: 36px;
+.type-item {
+    color: #5c87ff;
+    /* Blue diamond */
+    font-size: 10px;
 }
+
+.toc-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hover/Active states matching purple theme */
+.toc-item.active .toc-text {
+    color: #9d86ff;
+    /* Purple active text */
+}
+
+/* Indentation adjustments are handled by nesting ULs */
 
 .toc-empty {
     padding: 20px;
@@ -2256,9 +2321,4 @@ html.sidebar-collapsed .sidebar {
 :root[data-theme="light"] .obsidian-image {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
         0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-:root[data-theme="light"] .obsidian-image:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12),
-        0 4px 8px rgba(0, 0, 0, 0.08);
 }

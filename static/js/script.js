@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. TOC Generator
+    // 3. TOC Generator (Nested Tree for Outline)
     function generateTOC() {
         const outlineContainer = document.getElementById('sidebar-outline');
         const content = document.querySelector('.markdown-body');
@@ -562,8 +562,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const ul = document.createElement('ul');
-        ul.className = 'toc-list';
+        const rootUl = document.createElement('ul');
+        rootUl.className = 'toc-tree';
+
+        // Stack to keep track of the current nesting path
+        // [{ level: 0, container: rootUl }]
+        // Level 0 is a dummy root
+        const stack = [{ level: 0, container: rootUl }];
 
         headers.forEach((header, index) => {
             // Add ID if missing for anchoring
@@ -571,11 +576,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 header.id = `toc-${index}`;
             }
 
-            const li = document.createElement('li');
-            li.className = `toc-item toc-${header.tagName.toLowerCase()}`;
-            li.textContent = header.textContent;
+            const level = parseInt(header.tagName.substring(1));
+            const text = header.textContent;
 
-            li.addEventListener('click', () => {
+            // Find the correct parent in the stack
+            // Pop until we find a level strictly less than current header level
+            while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+                stack.pop();
+            }
+
+            // The last item in stack is now the parent
+            const parent = stack[stack.length - 1];
+
+            // Create list item
+            const li = document.createElement('li');
+            li.className = 'toc-item-wrapper';
+
+            // Create the content div
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `toc-item toc-h${level}`;
+            contentDiv.onclick = (e) => {
+                e.stopPropagation();
                 // Close sidebar on TOC selection (Mobile Only)
                 if (window.innerWidth <= 768) {
                     sidebar.classList.remove('active');
@@ -584,16 +605,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 header.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-                // Highlight active (simple version)
+                // Highlight active
                 document.querySelectorAll('.toc-item').forEach(i => i.classList.remove('active'));
-                li.classList.add('active');
-            });
+                contentDiv.classList.add('active');
+            };
 
-            ul.appendChild(li);
+            // Icon
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'toc-icon';
+            // Use 'H' for headers, or maybe shapes based on design?
+            // Design shows "H" for top levels, diamonds for lower?
+            // Let's use H for H1/H2, Diamond for others provided design implies mixing types
+            // Actually, design shows "H" for what looks like categories ("Image Adjustments", "Syntax", etc)
+            // and diamonds for items inside. 
+            // In a generic Markdown, strictly speaking everything is a Header.
+            // Let's use H for all, OR try to distinguish.
+            // Simplified: All headers get "H" icon for now, or maybe H1-H2 get H, H3+ get Diamond.
+            // Let's try: H1/H2 = 'H', H3+ = Diamond shape
+            if (level <= 2) {
+                iconSpan.textContent = 'H';
+                iconSpan.classList.add('type-header');
+            } else {
+                iconSpan.innerHTML = '&#9670;'; // Diamond
+                iconSpan.classList.add('type-item');
+            }
+
+            // Text
+            const textSpan = document.createElement('span');
+            textSpan.className = 'toc-text';
+            textSpan.textContent = text;
+
+            contentDiv.appendChild(iconSpan);
+            contentDiv.appendChild(textSpan);
+            li.appendChild(contentDiv);
+
+            // Container for children
+            const childUl = document.createElement('ul');
+            childUl.className = 'toc-sublist';
+            li.appendChild(childUl);
+
+            // Append to parent container
+            parent.container.appendChild(li);
+
+            // Push this new container to stack
+            stack.push({ level: level, container: childUl });
         });
 
         outlineContainer.innerHTML = '';
-        outlineContainer.appendChild(ul);
+        outlineContainer.appendChild(rootUl);
     }
 
     // Run TOC generation after a slight delay
@@ -604,13 +663,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // (or closes immediately for visual feedback)
     const fileLinks = document.querySelectorAll('.tree-file');
     fileLinks.forEach(link => {
-        fileLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('active');
-                    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
-                }
-            });
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('active');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+            }
         });
     });
 
