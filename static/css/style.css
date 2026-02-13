@@ -2215,19 +2215,8 @@ details>summary::-webkit-details-marker {
 }
 
 .type-header {
-    color: #ff6b6b;
-    /* Reddish color for 'H' as in simple mock or adjust to specific design */
-    /* User asked for purple? "Design to be purple". 
-       The image shows red 'H' and blue text for headers, or maybe it's just syntax highlighting logic.
-       The user said "purple tree structure". Let's make the H purple? 
-       Or maybe the H is red like the image provided in prompt (looks like H is red, text is blue/white)?
-       Let's stick to the image colors for icons if possible, or general purple theme.
-       Image: Red 'H', Blue 'Sizing'/Text for active?
-       User request: "Design to be purple".
-       Let's go High-Contrast Purple theme.
-    */
-    color: #ff5252;
-    /* Red 'H' like in image */
+    color: #a390ff;
+    /* Purple color for 'H' icon */
 }
 
 .type-item {
