@@ -2322,3 +2322,110 @@ html.sidebar-collapsed .sidebar {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
         0 2px 4px rgba(0, 0, 0, 0.05);
 }
+
+/* Tag Filter Accordion */
+.search-accordion {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-secondary);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.search-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+.search-summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Ensure search form looks good inside summary */
+.search-form {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    width: 100%;
+}
+
+.search-input-wrapper {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+    position: relative;
+}
+
+.search-button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: absolute;
+    right: 8px;
+    display: flex;
+    /* Fix alignment */
+    align-items: center;
+}
+
+.accordion-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.9em;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.accordion-icon {
+    transition: transform 0.3s ease;
+    width: 16px;
+    height: 16px;
+}
+
+details[open] .accordion-icon {
+    transform: rotate(180deg);
+}
+
+.tag-filter-container {
+    border-top: 1px solid var(--border-color);
+}
+
+.tag-cloud {
+    padding: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-chip {
+    padding: 4px 10px;
+    border-radius: 12px;
+    background-color: var(--bg-primary);
+    color: var(--text-muted);
+    font-size: 0.85em;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tag-chip:hover {
+    border-color: var(--accent-purple);
+    color: var(--text-normal);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.tag-chip.active {
+    background-color: rgba(123, 97, 255, 0.15);
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+    font-weight: 600;
+}
