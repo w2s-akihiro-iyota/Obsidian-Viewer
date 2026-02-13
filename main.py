@@ -117,7 +117,7 @@ def obsidian_callouts(state):
                 if t1.type == 'paragraph_open' and t2.type == 'inline':
                     inline_token = t2
                     content = inline_token.content.strip()
-                    match = re.match(r'^\[!(?P<type>[\w-]+)\](?:\s+(?P<title>.*))?', content)
+                    match = re.match(r'^\[!(?P<type>[\w-]+)\](?:[ \t]+(?P<title>.*))?', content)
                     if match:
                         callout_type = match.group('type').lower()
                         callout_title = match.group('title') or callout_type.capitalize()

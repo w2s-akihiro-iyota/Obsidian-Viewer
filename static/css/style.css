@@ -2584,8 +2584,21 @@ details[open] .accordion-icon {
     .mermaid {
         background-color: var(--bg-secondary) !important;
         border: 1px solid var(--border-color) !important;
-        /* Invert colors for dark mode mermaid if needed, usually default SVG lines are black so careful here. 
-           If the diagram lines are black, they might be invisible on dark bg. 
-           Usually Mermaid handles this via theme, or we trust the SVG colors. */
+        /* Revert to screen style: block & center text */
+        display: block !important;
+        text-align: center !important;
+        width: 100% !important;
+        margin: 20px 0 !important;
+        page-break-inside: avoid;
+    }
+
+    .mermaid svg {
+        /* Reset width to auto to maintain aspect ratio */
+        width: auto !important;
+        /* Enforce strict pixel limit to prevent huge scaling and page overflow */
+        max-width: 500px !important;
+        /* Limit height to ensure it fits on one page (approx A4 height) */
+        max-height: 800px !important;
+        height: auto !important;
     }
 }
