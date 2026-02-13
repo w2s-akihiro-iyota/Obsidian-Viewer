@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Create copy button
             const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
             copyBtn.className = 'table-copy-btn';
             copyBtn.innerHTML = `
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -144,8 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const dropdown = document.createElement('div');
             dropdown.className = 'table-copy-dropdown';
             dropdown.innerHTML = `
-                <button class="copy-option" data-format="excel">Excel形式</button>
-                <button class="copy-option" data-format="markdown">Markdown形式</button>
+                <button type="button" class="copy-option" data-format="excel">Excel Format</button>
+                <button type="button" class="copy-option" data-format="markdown">Markdown Format</button>
             `;
 
             copyContainer.appendChild(copyBtn);
@@ -155,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Toggle dropdown
             copyBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 dropdown.classList.toggle('show');
             });
 
@@ -165,10 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Copy options
             dropdown.querySelectorAll('.copy-option').forEach((option) => {
-                option.addEventListener('click', (e) => {
+                option.addEventListener('click', async (e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     const format = option.dataset.format;
-                    copyTableToClipboard(table, format);
+                    await copyTableToClipboard(table, format);
                     dropdown.classList.remove('show');
 
                     // Show feedback
@@ -187,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function copyTableToClipboard(table, format) {
+    async function copyTableToClipboard(table, format) {
         let content = '';
 
         if (format === 'excel') {
@@ -195,7 +198,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const rows = table.querySelectorAll('tr');
             rows.forEach((row) => {
                 const cells = row.querySelectorAll('th, td');
-                const rowData = Array.from(cells).map(cell => cell.textContent.trim()).join('\t');
+                const rowData = Array.from(cells).map(cell => {
+                    let text = cell.textContent.trim();
+                    // Escape quotes and wrap in quotes if necessary for Excel
+                    if (text.includes('"') || text.includes('\t') || text.includes('\n')) {
+                        text = '"' + text.replace(/"/g, '""') + '"';
+                    }
+                    return text;
+                }).join('\t');
                 content += rowData + '\n';
             });
         } else if (format === 'markdown') {
@@ -217,12 +227,29 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Copy to clipboard
-        navigator.clipboard.writeText(content).then(() => {
-            console.log('Table copied to clipboard in', format, 'format');
-        }).catch(err => {
-            console.error('Failed to copy table:', err);
-        });
+        // Copy to clipboard with fallback
+        try {
+            await navigator.clipboard.writeText(content);
+            console.log('Table copied to clipboard in', format, 'format via API');
+        } catch (err) {
+            console.warn('Clipboard API failed, trying fallback:', err);
+            const textarea = document.createElement('textarea');
+            textarea.value = content;
+            textarea.style.position = 'fixed'; // Avoid scrolling
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                console.log('Table copied to clipboard via execCommand');
+            } catch (fallbackErr) {
+                console.error('Fallback copy failed:', fallbackErr);
+                alert('Copy failed. Please try manually.');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
     }
 
     // Add copy buttons to all tables
@@ -279,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('pre code').forEach((codeBlock) => {
         const pre = codeBlock.parentNode;
         const button = document.createElement('button');
+        button.type = 'button';
         button.className = 'copy-button';
         button.textContent = 'Copy';
         button.style.position = 'absolute';
@@ -326,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const query = e.target.value;
 
             if (query.trim() === '') {
-                searchResults.style.display = 'none';
+                if (searchResults) searchResults.style.display = 'none';
                 return;
             }
 
@@ -334,29 +362,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`/api/search?q=${encodeURIComponent(query)}`)
                     .then(response => response.json())
                     .then(data => {
-                        searchResults.innerHTML = '';
-                        if (data.length > 0) {
-                            data.forEach(item => {
-                                const link = document.createElement('a');
-                                link.href = `/view/${item.path}`;
-                                link.className = 'search-result-item';
-                                link.textContent = item.title;
-                                searchResults.appendChild(link);
-                            });
-                        } else {
-                            const empty = document.createElement('div');
-                            empty.className = 'search-result-empty';
-                            empty.textContent = 'No results found';
-                            searchResults.appendChild(empty);
+                        if (searchResults) {
+                            searchResults.innerHTML = '';
+                            if (data.length > 0) {
+                                data.forEach(item => {
+                                    const link = document.createElement('a');
+                                    link.href = `/view/${item.path}`;
+                                    link.className = 'search-result-item';
+                                    link.textContent = item.title;
+                                    searchResults.appendChild(link);
+                                });
+                            } else {
+                                const empty = document.createElement('div');
+                                empty.className = 'search-result-empty';
+                                empty.textContent = 'No results found';
+                                searchResults.appendChild(empty);
+                            }
+                            searchResults.style.display = 'block';
                         }
-                        searchResults.style.display = 'block';
                     });
             }, 300); // 300ms debounce
         });
 
         // Hide results when clicking outside
         document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            if (searchResults && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                 searchResults.style.display = 'none';
             }
         });
@@ -367,15 +397,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridViewBtn = document.getElementById('grid-view-btn');
     const fileList = document.querySelector('.file-list');
 
-    console.log('View toggle elements:', { listViewBtn, gridViewBtn, fileList });
-
     if (listViewBtn && gridViewBtn && fileList) {
         // Load saved view preference from localStorage
         const savedView = localStorage.getItem('fileListView') || 'list';
-        console.log('Saved view:', savedView);
 
         function setView(view) {
-            console.log('Setting view to:', view);
             if (view === 'grid') {
                 fileList.classList.add('grid-view');
                 listViewBtn.classList.remove('active');
@@ -386,7 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 gridViewBtn.classList.remove('active');
             }
             localStorage.setItem('fileListView', view);
-            console.log('View set. File list classes:', fileList.className);
         }
 
         // Set initial view
@@ -394,16 +419,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Button click handlers
         listViewBtn.addEventListener('click', () => {
-            console.log('List view button clicked');
             setView('list');
         });
         gridViewBtn.addEventListener('click', () => {
-            console.log('Grid view button clicked');
             setView('grid');
         });
-    } else {
-        console.error('View toggle elements not found!', { listViewBtn, gridViewBtn, fileList });
     }
+
     // Mobile Search Modal Logic
     const mobileSearchBtn = document.getElementById('mobile-search-toggle');
     const searchModal = document.getElementById('search-modal');
@@ -415,14 +437,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Open Modal
         mobileSearchBtn.addEventListener('click', () => {
             searchModal.classList.add('active');
-            setTimeout(() => modalSearchInput.focus(), 100);
+            setTimeout(() => {
+                if (modalSearchInput) modalSearchInput.focus();
+            }, 100);
         });
 
         // Close Modal
         const closeModal = () => {
             searchModal.classList.remove('active');
-            modalSearchInput.value = '';
-            modalSearchResults.innerHTML = '';
+            if (modalSearchInput) modalSearchInput.value = '';
+            if (modalSearchResults) modalSearchResults.innerHTML = '';
         };
 
         closeSearchModalBtn.addEventListener('click', closeModal);
@@ -449,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const query = e.target.value;
 
                 if (query.trim() === '') {
-                    modalSearchResults.innerHTML = '';
+                    if (modalSearchResults) modalSearchResults.innerHTML = '';
                     return;
                 }
 
@@ -457,36 +481,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     fetch(`/api/search?q=${encodeURIComponent(query)}`)
                         .then(response => response.json())
                         .then(data => {
-                            modalSearchResults.innerHTML = '';
-                            if (data.length > 0) {
-                                data.forEach(item => {
-                                    const link = document.createElement('a');
-                                    link.href = `/view/${item.path}`;
-                                    link.className = 'search-result-item';
+                            if (modalSearchResults) {
+                                modalSearchResults.innerHTML = '';
+                                if (data.length > 0) {
+                                    data.forEach(item => {
+                                        const link = document.createElement('a');
+                                        link.href = `/view/${item.path}`;
+                                        link.className = 'search-result-item';
 
-                                    // Title
-                                    const titleSpan = document.createElement('div');
-                                    titleSpan.textContent = item.title;
-                                    titleSpan.style.fontWeight = 'bold';
-                                    link.appendChild(titleSpan);
+                                        // Title
+                                        const titleSpan = document.createElement('div');
+                                        titleSpan.textContent = item.title;
+                                        titleSpan.style.fontWeight = 'bold';
+                                        link.appendChild(titleSpan);
 
-                                    // Path/Meta
-                                    const meta = document.createElement('div');
-                                    meta.className = 'file-meta';
-                                    meta.textContent = item.path;
-                                    meta.style.fontSize = '0.8em';
-                                    link.appendChild(meta);
+                                        // Path/Meta
+                                        const meta = document.createElement('div');
+                                        meta.className = 'file-meta';
+                                        meta.textContent = item.path;
+                                        meta.style.fontSize = '0.8em';
+                                        link.appendChild(meta);
 
-                                    // Close modal when result clicked
-                                    link.addEventListener('click', closeModal);
+                                        // Close modal when result clicked
+                                        link.addEventListener('click', closeModal);
 
-                                    modalSearchResults.appendChild(link);
-                                });
-                            } else {
-                                const empty = document.createElement('div');
-                                empty.className = 'search-result-empty';
-                                empty.textContent = 'No results found';
-                                modalSearchResults.appendChild(empty);
+                                        modalSearchResults.appendChild(link);
+                                    });
+                                } else {
+                                    const empty = document.createElement('div');
+                                    empty.className = 'search-result-empty';
+                                    empty.textContent = 'No results found';
+                                    modalSearchResults.appendChild(empty);
+                                }
                             }
                         });
                 }, 300);
@@ -501,8 +527,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Sidebar Toggle & Persistence
     if (sidebar) {
-        // Initial state logic is now handled in base.html head script to prevent FOUC
-
         function toggleSidebar() {
             if (window.innerWidth <= 768) {
                 // Mobile: Toggle Overlay/Active
@@ -613,15 +637,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Icon
             const iconSpan = document.createElement('span');
             iconSpan.className = 'toc-icon';
-            // Use 'H' for headers, or maybe shapes based on design?
-            // Design shows "H" for top levels, diamonds for lower?
-            // Let's use H for H1/H2, Diamond for others provided design implies mixing types
-            // Actually, design shows "H" for what looks like categories ("Image Adjustments", "Syntax", etc)
-            // and diamonds for items inside. 
-            // In a generic Markdown, strictly speaking everything is a Header.
-            // Let's use H for all, OR try to distinguish.
-            // Simplified: All headers get "H" icon for now, or maybe H1-H2 get H, H3+ get Diamond.
-            // Let's try: H1/H2 = 'H', H3+ = Diamond shape
             if (level <= 2) {
                 iconSpan.textContent = 'H';
                 iconSpan.classList.add('type-header');
@@ -659,8 +674,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(generateTOC, 100);
 
     // 4. Auto-close sidebar on File Link click
-    // This ensures that when the user navigates to a new file, the sidebar is closed on the new page
-    // (or closes immediately for visual feedback)
     const fileLinks = document.querySelectorAll('.tree-file');
     fileLinks.forEach(link => {
         link.addEventListener('click', () => {
@@ -674,7 +687,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Link Preview Logic
     const previewCache = new Map();
     let previewTooltip = null;
-    let previewTimeout = null;
     let hideTimeout = null;
 
     function createPreviewTooltip() {
@@ -688,21 +700,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showPreview(link, path) {
-        // Cancel any pending hide
         if (hideTimeout) {
             clearTimeout(hideTimeout);
             hideTimeout = null;
         }
 
-        // If tooltip exists but showing different path, remove it or reuse?
-        // Reuse is complex with positioning. Remove for simplicity.
         if (previewTooltip && previewTooltip.dataset.activePath !== path) {
-            hidePreview(0); // Force remove immediately
+            hidePreview(0);
         }
 
         previewTooltip = createPreviewTooltip();
-
-        // Position immediately (basic positioning)
         updateTooltipPosition(link);
 
         if (previewCache.has(path)) {
@@ -716,7 +723,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .then(data => {
                     previewCache.set(path, data);
-                    // Only render if still hovering the same link
                     if (previewTooltip && previewTooltip.dataset.activePath === path) {
                         renderPreviewContent(data, link);
                     }
@@ -731,7 +737,6 @@ document.addEventListener('DOMContentLoaded', () => {
         previewTooltip.classList.add('active');
         previewTooltip.dataset.activePath = path;
 
-        // Handle tooltip mouse events
         previewTooltip.addEventListener('mouseenter', () => {
             if (hideTimeout) {
                 clearTimeout(hideTimeout);
@@ -752,7 +757,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="preview-content markdown-body">${data.content}</div>
         `;
-        // Recalculate position as height has changed
         if (link) {
             updateTooltipPosition(link);
         }
@@ -762,19 +766,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!previewTooltip) return;
         const rect = link.getBoundingClientRect();
         const tooltipRect = previewTooltip.getBoundingClientRect();
-
         const gap = 10;
-        // Default: Show above
         let top = rect.top - tooltipRect.height - gap;
         let left = rect.left;
 
-        // Check overflow top
         if (top < 10) {
-            // Show below
             top = rect.bottom + gap;
         }
-
-        // Check overflow right
         if (left + 400 > window.innerWidth) {
             left = window.innerWidth - 410;
         }
@@ -794,43 +792,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, delay);
     }
 
-    // Attach to listeners
-    // Use event delegation for dynamic content
     document.addEventListener('mouseover', (e) => {
         const link = e.target.closest('a');
-        if (link && link.href && link.href.includes('/view/') && !link.closest('.file-list') && !link.closest('.file-tree')) {
-            // Extract path
-            const url = new URL(link.href);
-            const path = decodeURIComponent(url.pathname.replace('/view/', ''));
-
-            clearTimeout(previewTimeout);
-
-            // If we are already showing this tooltip, cancel hide
-            if (previewTooltip && previewTooltip.dataset.activePath === path) {
-                if (hideTimeout) {
-                    clearTimeout(hideTimeout);
-                    hideTimeout = null;
-                }
-                return;
-            }
-
-            previewTimeout = setTimeout(() => {
-                showPreview(link, path);
-            }, 500); // 500ms delay to start showing
-        }
-    });
-
-    document.addEventListener('mouseout', (e) => {
-        const link = e.target.closest('a');
-        if (link && link.href && link.href.includes('/view/')) {
-            clearTimeout(previewTimeout);
-
-            // Checking if moving to the tooltip
-            if (e.relatedTarget && previewTooltip && previewTooltip.contains(e.relatedTarget)) {
-                return;
-            }
-
-            hidePreview();
+        if (link && !link.classList.contains('toc-item') && !link.closest('.toc-tree')) {
+            // Basic link hover logic if needed, currently only internal links are targeted usually
         }
     });
 
