@@ -1530,14 +1530,14 @@ details[open] .accordion-icon {
     }
 
     .markdown-body table thead {
-        background-color: #7b61ff !important;
+        background-color: var(--accent-purple) !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
     .markdown-body table thead th {
         color: white !important;
-        background-color: #7b61ff !important;
+        background-color: var(--accent-purple) !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
