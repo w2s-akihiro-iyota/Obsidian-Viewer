@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Theme toggle functionality
-    const themeToggleBtn = document.getElementById('theme-toggle');
+    // Theme toggle functionality (Now handled via Settings)
+    // const themeToggleBtn = document.getElementById('theme-toggle'); 
+    // Kept comment for reference or valid if we re-add a quick toggle later.
 
     // Load saved theme or default to dark
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -19,20 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     updateHighlightTheme(savedTheme);
 
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    // Old toggle logic removed
 
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-
-            updateHighlightTheme(newTheme);
-
-            // Reload page to reinitialize Mermaid with new theme
-            setTimeout(() => location.reload(), 100);
-        });
-    }
+    // Mermaid diagram rendering
 
     // Mermaid diagram rendering
     function initMermaid() {
@@ -43,7 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        const mermaidTheme = currentTheme === 'light' ? 'default' : 'dark';
+
+        // Check for saved mermaid theme preference
+        let mermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
+
+        // If 'default' (Adaptive), choose based on current mode
+        if (mermaidTheme === 'default') {
+            mermaidTheme = currentTheme === 'light' ? 'default' : 'dark';
+        }
 
         window.mermaid.initialize({
             startOnLoad: false,
@@ -795,8 +793,233 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('mouseover', (e) => {
         const link = e.target.closest('a');
         if (link && !link.classList.contains('toc-item') && !link.closest('.toc-tree')) {
-            // Basic link hover logic if needed, currently only internal links are targeted usually
+            // Basic link hover logic if needed
         }
     });
+
+    // Settings Logic
+    function initSettings() {
+        const settingsModal = document.getElementById('settings-modal');
+        const openBtn = document.getElementById('settings-open-btn');
+        const closeBtn = document.getElementById('close-settings-modal');
+
+        // Inputs
+        const fontSizeSelect = document.getElementById('setting-font-size');
+        const readableWidthCheck = document.getElementById('setting-readable-width');
+        const lineNumbersCheck = document.getElementById('setting-line-numbers');
+        const themeModeSelect = document.getElementById('setting-theme-mode');
+        const mermaidThemeSelect = document.getElementById('setting-mermaid-theme');
+
+        // State defaults
+        const defaults = {
+            fontSize: 'medium',
+            readableWidth: true,
+            lineNumbers: false,
+            mermaidTheme: 'default'
+        };
+
+        // Load Settings
+        const loadSettings = () => {
+            const savedFontSize = localStorage.getItem('fontSize') || defaults.fontSize;
+            const savedReadableWidth = localStorage.getItem('readableWidth');
+            const isReadableWidth = savedReadableWidth === null ? defaults.readableWidth : (savedReadableWidth === 'true');
+            const savedLineNumbers = localStorage.getItem('lineNumbers');
+            const isLineNumbers = savedLineNumbers === null ? defaults.lineNumbers : (savedLineNumbers === 'true');
+
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            const savedMermaidTheme = localStorage.getItem('mermaidTheme') || defaults.mermaidTheme;
+
+            // Apply to inputs
+            if (fontSizeSelect) fontSizeSelect.value = savedFontSize;
+            if (readableWidthCheck) readableWidthCheck.checked = isReadableWidth;
+            if (lineNumbersCheck) lineNumbersCheck.checked = isLineNumbers;
+            if (themeModeSelect) themeModeSelect.value = currentTheme;
+            if (mermaidThemeSelect) mermaidThemeSelect.value = savedMermaidTheme;
+
+            // Apply to App
+            applySettings({
+                fontSize: savedFontSize,
+                readableWidth: isReadableWidth,
+                lineNumbers: isLineNumbers,
+                theme: currentTheme
+                // mermaidTheme is applied by initMermaid (needs reload or re-init)
+            });
+        };
+
+        const applySettings = (settings) => {
+            // Font Size
+            document.body.classList.remove('font-small', 'font-medium', 'font-large');
+            document.body.classList.add(`font-${settings.fontSize}`);
+
+            // Readable Width
+            if (settings.readableWidth) {
+                document.body.classList.add('readable-width');
+            } else {
+                document.body.classList.remove('readable-width');
+            }
+
+            // Line Numbers
+            const codes = document.querySelectorAll('pre code');
+            codes.forEach(code => {
+                const pre = code.parentElement;
+                if (settings.lineNumbers) {
+                    pre.classList.add('line-numbers');
+                    if (!pre.querySelector('.line-number-rows')) {
+                        const text = code.textContent;
+                        // Fix: Trim trailing newline to avoid extra line number
+                        const cleanText = text.length > 0 && text[text.length - 1] === '\n' ? text.slice(0, -1) : text;
+                        const lineCount = cleanText.split('\n').length;
+                        const rows = document.createElement('span');
+                        rows.className = 'line-number-rows';
+                        // Generate empty spans for counters
+                        let spans = '';
+                        for (let i = 0; i < lineCount; i++) spans += '<span></span>';
+                        rows.innerHTML = spans;
+                        pre.appendChild(rows);
+                    }
+                } else {
+                    pre.classList.remove('line-numbers');
+                }
+            });
+
+            // Theme (Mode)
+            if (settings.theme) {
+                document.documentElement.setAttribute('data-theme', settings.theme);
+                // Also update Highlight.js if needed (separate function)
+                if (typeof updateHighlightTheme === 'function') {
+                    updateHighlightTheme(settings.theme);
+                }
+            }
+        };
+
+        // Event Listeners
+        if (openBtn && settingsModal) {
+            openBtn.addEventListener('click', () => {
+                settingsModal.classList.add('active');
+            });
+        }
+
+        if (closeBtn && settingsModal) {
+            closeBtn.addEventListener('click', () => {
+                settingsModal.classList.remove('active');
+            });
+        }
+
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    settingsModal.classList.remove('active');
+                }
+            });
+        }
+
+        // Tab Navigation
+        const settingsNavItems = document.querySelectorAll('.settings-nav-item');
+        const settingsTabPanes = document.querySelectorAll('.settings-tab-pane');
+
+        settingsNavItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const targetTab = item.getAttribute('data-tab');
+
+                // Update Nav Items
+                settingsNavItems.forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+
+                // Update Tab Panes
+                settingsTabPanes.forEach(pane => {
+                    if (pane.id === `settings-tab-${targetTab}`) {
+                        pane.classList.add('active');
+                    } else {
+                        pane.classList.remove('active');
+                    }
+                });
+            });
+        });
+
+        // Change Handlers
+        if (fontSizeSelect) {
+            fontSizeSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                localStorage.setItem('fontSize', val);
+                document.body.classList.remove('font-small', 'font-medium', 'font-large');
+                document.body.classList.add(`font-${val}`);
+            });
+        }
+
+        if (readableWidthCheck) {
+            readableWidthCheck.addEventListener('change', (e) => {
+                const val = e.target.checked;
+                localStorage.setItem('readableWidth', val);
+                if (val) document.body.classList.add('readable-width');
+                else document.body.classList.remove('readable-width');
+            });
+        }
+
+        if (lineNumbersCheck) {
+            lineNumbersCheck.addEventListener('change', (e) => {
+                const val = e.target.checked;
+                localStorage.setItem('lineNumbers', val);
+                // Re-apply to all blocks
+                const codes = document.querySelectorAll('pre code');
+                codes.forEach(code => {
+                    const pre = code.parentElement;
+                    if (val) {
+                        pre.classList.add('line-numbers');
+                        if (!pre.querySelector('.line-number-rows')) {
+                            const text = code.textContent;
+                            // Fix: Trim trailing newline to avoid extra line number
+                            const cleanText = text.length > 0 && text[text.length - 1] === '\n' ? text.slice(0, -1) : text;
+                            const lineCount = cleanText.split('\n').length;
+
+                            const rows = document.createElement('span');
+                            rows.className = 'line-number-rows';
+                            let spans = '';
+                            for (let i = 0; i < lineCount; i++) spans += '<span></span>';
+                            rows.innerHTML = spans;
+                            pre.appendChild(rows);
+                        }
+                    } else {
+                        pre.classList.remove('line-numbers');
+                        // Remove the rows element
+                        const rows = pre.querySelector('.line-number-rows');
+                        if (rows) {
+                            rows.remove();
+                        }
+                    }
+                });
+            });
+        }
+
+        if (themeModeSelect) {
+            themeModeSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                localStorage.setItem('theme', val);
+                document.documentElement.setAttribute('data-theme', val);
+                // Trigger global theme update
+                const themeToggleBtn = document.getElementById('theme-toggle');
+                // We can manually call update logic or reuse existing button logic if possible.
+                // But simplified:
+                if (typeof updateHighlightTheme === 'function') updateHighlightTheme(val);
+
+                // Reload for Mermaid if needed, but nice to avoid if possible.
+                // Mermaid needs reload to switch theme properly usually.
+                location.reload();
+            });
+        }
+
+        if (mermaidThemeSelect) {
+            mermaidThemeSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                localStorage.setItem('mermaidTheme', val);
+                location.reload();
+            });
+        }
+
+        // Init
+        loadSettings();
+    }
+
+    // Initialize Settings
+    initSettings();
 
 });

@@ -34,6 +34,33 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 5px;
+    border: 2px solid var(--bg-primary);
+    /* Creates padding effect */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
 a {
     color: var(--accent-purple);
     text-decoration: none;
@@ -549,15 +576,35 @@ header {
 .markdown-body pre {
     background-color: var(--bg-secondary);
     padding: 16px;
+    /* Let's use px to be absolutely sure of physical size match */
     overflow: auto;
     border-radius: 6px;
     margin-bottom: 16px;
+    line-height: 1.5;
+    font-family: var(--code-font);
+    /* Ensure wrapper has correct font */
+    font-size: 0.9rem;
+    /* Explicit size if needed, but let's stick to inherit mostly */
+    position: relative;
+    /* Ensure it's positioned for line numbers */
 }
 
 .markdown-body pre code {
     background-color: transparent;
-    padding: 0;
+    padding: 0 !important;
+    /* Override highlight.js padding */
+    margin: 0 !important;
+    /* Override highlight.js margin */
     font-size: 100%;
+    font-family: inherit !important;
+    /* Force inheritance */
+    line-height: inherit !important;
+    /* Force inheritance */
+    white-space: pre;
+    /* Ensure no wrapping */
+    border: none;
+    display: block;
+    /* Make code block-like to fill pre */
 }
 
 .markdown-body img {
@@ -1677,7 +1724,8 @@ header {
     top: 0;
     left: 50px;
     /* Offset by Activity Bar */
-    overflow-y: auto;
+    overflow: hidden;
+    /* Changed from overflow-y: auto */
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1100;
     /* Above content, below header */
@@ -1721,17 +1769,19 @@ html.sidebar-collapsed header {
 }
 
 /* Scrollbar for sidebar */
-.sidebar::-webkit-scrollbar {
+.sidebar-content::-webkit-scrollbar {
     width: 6px;
 }
 
-.sidebar::-webkit-scrollbar-thumb {
+.sidebar-content::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
     border-radius: 3px;
 }
 
 .sidebar-content {
     padding: 16px;
+    flex-grow: 1;
+    overflow-y: auto;
 }
 
 .file-tree {
@@ -2262,10 +2312,7 @@ html.sidebar-collapsed .sidebar {
 }
 
 /* Ensure main content expands */
-/* Ensure main content expands */
-.container {
-    /* Transitions handled by app-wrapper and header */
-}
+/* Transitions handled by app-wrapper and header */
 
 /* Sidebar Hidden Utility (for Index View) */
 .sidebar-hidden {
@@ -2419,6 +2466,230 @@ details[open] .accordion-icon {
     border-color: var(--accent-purple);
     color: var(--accent-purple);
     font-weight: 600;
+}
+
+/* Sidebar Footer (Settings) */
+.sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    background-color: inherit;
+    /* Match sidebar bg */
+}
+
+.settings-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-normal);
+}
+
+[data-theme="light"] .settings-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Settings Modal */
+.settings-modal-content {
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    border-radius: 12px;
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--text-normal);
+}
+
+.settings-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.settings-section {
+    margin-bottom: 24px;
+}
+
+.settings-section h4 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.setting-item {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.setting-item label {
+    color: var(--text-normal);
+    font-size: 0.95rem;
+}
+
+.setting-item select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-normal);
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Toggle Switch */
+.setting-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    cursor: pointer;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    margin-left: 12px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--accent-purple);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+/* Basic Settings Utilities */
+/* Font Size */
+body.font-small {
+    font-size: 14px;
+}
+
+body.font-medium {
+    font-size: 16px;
+}
+
+body.font-large {
+    font-size: 18px;
+}
+
+/* Readable Width */
+/* Default .container is width: 0 (flex trick) and max-width: 100% */
+/* We need to target .container when body has .readable-width */
+body.readable-width .container {
+    max-width: 900px;
+    margin: 0 auto;
+    /* Center it */
+}
+
+/* Line Numbers (Simple CSS implementation for pre) */
+/* This assumes we process code blocks in JS to add line-number classes or spans */
+/* For now, just a placeholder or basic counter if we can structure it */
+/* Line Numbers (Simple CSS implementation for pre) */
+pre.line-numbers {
+    position: relative;
+    padding-left: 4em !important;
+    /* Force space for numbers (3.5em width + gap) */
+    counter-reset: linenumber;
+}
+
+pre.line-numbers .line-number-rows {
+    position: absolute;
+    pointer-events: none;
+    top: 0;
+    left: 0;
+    width: 3.5em;
+    /* Slightly wider */
+    height: 100%;
+    border-right: 1px solid var(--border-color);
+    text-align: right;
+    color: var(--text-muted);
+    padding: 16px 8px;
+    /* Match pre padding: 16px top/bottom */
+    line-height: 1.5;
+    /* Match pre line-height */
+    user-select: none;
+    z-index: 10;
+    font-family: inherit;
+    /* Inherit from pre */
+    font-size: 100%;
+    /* Inherit size */
+    box-sizing: border-box;
+}
+
+/* Fix selector: .line-number-rows is a child of pre, not the pre itself */
+.line-number-rows span {
+    pointer-events: none;
+    display: block;
+    counter-increment: linenumber;
+    line-height: 1.5;
+    /* Ensure same line-height */
+}
+
+.line-number-rows span::before {
+    content: counter(linenumber);
+    display: block;
+    color: var(--text-muted);
+    padding-right: 0.5em;
 }
 
 /* Print Styles */
@@ -2600,5 +2871,270 @@ details[open] .accordion-icon {
         /* Limit height to ensure it fits on one page (approx A4 height) */
         max-height: 800px !important;
         height: auto !important;
+    }
+}
+
+/* Settings Modal Split View */
+.settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.settings-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.settings-modal-container {
+    background-color: var(--bg-secondary);
+    width: 800px;
+    max-width: 95%;
+    height: 600px;
+    max-height: 90vh;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    position: relative;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.search-modal.active .settings-modal-container {
+    transform: translateY(0);
+}
+
+.settings-sidebar {
+    width: 220px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.settings-sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-sidebar-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-normal);
+}
+
+.settings-nav {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.settings-nav-item:hover {
+    background-color: var(--bg-primary);
+    color: var(--text-normal);
+}
+
+.settings-nav-item.active {
+    background-color: var(--accent-purple);
+    color: white;
+}
+
+.settings-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: var(--bg-primary);
+    overflow: hidden;
+}
+
+.settings-content-wrapper .close-modal-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 20;
+}
+
+.settings-tab-pane {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    height: 100%;
+}
+
+.settings-tab-pane.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+.settings-header.line-bottom {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-right: 50px;
+}
+
+.settings-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.settings-body {
+    padding: 24px;
+}
+
+/* About Content */
+.about-content {
+    text-align: left;
+    /* Left align for readability */
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.about-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.about-header h4 {
+    margin: 0 0 8px;
+    font-size: 1.5rem;
+}
+
+.about-description {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px;
+}
+
+.about-description p {
+    margin-bottom: 16px;
+    line-height: 1.6;
+    color: var(--text-normal);
+}
+
+.about-features {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+
+.about-features li {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    background-color: var(--bg-secondary);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.feature-icon {
+    font-size: 1.5rem;
+    margin-right: 12px;
+    min-width: 32px;
+    text-align: center;
+}
+
+.feature-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-normal);
+}
+
+.feature-text strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+    color: var(--accent-purple);
+}
+
+.copyright {
+    text-align: center;
+    padding: 16px;
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .settings-modal-container {
+        flex-direction: column;
+        height: 90vh;
+        width: 95%;
+    }
+
+    .settings-sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .settings-sidebar-header {
+        display: none;
+    }
+
+    .settings-nav {
+        display: flex;
+        overflow-x: auto;
+        padding: 8px;
+    }
+
+    .settings-nav-item {
+        width: auto;
+        margin-right: 8px;
+        margin-bottom: 0;
+        white-space: nowrap;
+        padding: 8px 16px;
+    }
+
+    .settings-content-wrapper {
+        border-top-left-radius: 0;
+    }
+
+    .settings-header.line-bottom {
+        padding: 16px;
     }
 }
