@@ -871,14 +871,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const fontSizeSelect = document.getElementById('setting-font-size');
         const readableWidthCheck = document.getElementById('setting-readable-width');
         const lineNumbersCheck = document.getElementById('setting-line-numbers');
-        const themeModeSelect = document.getElementById('setting-theme-mode');
+        const codeThemeSelect = document.getElementById('setting-code-theme'); // New
+        const themeModeSelect = document.getElementById('setting-theme-select'); // Fixed ID
         const mermaidThemeSelect = document.getElementById('setting-mermaid-theme');
+        const rebuildIndexBtn = document.getElementById('rebuild-index-btn'); // New
+        const clearCacheBtn = document.getElementById('clear-cache-btn'); // New
 
         // State defaults
         const defaults = {
             fontSize: 'medium',
             readableWidth: true,
             lineNumbers: false,
+            codeTheme: 'github-dark', // New
             mermaidTheme: 'default'
         };
 
@@ -890,6 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedLineNumbers = localStorage.getItem('lineNumbers');
             const isLineNumbers = savedLineNumbers === null ? defaults.lineNumbers : (savedLineNumbers === 'true');
 
+            const savedCodeTheme = localStorage.getItem('codeTheme') || defaults.codeTheme;
             const currentTheme = localStorage.getItem('theme') || 'dark';
             const savedMermaidTheme = localStorage.getItem('mermaidTheme') || defaults.mermaidTheme;
 
@@ -897,6 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fontSizeSelect) fontSizeSelect.value = savedFontSize;
             if (readableWidthCheck) readableWidthCheck.checked = isReadableWidth;
             if (lineNumbersCheck) lineNumbersCheck.checked = isLineNumbers;
+            if (codeThemeSelect) codeThemeSelect.value = savedCodeTheme;
             if (themeModeSelect) themeModeSelect.value = currentTheme;
             if (mermaidThemeSelect) mermaidThemeSelect.value = savedMermaidTheme;
 
@@ -905,6 +911,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fontSize: savedFontSize,
                 readableWidth: isReadableWidth,
                 lineNumbers: isLineNumbers,
+                codeTheme: savedCodeTheme,
                 theme: currentTheme
                 // mermaidTheme is applied by initMermaid (needs reload or re-init)
             });
@@ -946,13 +953,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            // Code Theme
+            if (settings.codeTheme) {
+                const codeThemes = ['github-dark', 'github', 'monokai', 'dracula'];
+                codeThemes.forEach(t => document.body.classList.remove(`code-theme-${t}`));
+                document.body.classList.add(`code-theme-${settings.codeTheme}`);
+
+                if (typeof window.updateHighlightTheme === 'function') {
+                    window.updateHighlightTheme(settings.codeTheme);
+                }
+            }
+
             // Theme (Mode)
             if (settings.theme) {
                 document.documentElement.setAttribute('data-theme', settings.theme);
-                // Also update Highlight.js if needed (separate function)
-                if (typeof updateHighlightTheme === 'function') {
-                    updateHighlightTheme(settings.theme);
-                }
             }
         };
 
@@ -1057,6 +1071,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        if (codeThemeSelect) {
+            codeThemeSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                localStorage.setItem('codeTheme', val);
+                // Remove old
+                const codeThemes = ['github-dark', 'github', 'monokai', 'dracula'];
+                codeThemes.forEach(t => document.body.classList.remove(`code-theme-${t}`));
+                document.body.classList.add(`code-theme-${val}`);
+
+                // Fix: Actually update the stylesheet!
+                if (typeof window.updateHighlightTheme === 'function') {
+                    window.updateHighlightTheme(val);
+                }
+            });
+        }
+
         if (themeModeSelect) {
             themeModeSelect.addEventListener('change', (e) => {
                 const val = e.target.value;
@@ -1107,12 +1137,49 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Advanced Actions
+        if (rebuildIndexBtn) {
+            rebuildIndexBtn.addEventListener('click', () => {
+                if (confirm("インデックスを再構築しますか？\n（時間がかかる場合があります）")) {
+                    rebuildIndexBtn.disabled = true;
+                    rebuildIndexBtn.textContent = '処理中...';
+
+                    fetch('/api/rebuild-index', { method: 'POST' })
+                        .then(res => {
+                            if (res.ok) {
+                                showToast("インデックスを再構築しました", "success");
+                            } else {
+                                showToast("再構築に失敗しました", "error");
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            showToast("エラーが発生しました", "error");
+                        })
+                        .finally(() => {
+                            rebuildIndexBtn.disabled = false;
+                            rebuildIndexBtn.textContent = '再構築'; // Or restore previous text
+                        });
+                }
+            });
+        }
+
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', () => {
+                if (confirm("キャッシュとローカル設定をクリアしますか？\n（ページがリロードされます）")) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    location.reload();
+                }
+            });
+        }
+
         // Init
         loadSettings();
     }
 
-    // Initialize Settings
-    initSettings();
+    // Moved INIT to end of file to ensure all functions are defined
+    // initSettings();
 
     // Check if we need to reopen settings modal (after theme reload)
     if (sessionStorage.getItem('settingsModalOpen') === 'true') {
@@ -1123,6 +1190,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         sessionStorage.removeItem('settingsModalOpen');
     }
+
+    // Initialize Highlight.js
+    if (window.hljs) {
+        console.log('Highlight.js found, initializing...');
+        hljs.highlightAll();
+
+        // Fix: Promote .hljs class to <pre> to ensure background covers the whole block
+        // and fix gap issues with padding.
+        document.querySelectorAll('pre code.hljs').forEach(block => {
+            if (block.parentElement && block.parentElement.tagName === 'PRE') {
+                block.parentElement.classList.add('hljs');
+                // Remove generic class if it conflicts? No, let it stack.
+            }
+        });
+        console.log('Highlight.js applied to blocks.');
+    } else {
+        console.error('Highlight.js not found! Check network or script tag.');
+    }
+
+    // Function to update Highlight.js theme
+    // Function to update Highlight.js theme
+    window.updateHighlightTheme = (themeName) => {
+        const link = document.getElementById('highlight-theme');
+        if (!link) {
+            console.error('Highlight.js theme link not found!');
+            return;
+        }
+
+        // Map internal names to local files
+        const themeMap = {
+            'github-dark': 'github-dark.min.css',
+            'github': 'github.min.css',
+            'monokai': 'monokai.min.css',
+            'dracula': 'dracula.min.css'
+        };
+
+        const themeFile = themeMap[themeName] || 'github-dark.min.css';
+        const newUrl = `/static/css/themes/${themeFile}`;
+
+        console.log(`Switching code theme to: ${themeName}`);
+        console.log(`URL: ${newUrl}`);
+        link.href = newUrl;
+    };
 
     // Accordion Animation Logic
     const accordions = document.querySelectorAll('.search-accordion');
@@ -1187,5 +1297,138 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // --- File Sync Logic (Localhost Only) ---
+    function initSyncSettings() {
+        const syncTabBtn = document.querySelector('[data-tab="files"]');
+        if (!syncTabBtn) return; // Not localhost or not present
+
+        const enabledToggle = document.getElementById('setting-sync-enabled');
+        const contentSrcInput = document.getElementById('setting-content-src');
+        const imagesSrcInput = document.getElementById('setting-images-src');
+        const intervalSelect = document.getElementById('setting-sync-interval');
+        const wrapper = document.getElementById('sync-settings-wrapper');
+        const saveBtn = document.getElementById('save-sync-settings-btn');
+        const manualSyncBtn = document.getElementById('manual-sync-btn');
+        const lastSyncLabel = document.getElementById('last-sync-time');
+
+        // Load Config
+        fetch('/api/config')
+            .then(res => res.json())
+            .then(config => {
+                enabledToggle.checked = config.sync_enabled;
+                contentSrcInput.value = config.content_src || '';
+                imagesSrcInput.value = config.images_src || '';
+                intervalSelect.value = config.interval_minutes || 60;
+                lastSyncLabel.textContent = config.last_sync ? `Last Sync: ${config.last_sync}` : '';
+
+                toggleInputs(config.sync_enabled);
+            })
+            .catch(err => console.error("Failed to load sync config", err));
+
+        // Toggle Visibility (Accordion)
+        function toggleInputs(enabled) {
+            if (enabled) {
+                wrapper.style.display = 'block';
+                // Optional: Insert animation logic here if needed
+            } else {
+                wrapper.style.display = 'none';
+            }
+        }
+
+        enabledToggle.addEventListener('change', () => {
+            toggleInputs(enabledToggle.checked);
+        });
+
+        // Save Button Handler
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                const confirmed = confirm("この設定を保存してもよろしいですか？");
+                if (confirmed) {
+                    saveConfig();
+                }
+            });
+        }
+
+        function saveConfig() {
+            const config = {
+                sync_enabled: enabledToggle.checked,
+                content_src: contentSrcInput.value,
+                images_src: imagesSrcInput.value,
+                interval_minutes: parseInt(intervalSelect.value),
+                last_sync: "" // Server handles this
+            };
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    showToast("設定を保存しました", "success");
+                })
+                .catch(err => {
+                    console.error("Failed to save config", err);
+                    showToast("設定の保存に失敗しました", "error");
+                });
+        }
+
+        // Manual Sync
+        manualSyncBtn.addEventListener('click', () => {
+            manualSyncBtn.classList.add('loading');
+            manualSyncBtn.disabled = true;
+
+            fetch('/api/sync', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    lastSyncLabel.textContent = `最終同期: ${data.last_sync}`;
+                    showToast("同期が完了しました", "success");
+                })
+                .catch(err => {
+                    console.error("Sync failed", err);
+                    showToast("同期に失敗しました", "error");
+                })
+                .finally(() => {
+                    manualSyncBtn.classList.remove('loading');
+                    manualSyncBtn.disabled = false;
+                });
+        });
+    }
+
+    // --- Toast Notification System ---
+    function showToast(message, type = 'info') {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        // Icon based on type
+        let icon = '';
+        if (type === 'success') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        else if (type === 'error') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+
+        toast.innerHTML = `${icon}<span>${message}</span>`;
+
+        container.appendChild(toast);
+
+        // Animate in
+        requestAnimationFrame(() => toast.classList.add('show'));
+
+        // Remove after 3s
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 3000);
+    }
+
+    // Initialize
+    initSettings();
+    initSyncSettings();
 
 });

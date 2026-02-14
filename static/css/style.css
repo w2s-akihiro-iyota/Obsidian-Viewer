@@ -635,10 +635,12 @@ header {
 }
 
 .markdown-body pre {
-    background-color: var(--bg-secondary);
-    padding: 16px;
-    /* Let's use px to be absolutely sure of physical size match */
-    overflow: auto;
+    /* background-color: var(--bg-secondary); */
+    padding: 0;
+    /* Remove padding so code.hljs (with its own padding/bg) fills the block */
+    overflow: visible;
+    /* github.min.css sets overflow-x: auto on code.hljs. So pre doesn't need it? */
+    /* But pre is the container. */
     border-radius: 6px;
     margin-bottom: 16px;
     line-height: 1.5;
@@ -650,10 +652,48 @@ header {
     /* Ensure it's positioned for line numbers */
 }
 
+/* Line Numbers Styling */
+.markdown-body pre.line-numbers {
+    padding-left: 3.8em;
+    /* Make space for line numbers */
+    position: relative;
+    counter-reset: linenumber;
+}
+
+.markdown-body pre .line-number-rows {
+    position: absolute;
+    pointer-events: none;
+    top: 0;
+    left: 0;
+    width: 3em;
+    /* Fixed width */
+    letter-spacing: -1px;
+    border-right: 1px solid var(--border-color);
+    user-select: none;
+    font-size: 100%;
+    line-height: inherit;
+    /* Match code line-height */
+    padding: 1em 0;
+    /* Match code padding */
+    text-align: right;
+    color: var(--text-muted);
+}
+
+.markdown-body pre .line-number-rows span {
+    display: block;
+    counter-increment: linenumber;
+    padding-right: 0.8em;
+}
+
+.markdown-body pre .line-number-rows span::before {
+    content: counter(linenumber);
+    display: block;
+}
+
 .markdown-body pre code {
-    background-color: transparent;
-    padding: 0 !important;
-    /* Override highlight.js padding */
+    /* background-color: transparent; <-- REMOVED to allow highlight.js theme */
+    padding: 1em !important;
+    /* Restore padding for spacing and vertical alignment with line numbers */
     margin: 0 !important;
     /* Override highlight.js margin */
     font-size: 100%;
@@ -665,7 +705,8 @@ header {
     /* Ensure no wrapping */
     border: none;
     display: block;
-    /* Make code block-like to fill pre */
+    overflow-x: auto;
+    /* Enable scroll on code element only */
 }
 
 .markdown-body img {
@@ -3130,6 +3171,7 @@ pre.line-numbers .line-number-rows {
     overflow-y: auto;
     padding: 0;
     height: 100%;
+    scrollbar-gutter: stable;
 }
 
 .settings-tab-pane.active {
@@ -3377,4 +3419,295 @@ pre.line-numbers .line-number-rows {
     color: #2e7d32;
     /* Darker Green */
     background-color: rgba(46, 125, 50, 0.1);
+}
+
+/* =========================================
+   Toast Notifications
+   ========================================= */
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background-color: var(--bg-secondary);
+    color: var(--text-normal);
+    border: 1px solid var(--border-color);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+    min-width: 300px;
+    max-width: 90vw;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    border-left: 4px solid #2e7d32;
+}
+
+.toast-success svg {
+    color: #2e7d32;
+}
+
+.toast-error {
+    border-left: 4px solid #d32f2f;
+}
+
+.toast-error svg {
+    color: #d32f2f;
+}
+
+/* =========================================
+   Sync Button Spinner
+   ========================================= */
+.primary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--accent-purple);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    min-width: 120px;
+}
+
+.primary-btn:hover:not(:disabled) {
+    background-color: #6a4ce0;
+}
+
+.primary-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+.primary-btn.loading .spinner {
+    display: block;
+}
+
+.primary-btn.loading .btn-text {
+    display: none;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* =========================================
+   Button Variants
+   ========================================= */
+.secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-normal);
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 100px;
+}
+
+.secondary-btn:hover:not(:disabled) {
+    background-color: var(--bg-secondary);
+    border-color: var(--text-muted);
+}
+
+.secondary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.danger-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    background-color: rgba(255, 77, 79, 0.1);
+    border: 1px solid rgba(255, 77, 79, 0.3);
+    border-radius: 6px;
+    color: #ff4d4f;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    min-width: 100px;
+}
+
+.danger-btn:hover:not(:disabled) {
+    background-color: rgba(255, 77, 79, 0.2);
+    border-color: #ff4d4f;
+}
+
+.danger-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   Custom Settings Layout
+   ========================================= */
+.setting-custom-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.setting-info {
+    flex: 1;
+}
+
+.setting-title {
+    display: block;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--text-normal);
+    margin-bottom: 4px;
+}
+
+.setting-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.setting-control {
+    flex-shrink: 0;
+}
+
+/* Ensure Toggle Switch Styling (Fallback/Override) */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border-color);
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: var(--accent-purple);
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--accent-purple);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+/* Sync Settings Inputs */
+#sync-settings-wrapper input[type="text"],
+#sync-settings-wrapper select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    color: var(--text-normal);
+    margin-top: 4px;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+#sync-settings-wrapper input[type="text"]:focus,
+#sync-settings-wrapper select:focus {
+    border-color: var(--accent-purple);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(123, 97, 255, 0.2);
+}
+
+#sync-settings-wrapper label {
+    display: block;
+    margin-bottom: 8px;
+    /* Increase space between label and input */
+    font-weight: 600;
+    /* Bold label */
+    font-size: 0.9rem;
+    /* Bold label */
+    font-size: 0.9rem;
+    color: var(--text-normal);
+}
+
+/* Lighter Placeholder */
+#sync-settings-wrapper input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+    /* Lower opacity for subtle look */
+}
+
+#sync-settings-wrapper .setting-item {
+    display: block;
+    /* Force block layout (stacking) */
+    margin-bottom: 24px;
+    /* More breathing room between items */
 }

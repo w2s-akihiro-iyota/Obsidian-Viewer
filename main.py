@@ -29,6 +29,7 @@ app.mount("/static", StaticFiles(directory=str(STATICS_DIR)), name="static")
 # Templates
 TEMPLATES_DIR = BASE_DIR / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals["timestamp"] = int(datetime.now().timestamp())
 
 # Markdown Setup
 def mark_plugin(md):
@@ -61,6 +62,26 @@ md = (
     .use(mark_plugin)
 )
 
+# Custom fence renderer to ensure compatibility with highlight.js
+def render_fence(tokens, idx, options, env):
+    token = tokens[idx]
+    info = token.info.strip() if token.info else ""
+    lang = info.split()[0] if info else ""
+    
+    # If the info is "cardlink", let the other renderer handle it (or handle it here if it was the main one)
+    # But wait, we are replacing the default renderer usage.
+    # The existing code registers `render_cardlink` which calls `default_fence_renderer`.
+    # So we should monkeypatch `default_fence_renderer` or just rely on `markdown-it` default.
+    
+    # Markdown-it default produces <pre><code class="language-xyz">
+    # Highlight.js works with this.
+    # But maybe we need to add "hljs" class explicitly to avoid FOUC or detection issues?
+    
+    return markdown_it.renderer.RendererHTML.fence(md.renderer, tokens, idx, options, env)
+
+# We are using render_cardlink as the main fence rule. 
+# It delegates to default_fence_renderer.
+# Let's check render_cardlink again.
 default_fence_renderer = md.renderer.rules.get("fence", markdown_it.renderer.RendererHTML.fence)
 
 def render_cardlink(tokens, idx, options, env):
@@ -481,10 +502,13 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "")
     start_idx = (page - 1) * limit
     end_idx = start_idx + limit
     paginated_files = filtered_files[start_idx:end_idx]
+    print(f"DEBUG: Client Host: {request.client.host}")
+    is_local = request.client.host in ("127.0.0.1", "::1", "localhost") or request.client.host.startswith("172.")
     return templates.TemplateResponse("index.html", {
         "request": request, "files": paginated_files, "title": "Obsidian-Render",
         "current_page": page, "total_pages": total_pages, "total_items": total_items,
-        "q": q, "selected_tag": tag, "all_tags": sorted_tags, "file_tree": file_tree 
+        "q": q, "selected_tag": tag, "all_tags": sorted_tags, "file_tree": file_tree,
+        "is_localhost": is_local
     })
 
 @app.get("/view/{file_path:path}", response_class=HTMLResponse)
@@ -509,10 +533,128 @@ async def read_item(request: Request, file_path: str):
     content = process_obsidian_images(content)
     html_content = md.render(content)
     file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR)
+    is_local = request.client.host in ("127.0.0.1", "::1", "localhost") or request.client.host.startswith("172.")
     return templates.TemplateResponse("view.html", {
         "request": request, "content": html_content, "title": safe_path.stem,
-        "filename": safe_path.name, "file_tree": file_tree
+        "filename": safe_path.name, "file_tree": file_tree, "is_localhost": is_local
     })
+
+# --- File Sync Feature ---
+import shutil
+import asyncio
+from pydantic import BaseModel
+
+CONFIG_FILE = BASE_DIR / "server_config.yaml"
+
+class SyncConfig(BaseModel):
+    sync_enabled: bool = False
+    content_src: str = ""
+    images_src: str = ""
+    interval_minutes: int = 60
+    last_sync: str = ""
+
+def load_config() -> SyncConfig:
+    if not CONFIG_FILE.exists():
+        return SyncConfig()
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+            return SyncConfig(**data)
+    except Exception:
+        return SyncConfig()
+
+def save_config(config: SyncConfig):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        yaml.dump(config.dict(), f)
+
+def perform_sync(config: SyncConfig):
+    if not config.sync_enabled: return
+    
+    # Sync Content
+    if config.content_src and os.path.exists(config.content_src):
+        src_path = Path(config.content_src)
+        for item in src_path.rglob("*.md"):
+            try:
+                rel_path = item.relative_to(src_path)
+                dest_path = CONTENT_DIR / rel_path
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                if not dest_path.exists() or item.stat().st_mtime > dest_path.stat().st_mtime:
+                    shutil.copy2(item, dest_path)
+            except Exception as e:
+                print(f"Error syncing {item}: {e}")
+
+    # Sync Images
+    if config.images_src and os.path.exists(config.images_src):
+        src_path = Path(config.images_src)
+        # Extensions to sync
+        extensions = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"}
+        for item in src_path.rglob("*"):
+            if item.suffix.lower() in extensions:
+                try:
+                    rel_path = item.relative_to(src_path)
+                    dest_path = STATICS_DIR / "images" / rel_path
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    if not dest_path.exists() or item.stat().st_mtime > dest_path.stat().st_mtime:
+                        shutil.copy2(item, dest_path)
+                except Exception as e:
+                    print(f"Error syncing {item}: {e}")
+    
+    # Update last sync time
+    config.last_sync = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    save_config(config)
+
+background_task_running = False
+
+async def background_sync_loop():
+    global background_task_running
+    if background_task_running: return
+    background_task_running = True
+    while True:
+        config = load_config()
+        if config.sync_enabled:
+            perform_sync(config)
+            # Wait for interval (minutes to seconds)
+            await asyncio.sleep(config.interval_minutes * 60)
+        else:
+            # If disabled, check again in 1 minute
+            await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(background_sync_loop())
+
+def check_localhost(request: Request):
+    host = request.client.host
+    # Allow localhost,::1, and private networks (Docker often uses 172.x or 192.168.x)
+    is_allowed = (
+        host in ("127.0.0.1", "::1", "localhost") or
+        host.startswith("172.") or
+        host.startswith("192.168.") or
+        host.startswith("10.")
+    )
+    if not is_allowed:
+        print(f"Access denied for host: {host}") # Log the rejected host
+        raise HTTPException(status_code=403, detail="Access denied")
+
+@app.get("/api/config")
+async def get_config(request: Request):
+    check_localhost(request)
+    return load_config()
+
+@app.post("/api/config")
+async def update_config(request: Request, config: SyncConfig):
+    check_localhost(request)
+    save_config(config)
+    # Trigger sync immediately if enabled? No, manual button exists.
+    # But we might want to reset the background loop timer or re-read config is handled by loop.
+    return {"status": "ok", "config": config}
+
+@app.post("/api/sync")
+async def trigger_sync(request: Request):
+    check_localhost(request)
+    config = load_config()
+    perform_sync(config)
+    return {"status": "ok", "last_sync": config.last_sync}
 
 if __name__ == "__main__":
     import uvicorn

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20240214-fix-theme">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -29,7 +29,10 @@
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
         window.mermaid = mermaid;
     </script>
-    <script src="/static/js/script.js" defer></script>
+    <!-- Highlight.js (Local) -->
+    <link id="highlight-theme" rel="stylesheet" href="/static/css/themes/github-dark.min.css?v=20240214-fix-theme">
+    <script src="/static/js/vendor/highlight.min.js?v=20240214-fix-theme"></script>
+    <script src="/static/js/script.js?v=20240214-fix-theme" defer></script>
     {% block head %}{% endblock %}
 </head>
 
@@ -230,7 +233,7 @@
                                 d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
                             </path>
                         </svg>
-                        Settings
+                        設定
                     </button>
                     <button class="settings-nav-item" data-tab="about">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -239,9 +242,26 @@
                             <line x1="12" y1="16" x2="12" y2="12"></line>
                             <line x1="12" y1="8" x2="12.01" y2="8"></line>
                         </svg>
-                        About
+                        アプリについて
                     </button>
-                </nav>
+                    {% if is_localhost %}
+                    <div class="settings-sidebar-header"
+                        style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                        <h3>システム</h3>
+                    </div>
+                    <nav class="settings-nav">
+                        <button class="settings-nav-item" data-tab="files">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            ファイル同期
+                        </button>
+                    </nav>
+                    {% endif %}
             </div>
 
             <div class="settings-content-wrapper">
@@ -255,22 +275,22 @@
 
                 <div id="settings-tab-settings" class="settings-tab-pane active">
                     <div class="settings-header line-bottom">
-                        <h3>Settings</h3>
+                        <h3>設定</h3>
                     </div>
                     <div class="settings-body">
                         <section class="settings-section">
-                            <h4>Basic Settings</h4>
+                            <h4>基本設定</h4>
                             <div class="setting-item">
-                                <label for="setting-font-size">Font Size</label>
+                                <label for="setting-font-size">フォントサイズ</label>
                                 <select id="setting-font-size">
-                                    <option value="small">Small</option>
-                                    <option value="medium" selected>Medium</option>
-                                    <option value="large">Large</option>
+                                    <option value="small">小</option>
+                                    <option value="medium" selected>中</option>
+                                    <option value="large">大</option>
                                 </select>
                             </div>
                             <div class="setting-item">
                                 <label class="setting-toggle">
-                                    <span>Readable Line Width</span>
+                                    <span>読みやすい行幅</span>
                                     <div class="toggle-switch">
                                         <input type="checkbox" id="setting-readable-width" checked>
                                         <span class="slider"></span>
@@ -279,7 +299,7 @@
                             </div>
                             <div class="setting-item">
                                 <label class="setting-toggle">
-                                    <span>Show Line Numbers</span>
+                                    <span>行番号を表示</span>
                                     <div class="toggle-switch">
                                         <input type="checkbox" id="setting-line-numbers">
                                         <span class="slider"></span>
@@ -288,24 +308,59 @@
                             </div>
                         </section>
                         <section class="settings-section">
-                            <h4>Theme</h4>
+                            <h4>外観テーマ</h4>
                             <div class="setting-item">
-                                <label for="setting-theme-mode">Mode</label>
-                                <select id="setting-theme-mode">
-                                    <option value="dark">Dark</option>
-                                    <option value="light">Light</option>
-                                    <option value="midnight">Midnight</option>
-                                    <option value="letter">Letter</option>
+                                <label for="setting-code-theme">コードブロックのテーマ</label>
+                                <select id="setting-code-theme">
+                                    <option value="github-dark">GitHub Dark</option>
+                                    <option value="github">GitHub Light</option>
+                                    <option value="monokai">Monokai</option>
+                                    <option value="dracula">Dracula</option>
                                 </select>
                             </div>
                             <div class="setting-item">
-                                <label for="setting-mermaid-theme">Mermaid Theme</label>
-                                <select id="setting-mermaid-theme">
-                                    <option value="default">Default</option>
-                                    <option value="dark">Dark</option>
-                                    <option value="forest">Forest</option>
-                                    <option value="neutral">Neutral</option>
+                                <label for="setting-theme-select">アプリのテーマ</label>
+                                <select id="setting-theme-select">
+                                    <option value="dark">ダークテーマ</option>
+                                    <option value="light">ライトテーマ</option>
+                                    <option value="letter">レター (手紙)</option>
+                                    <option value="midnight">ミッドナイト</option>
                                 </select>
+                            </div>
+                            <div class="setting-item">
+                                <label for="setting-mermaid-theme">Mermaid図のテーマ</label>
+                                <select id="setting-mermaid-theme">
+                                    <option value="default">デフォルト</option>
+                                    <option value="neutral">ニュートラル</option>
+                                    <option value="dark">ダーク</option>
+                                    <option value="forest">フォレスト</option>
+                                    <option value="base">ベース</option>
+                                </select>
+                            </div>
+                        </section>
+                        <section class="settings-section">
+                            <h4>詳細設定</h4>
+                            <div class="setting-item">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; margin-bottom: 4px;">コンテンツの再インデックス</div>
+                                    <div style="font-size: 0.85em; color: var(--text-muted);">
+                                        ファイル一覧と検索インデックスを更新します
+                                    </div>
+                                </div>
+                                <button id="rebuild-index-btn" class="secondary-btn">
+                                    <span class="btn-text">再構築</span>
+                                </button>
+                            </div>
+                            <div class="setting-item">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; margin-bottom: 4px;">キャッシュをクリア</div>
+                                    <div style="font-size: 0.85em; color: var(--text-muted);">
+                                        一時ファイルとローカル設定を削除します
+                                    </div>
+                                </div>
+                                <button id="clear-cache-btn" class="danger-btn">
+                                    <span class="btn-text">クリア</span>
+                                </button>
                             </div>
                         </section>
                     </div>
@@ -313,17 +368,20 @@
 
                 <div id="settings-tab-about" class="settings-tab-pane">
                     <div class="settings-header line-bottom">
-                        <h3>About</h3>
+                        <h3>アプリについて</h3>
                     </div>
                     <div class="settings-body about-content">
                         <div class="about-header">
+                            <img src="/static/images/logo.png" alt="Logo" class="brand-logo"
+                                style="width: 80px; height: 80px; margin-bottom: 16px;">
                             <h4>Obsidian Viewer</h4>
                             <p class="version">Version 1.0.0</p>
                         </div>
 
                         <div class="about-description">
                             <p>
-                                ObsidianのVault（保管庫）を、ブラウザ上で美しく、忠実に再現するために開発された軽量ビューワーです。
+                                Obsidianで作成したナレッジベースを、ブラウザで美しく閲覧・検索するためのビューアーアプリケーションです。
+                                オリジナルのMarkdown記法を維持しつつ、高速な検索と快適な閲覧体験を提供します。
                             </p>
                             <p><strong>主な機能:</strong></p>
                             <ul class="about-features">
@@ -332,11 +390,9 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                             stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                            <polyline points="14 2 14 8 20 8"></polyline>
-                                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                            <polygon
+                                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                            </polygon>
                                         </svg>
                                     </span>
                                     <div class="feature-text">
@@ -437,6 +493,76 @@
                         <p class="copyright">&copy; 2026 a.iyota. All rights reserved.</p>
                     </div>
                 </div>
+
+                {% if is_localhost %}
+                <div id="settings-tab-files" class="settings-tab-pane">
+                    <div class="settings-header line-bottom">
+                        <h3>ファイル同期</h3>
+                    </div>
+                    <div class="settings-body">
+                        <!-- Top-level Toggle -->
+                        <div class="setting-item setting-custom-toggle"
+                            style="margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 24px;">
+                            <div class="setting-info">
+                                <span class="setting-title">ファイル同期を有効にする</span>
+                                <p class="setting-desc">
+                                    ローカルフォルダのMarkdownファイルや画像を、このライブラリに自動的に同期します。
+                                </p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="setting-sync-enabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Accordion Content -->
+                        <div id="sync-settings-wrapper" style="display: none;">
+                            <section class="settings-section">
+                                <h4>同期設定</h4>
+                                <div class="setting-item">
+                                    <label for="setting-content-src">コンテンツ（Markdown）の元フォルダ</label>
+                                    <input type="text" id="setting-content-src" placeholder="Markdownファイルの絶対パス">
+                                </div>
+                                <div class="setting-item">
+                                    <label for="setting-images-src">画像（Images）の元フォルダ</label>
+                                    <input type="text" id="setting-images-src" placeholder="画像ファイルの絶対パス">
+                                </div>
+                                <div class="setting-item">
+                                    <label for="setting-sync-interval">自動同期の間隔</label>
+                                    <select id="setting-sync-interval">
+                                        <option value="60">1時間ごと</option>
+                                        <option value="120">2時間ごと</option>
+                                        <option value="360">6時間ごと</option>
+                                        <option value="720">12時間ごと</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item" style="margin-top: 16px;">
+                                    <button id="save-sync-settings-btn" class="primary-btn">
+                                        <span class="btn-text">設定を保存</span>
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section class="settings-section">
+                                <h4>手動操作</h4>
+                                <div class="setting-item" style="display: block;">
+                                    <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.9em;">
+                                        ファイルと画像の同期を今すぐ実行します。
+                                    </p>
+                                    <button id="manual-sync-btn" class="primary-btn">
+                                        <span class="btn-text">今すぐ同期</span>
+                                        <div class="spinner"></div>
+                                    </button>
+                                    <p id="last-sync-time"
+                                        style="margin-top: 8px; font-size: 0.8em; color: var(--text-muted);"></p>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 </body>
