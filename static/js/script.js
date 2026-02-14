@@ -997,11 +997,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (themeModeSelect) {
             themeModeSelect.addEventListener('change', (e) => {
                 const val = e.target.value;
-                localStorage.setItem('theme', val);
-                document.documentElement.setAttribute('data-theme', val);
 
-                // Update highlight.js theme dynamically
-                if (typeof updateHighlightTheme === 'function') updateHighlightTheme(val);
+                // Function to update the DOM
+                const updateTheme = () => {
+                    localStorage.setItem('theme', val);
+                    document.documentElement.setAttribute('data-theme', val);
+
+                    // Update highlight.js theme dynamically
+                    if (typeof updateHighlightTheme === 'function') updateHighlightTheme(val);
+                };
+
+                // Use View Transitions API if supported
+                if (document.startViewTransition) {
+                    document.startViewTransition(() => {
+                        updateTheme();
+                    });
+                } else {
+                    // Fallback
+                    updateTheme();
+                }
 
                 // For Mermaid, we need to check if we can re-render without reload.
                 // If the mermaid theme is set to 'default', it needs to react to the main theme change.
@@ -1009,8 +1023,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (savedMermaidTheme === 'default') {
                     // We need to reload to re-init mermaid with the new base theme
                     // Save modal state to reopen it after reload
-                    sessionStorage.setItem('settingsModalOpen', 'true');
-                    location.reload();
+                    setTimeout(() => { // Slight delay to let transition start if any
+                        sessionStorage.setItem('settingsModalOpen', 'true');
+                        location.reload();
+                    }, 50);
                 }
             });
         }
