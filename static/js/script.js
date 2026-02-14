@@ -33,23 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-
-        // Check for saved mermaid theme preference
-        let mermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
-
-        // If 'default' (Adaptive), choose based on current mode
-        if (mermaidTheme === 'default') {
-            mermaidTheme = currentTheme === 'light' ? 'default' : 'dark';
-        }
-
-        window.mermaid.initialize({
-            startOnLoad: false,
-            theme: mermaidTheme,
-            securityLevel: 'loose'
-        });
-
-        // Find all mermaid code blocks
+        // Find all mermaid code blocks (first run)
         const mermaidBlocks = document.querySelectorAll('pre code.language-mermaid');
         mermaidBlocks.forEach((block) => {
             const pre = block.parentElement;
@@ -59,16 +43,60 @@ document.addEventListener('DOMContentLoaded', () => {
             const mermaidDiv = document.createElement('div');
             mermaidDiv.className = 'mermaid';
             mermaidDiv.textContent = mermaidCode;
+            // Store original code for re-rendering
+            mermaidDiv.setAttribute('data-original-code', mermaidCode);
 
             // Replace the pre element with the mermaid div
             pre.replaceWith(mermaidDiv);
         });
 
-        // Render all mermaid diagrams
-        if (mermaidBlocks.length > 0) {
-            window.mermaid.run();
+        updateMermaidConfig();
+    }
+
+    function updateMermaidConfig() {
+        if (typeof window.mermaid === 'undefined') return;
+
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        let mermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
+
+        // If 'default' (Adaptive), choose based on current mode
+        if (mermaidTheme === 'default') {
+            if (currentTheme === 'light' || currentTheme === 'letter') {
+                mermaidTheme = 'default';
+            } else {
+                mermaidTheme = 'dark';
+            }
+        }
+
+        try {
+            // Re-initialize mermaid
+            window.mermaid.initialize({
+                startOnLoad: false,
+                theme: mermaidTheme,
+                securityLevel: 'loose'
+            });
+
+            // Re-render
+            const mermaidDivs = document.querySelectorAll('.mermaid');
+            mermaidDivs.forEach(div => {
+                // Restore original code
+                const originalCode = div.getAttribute('data-original-code');
+                if (originalCode) {
+                    div.textContent = originalCode;
+                    div.removeAttribute('data-processed'); // Clear processed flag
+                }
+            });
+
+            if (mermaidDivs.length > 0) {
+                window.mermaid.run().catch(err => console.error('Mermaid render error:', err));
+            }
+        } catch (e) {
+            console.error('Mermaid update error:', e);
         }
     }
+
+    // Expose for usage in settings
+    window.updateMermaidConfig = updateMermaidConfig;
 
     // Initialize mermaid after page load
     initMermaid();
@@ -1021,12 +1049,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // If the mermaid theme is set to 'default', it needs to react to the main theme change.
                 const savedMermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
                 if (savedMermaidTheme === 'default') {
-                    // We need to reload to re-init mermaid with the new base theme
-                    // Save modal state to reopen it after reload
-                    setTimeout(() => { // Slight delay to let transition start if any
-                        sessionStorage.setItem('settingsModalOpen', 'true');
-                        location.reload();
-                    }, 50);
+                    if (typeof window.updateMermaidConfig === 'function') {
+                        // Update without reload!
+                        window.updateMermaidConfig();
+                    }
                 }
             });
         }
@@ -1035,9 +1061,14 @@ document.addEventListener('DOMContentLoaded', () => {
             mermaidThemeSelect.addEventListener('change', (e) => {
                 const val = e.target.value;
                 localStorage.setItem('mermaidTheme', val);
-                // Save modal state to reopen it after reload
-                sessionStorage.setItem('settingsModalOpen', 'true');
-                location.reload();
+
+                if (typeof window.updateMermaidConfig === 'function') {
+                    window.updateMermaidConfig();
+                } else {
+                    // Fallback if something is wrong
+                    sessionStorage.setItem('settingsModalOpen', 'true');
+                    location.reload();
+                }
             });
         }
 
@@ -1057,5 +1088,60 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         sessionStorage.removeItem('settingsModalOpen');
     }
+
+    // Accordion Animation Logic
+    const accordions = document.querySelectorAll('.search-accordion');
+    accordions.forEach(el => {
+        const summary = el.querySelector('summary');
+        const content = el.querySelector('.tag-cloud'); // Use strict content selector if possible, or calculate height
+        // Since content layout varies, we animate the 'details' height itself.
+
+        if (!summary) return;
+
+        summary.addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent default toggle
+
+            if (el.classList.contains('animating')) return;
+
+            if (el.open) {
+                // Closing
+                el.classList.add('animating');
+                const startHeight = el.offsetHeight;
+                el.style.height = `${startHeight}px`;
+
+                requestAnimationFrame(() => {
+                    const endHeight = summary.offsetHeight;
+                    el.style.height = `${endHeight}px`;
+                });
+
+                el.addEventListener('transitionend', function onEnd() {
+                    el.open = false;
+                    el.style.height = ''; // Reset
+                    el.classList.remove('animating');
+                    el.removeEventListener('transitionend', onEnd);
+                }, { once: true });
+
+            } else {
+                // Opening
+                el.classList.add('animating');
+                const startHeight = el.offsetHeight; // Should be summary height
+                el.open = true; // Open to calculate full height
+                el.style.height = '';
+                const endHeight = el.offsetHeight;
+
+                el.style.height = `${startHeight}px`;
+
+                requestAnimationFrame(() => {
+                    el.style.height = `${endHeight}px`;
+                });
+
+                el.addEventListener('transitionend', function onEnd() {
+                    el.style.height = ''; // Allow auto height
+                    el.classList.remove('animating');
+                    el.removeEventListener('transitionend', onEnd);
+                }, { once: true });
+            }
+        });
+    });
 
 });
