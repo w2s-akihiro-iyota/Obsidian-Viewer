@@ -1619,6 +1619,19 @@ details[open] .accordion-icon {
     box-shadow: 0 0 30px rgba(212, 163, 115, 0.2), inset 0 0 25px rgba(255, 255, 255, 0.5);
 }
 
+/* Midnight Theme Overrides for File List */
+:root[data-theme="midnight"] .file-tag {
+    background-color: rgba(122, 162, 247, 0.2);
+    color: #c0caf5;
+    border: 1px solid rgba(122, 162, 247, 0.3);
+}
+
+:root[data-theme="midnight"] .file-tag:hover {
+    background-color: rgba(122, 162, 247, 0.3);
+    border-color: var(--accent-purple);
+    color: white;
+}
+
 /* Mobile Search Toggle */
 .mobile-search-btn {
     background: transparent;
