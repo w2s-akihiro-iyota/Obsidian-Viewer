@@ -163,21 +163,96 @@ except ValueError:
     md.core.ruler.push("obsidian_callouts", obsidian_callouts)
 
 def process_admonition_blocks(content: str) -> str:
-    pattern = r'```ad-(\w+)\s*\n(.*?)```'
-    def replace_admonition(match):
-        ad_type = match.group(1).lower()
-        block_content = match.group(2).rstrip()
-        title = None
-        lines = block_content.split('\n')
-        if lines and lines[0].strip().startswith('title:'):
-            title_line = lines[0].strip()
-            title = title_line[6:].strip()
-            block_content = '\n'.join(lines[1:]).lstrip('\n')
-        if not title: title = ad_type.capitalize()
-        callout_html = f'''> [!{ad_type.upper()}] {title}
-> {block_content.replace(chr(10), chr(10) + "> ")}'''
-        return callout_html
-    return re.sub(pattern, replace_admonition, content, flags=re.DOTALL)
+    lines = content.split('\n')
+    output = []
+    # stack of dict {'type': 'admonition'|'code', 'fence': '```', 'len': 3, 'indent': 0}
+    stack = [] 
+
+    def get_prefix():
+        return "".join(["> " for item in stack if item['type'] == 'admonition'])
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        match = re.match(r'^(\s*)(`{3,}|~{3,})(.*)$', line)
+        
+        if match:
+            indent_str = match.group(1)
+            # Calculate visual indent (approximate tab as 4 spaces)
+            indent_len = len(indent_str.replace('\t', '    '))
+            fence_char = match.group(2)
+            fence_len = len(fence_char)
+            info = match.group(3).strip()
+            
+            ad_match = re.match(r'^ad-(\w+)', info)
+            
+            if ad_match:
+                # Start Admonition
+                ad_type = ad_match.group(1).lower()
+                title = None
+                # Check next line for title
+                if i + 1 < len(lines):
+                    next_line_stripped = lines[i+1].strip()
+                    if next_line_stripped.startswith("title:"):
+                        title = next_line_stripped[6:].strip()
+                        i += 1
+                if not title: title = ad_type.capitalize()
+                
+                prefix = get_prefix()
+                output.append(f"{prefix}> [!{ad_type.upper()}] {title}")
+                stack.append({
+                    'type': 'admonition', 
+                    'fence': fence_char[0], 
+                    'len': fence_len,
+                    'indent': indent_len
+                })
+            
+            else:
+                # Regular Fence (Open or Close)
+                # Aggressive Closing: Close all stack items that match the fence
+                any_closed = False
+                
+                while len(stack) > 0:
+                    top = stack[-1]
+                    matches = False
+                    # Check for match: same char, fence length sufficient
+                    if (top['fence'] == fence_char[0] and 
+                        fence_len >= top['len']):
+                        
+                        # Indent check:
+                        # If Code block: usually loose match allowed, but we might be strict
+                        # If Admonition: Strict indent match required for implicit closing
+                        if top['indent'] == indent_len:
+                            matches = True
+                    
+                    if matches:
+                        popped = stack.pop()
+                        any_closed = True
+                        if popped['type'] == 'code':
+                            # Output closing fence for code block
+                            prefix = get_prefix()
+                            output.append(f"{prefix}{line}")
+                        # If admonition, just pop (implicitly closes blockquote)
+                    else:
+                        break # Stop closing if mismatch
+                
+                if not any_closed:
+                    # If nothing closed, it must be opening a code block
+                    stack.append({
+                        'type': 'code', 
+                        'fence': fence_char[0], 
+                        'len': fence_len, 
+                        'indent': indent_len
+                    })
+                    prefix = get_prefix()
+                    output.append(f"{prefix}{line}")
+        else:
+            prefix = get_prefix()
+            output.append(f"{prefix}{line}")
+        
+        i += 1
+    
+    return '\n'.join(output)
 
 def parse_frontmatter(content):
     frontmatter = {}
