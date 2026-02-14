@@ -526,7 +526,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Sidebar Toggle & Persistence
     if (sidebar) {
         function toggleSidebar() {
-            if (window.innerWidth <= 768) {
+            // Use matchMedia to ensure consistency with CSS media queries
+            if (window.matchMedia('(max-width: 768px)').matches) {
                 // Mobile: Toggle Overlay/Active
                 sidebar.classList.toggle('active');
                 if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
@@ -896,12 +897,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (openBtn && settingsModal) {
             openBtn.addEventListener('click', () => {
                 settingsModal.classList.add('active');
+                document.body.classList.add('no-scroll'); // Lock scroll
             });
         }
 
         if (closeBtn && settingsModal) {
             closeBtn.addEventListener('click', () => {
                 settingsModal.classList.remove('active');
+                document.body.classList.remove('no-scroll'); // Unlock scroll
             });
         }
 
@@ -909,6 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsModal.addEventListener('click', (e) => {
                 if (e.target === settingsModal) {
                     settingsModal.classList.remove('active');
+                    document.body.classList.remove('no-scroll'); // Unlock scroll
                 }
             });
         }
@@ -995,15 +999,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const val = e.target.value;
                 localStorage.setItem('theme', val);
                 document.documentElement.setAttribute('data-theme', val);
-                // Trigger global theme update
-                const themeToggleBtn = document.getElementById('theme-toggle');
-                // We can manually call update logic or reuse existing button logic if possible.
-                // But simplified:
+
+                // Update highlight.js theme dynamically
                 if (typeof updateHighlightTheme === 'function') updateHighlightTheme(val);
 
-                // Reload for Mermaid if needed, but nice to avoid if possible.
-                // Mermaid needs reload to switch theme properly usually.
-                location.reload();
+                // For Mermaid, we need to check if we can re-render without reload.
+                // If the mermaid theme is set to 'default', it needs to react to the main theme change.
+                const savedMermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
+                if (savedMermaidTheme === 'default') {
+                    // We need to reload to re-init mermaid with the new base theme
+                    // Save modal state to reopen it after reload
+                    sessionStorage.setItem('settingsModalOpen', 'true');
+                    location.reload();
+                }
             });
         }
 
@@ -1011,6 +1019,8 @@ document.addEventListener('DOMContentLoaded', () => {
             mermaidThemeSelect.addEventListener('change', (e) => {
                 const val = e.target.value;
                 localStorage.setItem('mermaidTheme', val);
+                // Save modal state to reopen it after reload
+                sessionStorage.setItem('settingsModalOpen', 'true');
                 location.reload();
             });
         }
@@ -1021,5 +1031,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize Settings
     initSettings();
+
+    // Check if we need to reopen settings modal (after theme reload)
+    if (sessionStorage.getItem('settingsModalOpen') === 'true') {
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal) {
+            settingsModal.classList.add('active');
+            document.body.classList.add('no-scroll'); // Re-lock scroll
+        }
+        sessionStorage.removeItem('settingsModalOpen');
+    }
 
 });
