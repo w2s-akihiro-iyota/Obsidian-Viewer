@@ -873,7 +873,8 @@ mark {
 .callout-icon svg {
     width: 18px;
     height: 18px;
-    fill: currentColor;
+    fill: none;
+    /* Lucide icons are stroke-based */
 }
 
 .callout-content {
@@ -2479,20 +2480,37 @@ html.sidebar-collapsed .sidebar {
         0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Tag Filter Accordion */
-.search-accordion {
+/* Search Container (New Wrapper) */
+.search-container {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background-color: var(--bg-secondary);
     margin-bottom: 20px;
     overflow: hidden;
+    width: 100%;
+    /* Ensure full width */
+}
+
+/* Tag Filter Accordion */
+.search-accordion {
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    margin-bottom: 0;
 }
 
 .search-summary {
     list-style: none;
     cursor: pointer;
-    padding: 0;
+    padding: 8px 15px;
     margin: 0;
+    background-color: rgba(0, 0, 0, 0.02);
+    /* Slight contrast */
+    transition: background-color 0.2s;
+}
+
+.search-summary:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .search-summary::-webkit-details-marker {
@@ -2506,6 +2524,7 @@ html.sidebar-collapsed .sidebar {
     justify-content: space-between;
     padding: 10px 15px;
     width: 100%;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .search-input-wrapper {
@@ -3221,10 +3240,21 @@ pre.line-numbers .line-number-rows {
 }
 
 .feature-icon {
-    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
     margin-right: 12px;
-    min-width: 32px;
-    text-align: center;
+    color: var(--accent-purple);
+    /* Unified theme color */
+    flex-shrink: 0;
+}
+
+.feature-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2px;
 }
 
 .feature-text {
@@ -3252,9 +3282,8 @@ pre.line-numbers .line-number-rows {
 @media (max-width: 768px) {
     .settings-modal-container {
         flex-direction: column;
-        height: auto;
-        max-height: 80dvh;
-        /* Prevent clipping on small screens */
+        height: 80dvh;
+        /* Fixed height for consistency */
         width: 95%;
     }
 
@@ -3291,4 +3320,61 @@ pre.line-numbers .line-number-rows {
     .settings-header.line-bottom {
         padding: 16px;
     }
+}
+
+/* =========================================
+   Callout Visibility Improvements for Light Themes
+   ========================================= */
+:root[data-theme="light"] .callout-note .callout-title,
+:root[data-theme="letter"] .callout-note .callout-title {
+    color: #5e4bca;
+    /* Darker Purple */
+    background-color: rgba(94, 75, 202, 0.1);
+}
+
+:root[data-theme="light"] .callout-tip .callout-title,
+:root[data-theme="letter"] .callout-tip .callout-title,
+:root[data-theme="light"] .callout-success .callout-title,
+:root[data-theme="letter"] .callout-success .callout-title,
+:root[data-theme="light"] .callout-done .callout-title,
+:root[data-theme="letter"] .callout-done .callout-title,
+:root[data-theme="light"] .callout-check .callout-title,
+:root[data-theme="letter"] .callout-check .callout-title {
+    color: #00796b;
+    /* Darker Teal */
+    background-color: rgba(0, 121, 107, 0.1);
+}
+
+:root[data-theme="light"] .callout-warning .callout-title,
+:root[data-theme="letter"] .callout-warning .callout-title,
+:root[data-theme="light"] .callout-important .callout-title,
+:root[data-theme="letter"] .callout-important .callout-title {
+    color: #e65100;
+    /* Darker Orange */
+    background-color: rgba(230, 81, 0, 0.1);
+}
+
+:root[data-theme="light"] .callout-error .callout-title,
+:root[data-theme="letter"] .callout-error .callout-title,
+:root[data-theme="light"] .callout-danger .callout-title,
+:root[data-theme="letter"] .callout-danger .callout-title,
+:root[data-theme="light"] .callout-fail .callout-title,
+:root[data-theme="letter"] .callout-fail .callout-title {
+    color: #c62828;
+    /* Darker Red */
+    background-color: rgba(198, 40, 40, 0.1);
+}
+
+:root[data-theme="light"] .callout-info .callout-title,
+:root[data-theme="letter"] .callout-info .callout-title {
+    color: #00838f;
+    /* Darker Cyan */
+    background-color: rgba(0, 131, 143, 0.1);
+}
+
+:root[data-theme="light"] .callout-question .callout-title,
+:root[data-theme="letter"] .callout-question .callout-title {
+    color: #2e7d32;
+    /* Darker Green */
+    background-color: rgba(46, 125, 50, 0.1);
 }

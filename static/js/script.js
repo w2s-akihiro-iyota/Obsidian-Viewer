@@ -1128,10 +1128,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const accordions = document.querySelectorAll('.search-accordion');
     accordions.forEach(el => {
         const summary = el.querySelector('summary');
-        const content = el.querySelector('.tag-cloud'); // Use strict content selector if possible, or calculate height
-        // Since content layout varies, we animate the 'details' height itself.
+
+        // Load saved state
+        const savedState = localStorage.getItem('searchAccordionOpen');
+        if (savedState !== null) {
+            el.open = (savedState === 'true');
+        }
 
         if (!summary) return;
+
+        // Save state on toggle (click)
+
 
         summary.addEventListener('click', (e) => {
             e.preventDefault(); // Prevent default toggle
@@ -1140,6 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (el.open) {
                 // Closing
+                localStorage.setItem('searchAccordionOpen', 'false');
                 el.classList.add('animating');
                 const startHeight = el.offsetHeight;
                 el.style.height = `${startHeight}px`;
@@ -1158,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } else {
                 // Opening
+                localStorage.setItem('searchAccordionOpen', 'true');
                 el.classList.add('animating');
                 const startHeight = el.offsetHeight; // Should be summary height
                 el.open = true; // Open to calculate full height
