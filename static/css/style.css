@@ -20,6 +20,37 @@
     --border-color: #e0e0e0;
 }
 
+/* Letter Theme (Warm/Paper-like) */
+:root[data-theme="letter"] {
+    --bg-primary: #fdfbf7;
+    /* Warm Paper White */
+    --bg-secondary: #f4f1ea;
+    /* Slightly darker warm beige */
+    --text-normal: #2c2925;
+    /* Soft Black/Dark Brown */
+    --text-muted: #5d5a56;
+    /* Muted Brownish Grey */
+    --accent-purple: #d4a373;
+    /* Warm Orange/Brown Accent */
+    --border-color: #e6e2da;
+}
+
+/* Midnight Theme (Cool Dark) */
+:root[data-theme="midnight"] {
+    --bg-primary: #1a1b26;
+    /* Deep Night Blue */
+    --bg-secondary: #16161e;
+    /* Darker Night */
+    --text-normal: #a9b1d6;
+    /* Storm Grey */
+    --text-muted: #565f89;
+    /* Muted Blue Grey */
+    --accent-purple: #7aa2f7;
+    /* Bright Blue */
+    --border-color: #292e42;
+    /* Dark Blue Border */
+}
+
 * {
     box-sizing: border-box;
 }
@@ -1374,6 +1405,18 @@ details[open] .accordion-icon {
     height: 24px;
 }
 
+/* Letter theme activity bar styles */
+:root[data-theme="letter"] .activity-bar {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-color);
+}
+
+/* Midnight theme activity bar styles */
+:root[data-theme="midnight"] .activity-bar {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-color);
+}
+
 /* Page settings for PDF Export */
 @page {
     margin: 0.5cm;
@@ -1417,6 +1460,8 @@ details[open] .accordion-icon {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
+
+
 
     /* Light theme print styles */
     :root[data-theme="light"] body {
@@ -1529,6 +1574,44 @@ details[open] .accordion-icon {
 /* Dark Mode Tag Styles */
 :root[data-theme="dark"] .file-tag {
     color: white !important;
+}
+
+/* Letter Theme Overrides for File List */
+:root[data-theme="letter"] .file-item {
+    background-color: rgba(244, 241, 234, 0.6);
+    border-color: rgba(212, 163, 115, 0.3);
+    box-shadow: 0 0 12px rgba(212, 163, 115, 0.15);
+}
+
+:root[data-theme="letter"] .file-item:hover {
+    border-color: rgba(212, 163, 115, 0.5);
+    box-shadow: 0 0 25px rgba(212, 163, 115, 0.3), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="letter"] .file-preview {
+    background: linear-gradient(to bottom right, #f4f1ea, #fff8e8, #fffdf9);
+    border: 1px solid rgba(212, 163, 115, 0.4);
+    box-shadow: 0 0 25px rgba(212, 163, 115, 0.15), inset 0 0 25px rgba(255, 255, 255, 0.5);
+}
+
+:root[data-theme="letter"] .file-preview p {
+    color: #5d5a56;
+    text-shadow: none;
+}
+
+:root[data-theme="letter"] .file-tag {
+    background: linear-gradient(135deg, #d4a373, #c59363);
+    color: white;
+    border-color: rgba(212, 163, 115, 0.6);
+    box-shadow: 0 0 12px rgba(212, 163, 115, 0.4), inset 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="letter"] .file-tag:hover {
+    box-shadow: 0 0 18px rgba(212, 163, 115, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.35);
+}
+
+:root[data-theme="letter"] .file-list.grid-view .file-preview {
+    box-shadow: 0 0 30px rgba(212, 163, 115, 0.2), inset 0 0 25px rgba(255, 255, 255, 0.5);
 }
 
 /* Mobile Search Toggle */
@@ -1775,6 +1858,16 @@ html.sidebar-collapsed header {
     background-color: #f3f3f3;
     /* Solid light color */
     border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="letter"] .sidebar {
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+}
+
+[data-theme="midnight"] .sidebar {
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
 }
 
 /* Scrollbar for sidebar */
