@@ -1376,6 +1376,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Manual Sync
         manualSyncBtn.addEventListener('click', () => {
+            if (!confirm("ファイルと画像の同期を今すぐ実行しますか？")) return;
+
             manualSyncBtn.classList.add('loading');
             manualSyncBtn.disabled = true;
 
