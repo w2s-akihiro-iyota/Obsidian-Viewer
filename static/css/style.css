@@ -2123,30 +2123,28 @@ details>summary::-webkit-details-marker {
         top: 0;
         left: 0;
         height: 100vh;
+        /* Fallback */
+        height: 100dvh;
+        /* Better for mobile browsers */
         width: 280px !important;
-        /* Force width */
         transform: translateX(-100%);
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-        z-index: 1100;
-        /* Above header (z-index: 1000) on mobile */
+        z-index: 2500;
+        /* Very high to ensure visibility */
         border-right: none;
         visibility: visible !important;
-        /* Always visible for transition */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* However, 'sidebar-hidden' (from index view) should still HIDE it or let it be toggled?
-       On mobile, the sidebar is hidden by default (via transform). 
-       The 'sidebar-hidden' class on index.html removes it from DOM/Layout entirely.
-       If we want it totally gone on mobile index page too, display: none is fine.
-     */
-
     .sidebar.active {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
 
     .sidebar-overlay.active {
-        opacity: 1;
-        visibility: visible;
+        opacity: 1 !important;
+        visibility: visible !important;
+        z-index: 2400;
+        /* Below sidebar, above header */
     }
 
     .sidebar-toggle-btn {
@@ -3002,7 +3000,7 @@ pre.line-numbers .line-number-rows {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
+    z-index: 3000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3254,7 +3252,9 @@ pre.line-numbers .line-number-rows {
 @media (max-width: 768px) {
     .settings-modal-container {
         flex-direction: column;
-        height: 90vh;
+        height: auto;
+        max-height: 80dvh;
+        /* Prevent clipping on small screens */
         width: 95%;
     }
 

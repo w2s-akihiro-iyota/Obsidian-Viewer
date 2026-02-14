@@ -570,13 +570,48 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Specific Mobile Toggle Logic for Robustness
+        const mobileToggleBtn = document.getElementById('sidebar-toggle-mobile');
+        if (mobileToggleBtn) {
+            const handleMobileClick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Force toggle
+                sidebar.classList.toggle('active');
+                if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
+
+                // Body scroll toggle
+                if (sidebar.classList.contains('active')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
+            };
+
+            // Remove existing listeners if any (by cloning? No, just add fresh)
+            // Note: The generic listener might still be attached, but preventDefault helps.
+            mobileToggleBtn.addEventListener('click', handleMobileClick);
+            mobileToggleBtn.addEventListener('touchstart', handleMobileClick, { passive: false });
+        }
+
+        // Keep generic logic for desktop, but ensure mobile button doesn't double-fire
+        // The generic loop below skips nothing, so we rely on stopPropagation above.
+
         if (sidebarToggleBtns.length > 0) {
             sidebarToggleBtns.forEach(btn => {
-                btn.addEventListener('click', toggleSidebar);
+                if (btn.id !== 'sidebar-toggle-mobile') {
+                    btn.addEventListener('click', toggleSidebar);
+                }
             });
         }
 
-        if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        }
     }
 
     // 2. Sidebar Tabs
