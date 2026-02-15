@@ -338,17 +338,17 @@
                                 </select>
                             </div>
                         </section>
-                            <div class="setting-item">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 500; margin-bottom: 4px;">キャッシュをクリア</div>
-                                    <div style="font-size: 0.85em; color: var(--text-muted);">
-                                        一時ファイルとローカル設定を削除します
-                                    </div>
+                        <div class="setting-item">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500; margin-bottom: 4px;">キャッシュをクリア</div>
+                                <div style="font-size: 0.85em; color: var(--text-muted);">
+                                    一時ファイルとローカル設定を削除します
                                 </div>
-                                <button id="clear-cache-btn" class="danger-btn">
-                                    <span class="btn-text">クリア</span>
-                                </button>
                             </div>
+                            <button id="clear-cache-btn" class="danger-btn">
+                                <span class="btn-text">クリア</span>
+                            </button>
+                        </div>
                         </section>
                     </div>
                 </div>
@@ -427,8 +427,8 @@
                                         </svg>
                                     </span>
                                     <div class="feature-text">
-                                        <strong>検索機能</strong><br>
-                                        ファイル名や見出しの高速検索
+                                        <strong>全文検索 & インデックス管理</strong><br>
+                                        ファイル名、見出し、本文の高速検索とインデックス更新
                                     </div>
                                 </li>
                                 <li>
@@ -473,6 +473,22 @@
                                     <div class="feature-text">
                                         <strong>レスポンシブ</strong><br>
                                         PCでもスマホでも快適な閲覧体験
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="feature-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <polyline points="23 21 23 16 18 16"></polyline>
+                                            <path d="M20.41 12.41a9 9 0 0 0-14.82 2"></path>
+                                        </svg>
+                                    </span>
+                                    <div class="feature-text">
+                                        <strong>ファイル同期機能</strong><br>
+                                        ローカルの他フォルダからMarkdownや画像を自動・手動で同期
                                     </div>
                                 </li>
                             </ul>
@@ -564,7 +580,8 @@
                                         <span class="btn-text">再構築</span>
                                     </button>
                                 </div>
-                                <div class="setting-item" style="display: block; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                                <div class="setting-item"
+                                    style="display: block; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
                                     <div style="font-weight: 500; margin-bottom: 4px;">ファイル同期</div>
                                     <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.85em;">
                                         ファイルと画像の同期を今すぐ実行します。

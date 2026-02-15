@@ -12,7 +12,8 @@ ObsidianのようなインターフェースでMarkdownファイルをブラウ�
   - コールアウト (Admonition) `info`, `important`, `warning` など
   - リンクカード (CardLink)
   - タスクリスト
-- **全文検索**: ファイル名と内容のリアルタイム検索
+- **全文検索 & インデックス管理**: ファイル名と内容のリアルタイム検索、手動インデックス更新
+- **ファイル同期**: ローカルの他フォルダからMarkdownや画像を自動/手動で同期
 - **タグ管理**: Frontmatterのタグに基づいたフィルタリング
 - **レスポンシブ**: PC、タブレット、スマホに対応
 
@@ -21,7 +22,7 @@ ObsidianのようなインターフェースでMarkdownファイルをブラウ�
 - Windows / Mac / Linux
 - Docker Desktop (または Docker Engine + Docker Compose)
 
-## セットアップ手順（新しいPCでの環境構築）
+## セットアップ手順
 
 ### 1. Dockerのインストール
 
@@ -36,7 +37,23 @@ ObsidianのようなインターフェースでMarkdownファイルをブラウ�
 cd パス/to/Obsidian-Viewer
 ```
 
-### 3. アプリケーションの起動
+### 3. Obsidian保管庫 (Vault) の連携設定
+
+`docker-compose.yml` をテキストエディタで開き、Obsidianの保管庫パスをマウント設定に追加します。
+
+```yaml
+# docker-compose.yml の 17行目付近
+- {ObsidianのVaultパス}:/0_host_pc:ro
+```
+
+**例 (Windowsの場合):**
+```yaml
+- D:\Documents\Obsidian:/0_host_pc:ro
+```
+※パスにスペースが含まれる場合は `"` で囲んでください。
+※設定後、アプリ内から `/0_host_pc` を通じてファイルを参照・同期できるようになります。
+
+### 4. アプリケーションの起動
 
 以下のコマンドを実行して、コンテナをビルド・起動します。
 初回は時間がかかる場合があります。
@@ -45,13 +62,13 @@ cd パス/to/Obsidian-Viewer
 docker-compose up -d --build
 ```
 
-### 4. ブラウザでアクセス
+### 5. ブラウザでアクセス
 
 ブラウザを開き、以下のURLにアクセスしてください。
 
 http://localhost:8000
 
-### 5. コンテナの停止
+### 6. コンテナの停止
 
 アプリケーションを終了する場合は、以下のコマンドを実行します。
 
