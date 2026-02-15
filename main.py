@@ -738,15 +738,7 @@ async def startup_event():
     asyncio.create_task(background_sync_loop())
 
 def is_request_local(request: Request) -> bool:
-    # 1. Hostヘッダーをチェック (ブラウザのアドレスバーの内容)
-    # 外部デバイスからのアクセス(IP直打ちやホスト名)はここを通過できない
-    host_header = request.headers.get("host", "").split(":")[0].lower()
-    is_host_local = host_header in ("localhost", "127.0.0.1", "[::1]")
-    
-    if not is_host_local:
-        return False
-        
-    # 2. 接続元IPをチェック (Docker等のブリッジ通信 172.x なども許容)
+    # 接続元IPをチェック (Docker等のブリッジ通信 172.x なども許容)
     client_host = request.client.host
     is_ip_local = (
         client_host in ("127.0.0.1", "::1") or
@@ -755,7 +747,15 @@ def is_request_local(request: Request) -> bool:
         client_host.startswith("10.")
     )
     
-    return is_ip_local
+    if is_ip_local:
+        return True
+
+    # Hostヘッダーをチェック (ブラウザのアドレスバーの内容)
+    # 外部デバイスからIP直打ちアクセスされた場合も、client_hostがローカルならOK
+    host_header = request.headers.get("host", "").split(":")[0].lower()
+    is_host_local = host_header in ("localhost", "127.0.0.1", "[::1]")
+    
+    return is_host_local
 
 def check_localhost(request: Request):
     if not is_request_local(request):

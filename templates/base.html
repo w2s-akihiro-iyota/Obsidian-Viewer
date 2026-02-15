@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20240214-fix-theme">
+    <link rel="stylesheet" href="/static/css/style.css?v=20240215-force-visibility">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -30,9 +30,10 @@
         window.mermaid = mermaid;
     </script>
     <!-- Highlight.js (Local) -->
-    <link id="highlight-theme" rel="stylesheet" href="/static/css/themes/github-dark.min.css?v=20240214-fix-theme">
-    <script src="/static/js/vendor/highlight.min.js?v=20240214-fix-theme"></script>
-    <script src="/static/js/script.js?v=20240214-fix-theme" defer></script>
+    <link id="highlight-theme" rel="stylesheet"
+        href="/static/css/themes/github-dark.min.css?v=20240215-v5-final-header-width">
+    <script src="/static/js/vendor/highlight.min.js?v=20240215-v5-final-header-width"></script>
+    <script src="/static/js/script.js?v=20240215-v5-final-header-width" defer></script>
     {% block head %}{% endblock %}
 </head>
 
