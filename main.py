@@ -286,14 +286,28 @@ def parse_frontmatter(content):
         content = content[1:]
         body = content
 
-    if content.strip().startswith("---"):
-        # Match allowing for leading whitespace (after BOM removal)
-        match = re.match(r'^\s*---\s*\n(.*?)\n---\s*\n?', content, re.DOTALL)
+    # Normalized line endings to \n for easier regex matching
+    content_normalized = content.replace('\r\n', '\n')
+
+    if content_normalized.strip().startswith("---"):
+        # Match allowing for leading whitespace and flexible newlines
+        match = re.match(r'^\s*---\s*\n(.*?)\n---(?:\s*\n|$)', content_normalized, re.DOTALL)
         if match:
             yaml_content = match.group(1)
             try:
                 frontmatter = yaml.safe_load(yaml_content) or {}
-                body = content[match.end():]
+                # Calculate body offset in the ORIGINAL content
+                lines = content.split('\n')
+                dash_count = 0
+                body_start_line = 0
+                for idx, line in enumerate(lines):
+                    if line.strip() == "---":
+                        dash_count += 1
+                        if dash_count == 2:
+                            body_start_line = idx + 1
+                            break
+                if dash_count == 2:
+                    body = '\n'.join(lines[body_start_line:])
             except yaml.YAMLError: pass
     return frontmatter, body
 
@@ -608,18 +622,17 @@ async def read_item(request: Request, file_path: str):
     
     fm, content = parse_frontmatter(content)
     
-    # Access control
+    # Access control & Status
+    publish_val = fm.get('publish')
+    is_published = False
+    if isinstance(publish_val, bool):
+        is_published = publish_val
+    elif isinstance(publish_val, str):
+        is_published = publish_val.upper().strip() == "TRUE"
+    
     is_local = is_request_local(request)
-    if not is_local:
-        publish_val = fm.get('publish')
-        is_published = False
-        if isinstance(publish_val, bool):
-            is_published = publish_val
-        elif isinstance(publish_val, str):
-            is_published = publish_val.upper() == "TRUE"
-        
-        if not is_published:
-            raise HTTPException(status_code=403, detail="Access denied")
+    if not is_local and not is_published:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     content = process_admonition_blocks(content)
     content = process_obsidian_images(content)
@@ -628,11 +641,11 @@ async def read_item(request: Request, file_path: str):
     
     # Use frontmatter title if available
     doc_title = fm.get('title') or safe_path.stem
-    is_local = is_request_local(request)
     
     return templates.TemplateResponse("view.html", {
         "request": request, "content": html_content, "title": doc_title,
-        "filename": safe_path.name, "file_tree": file_tree, "is_localhost": is_local
+        "filename": safe_path.name, "file_tree": file_tree, "is_localhost": is_local,
+        "is_published": is_published
     })
 
 # --- File Sync Feature ---
