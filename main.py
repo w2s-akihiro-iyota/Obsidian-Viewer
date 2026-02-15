@@ -633,7 +633,15 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     end_idx = start_idx + limit
     paginated_files = filtered_files[start_idx:end_idx]
     
-    return templates.TemplateResponse("index.html", {
+    # Render the template
+    template_name = "index.html"
+    if request.headers.get('HX-Request'):
+        # If HTMX request, we can use a fragment. 
+        # For simplicity, we just use the same template, but HTMX can be configured to pick just the target div.
+        # However, to be more efficient, we could point to a fragment template.
+        template_name = "index.html" # HTMX can handle full page returns if specified, but let's try to be specific
+
+    return templates.TemplateResponse(template_name, {
         "request": request, "files": paginated_files, "title": "Obsidian-Render",
         "current_page": page, "total_pages": total_pages, "total_items": total_items,
         "q": q, "selected_tag": tag, "all_tags": sorted_tags, "file_tree": file_tree,

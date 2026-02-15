@@ -8,6 +8,8 @@
     --header-height: 50px;
     --font-family: 'Consolas', "Noto Sans JP", "BIZ UDPGothic", "Meiryo UI", 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --code-font: 'Consolas', 'Monaco', 'Courier New', monospace;
+    --sidebar-width: 280px;
+    --activity-bar-width: 50px;
 }
 
 /* Light Theme */
@@ -1956,7 +1958,7 @@ details[open] .accordion-icon {
     padding-top: 60px;
     /* Prevent header overlap */
     /* Desktop: Shift content when sidebar is open */
-    margin-left: 330px;
+    margin-left: calc(var(--sidebar-width) + var(--activity-bar-width));
     transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1966,9 +1968,9 @@ header {
     top: 0;
     right: 0;
     /* Header toggles with sidebar */
-    left: 330px;
+    left: calc(var(--sidebar-width) + var(--activity-bar-width));
     /* 50px Activity Bar + 280px Sidebar */
-    width: calc(100% - 330px);
+    width: calc(100% - (var(--sidebar-width) + var(--activity-bar-width)));
     height: 60px;
     z-index: 1000;
     /* Standard z-index */
@@ -1979,7 +1981,7 @@ header {
 }
 
 .sidebar {
-    width: 280px;
+    width: var(--sidebar-width);
     background-color: #252526;
     /* Solid opaque color */
     border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -1988,7 +1990,7 @@ header {
     /* Full height */
     position: fixed;
     top: 0;
-    left: 50px;
+    left: var(--activity-bar-width);
     /* Offset by Activity Bar */
     overflow: hidden;
     /* Changed from overflow-y: auto */
@@ -2020,12 +2022,12 @@ header {
 
 /* Collapsed State: Reset Layout */
 html.sidebar-collapsed .app-wrapper {
-    margin-left: 50px;
+    margin-left: var(--activity-bar-width);
 }
 
 html.sidebar-collapsed header {
-    left: 50px;
-    width: calc(100% - 50px);
+    left: var(--activity-bar-width);
+    width: calc(100% - var(--activity-bar-width));
 }
 
 [data-theme="light"] .sidebar {
@@ -2142,7 +2144,7 @@ details>summary::-webkit-details-marker {
     position: fixed;
     top: 0;
     left: 0;
-    width: 50px;
+    width: var(--activity-bar-width);
     height: 100vh;
     background-color: #1e1e1e;
     /* Darker than sidebar */
@@ -2204,7 +2206,32 @@ details>summary::-webkit-details-marker {
     /* Hidden on Desktop */
 }
 
-/* Fixed Toggle Button */
+/* Sidebar Resizer Handle */
+.sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 100;
+    transition: background-color 0.2s;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer.resizing {
+    background-color: var(--accent-purple);
+}
+
+/* Prevent text selection while resizing */
+body.resizing {
+    user-select: none;
+    cursor: col-resize;
+}
+
+body.resizing iframe {
+    pointer-events: none;
+}
 
 
 .sidebar-toggle-btn:hover {
