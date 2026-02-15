@@ -73,7 +73,15 @@ document.addEventListener('DOMContentLoaded', () => {
             window.mermaid.initialize({
                 startOnLoad: false,
                 theme: mermaidTheme,
-                securityLevel: 'loose'
+                securityLevel: 'loose',
+                flowchart: { useMaxWidth: false },
+                sequence: { useMaxWidth: false },
+                gantt: { useMaxWidth: false },
+                journey: { useMaxWidth: false },
+                timeline: { useMaxWidth: false },
+                class: { useMaxWidth: false },
+                state: { useMaxWidth: false },
+                erd: { useMaxWidth: false }
             });
 
             // Re-render

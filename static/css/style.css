@@ -3170,8 +3170,8 @@ pre.line-numbers .line-number-rows {
     .mermaid svg {
         /* Reset width to auto to maintain aspect ratio */
         width: auto !important;
-        /* Enforce strict pixel limit to prevent huge scaling and page overflow */
-        max-width: 500px !important;
+        /* Prevent huge overflow while allowing natural size */
+        max-width: 100% !important;
         /* Limit height to ensure it fits on one page (approx A4 height) */
         max-height: 800px !important;
         height: auto !important;
