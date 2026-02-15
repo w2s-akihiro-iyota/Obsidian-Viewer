@@ -3,7 +3,7 @@ import shutil
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from app.config import CONFIG_FILE, CONTENT_DIR, STATICS_DIR
+from app.config import CONFIG_FILE, CONTENT_DIR, STATICS_DIR, IMAGES_DIR
 from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
 
@@ -62,18 +62,20 @@ def perform_sync(config: SyncConfig):
                 shutil.copy2(item, dest_item)
 
         # 2. Image Sync (Optional)
+        from app.config import IMAGES_DIR
         if config.images_src:
             img_src_path = Path(config.images_src)
-            if img_src_path.exists() and STATICS_DIR.exists():
-                print(f"Syncing images from {img_src_path}...", flush=True)
+            if img_src_path.exists() and IMAGES_DIR.exists():
+                print(f"Syncing images from {img_src_path} to {IMAGES_DIR}...", flush=True)
+                # Recursive sync for images
                 for item in img_src_path.iterdir():
-                    dest_item = STATICS_DIR / item.name
+                    dest_item = IMAGES_DIR / item.name
                     if item.is_dir():
                         shutil.copytree(item, dest_item, dirs_exist_ok=True)
                     else:
                         shutil.copy2(item, dest_item)
             else:
-                print(f"Skipping image sync (path not found: {img_src_path})", flush=True)
+                print(f"Skipping image sync (path not found or IMAGES_DIR missing)", flush=True)
         
         # 3. Finalize
         config.last_sync = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

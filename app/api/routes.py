@@ -64,7 +64,7 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     all_tags = sorted(list(all_tags))
 
     # Pagination
-    PER_PAGE = 24
+    PER_PAGE = 12
     total = len(filtered)
     pages = math.ceil(total / PER_PAGE)
     start = (page - 1) * PER_PAGE
