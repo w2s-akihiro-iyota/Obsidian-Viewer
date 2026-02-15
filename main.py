@@ -352,6 +352,14 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
         preview_text = body.strip()[:150]
         if len(body.strip()) > 150: preview_text += "..."
         
+        # Access control: check "publish" in frontmatter
+        publish_val = frontmatter.get('publish')
+        is_published = False
+        if isinstance(publish_val, bool):
+            is_published = publish_val
+        elif isinstance(publish_val, str):
+            is_published = publish_val.upper() == "TRUE"
+
         # Use frontmatter title if available, otherwise use stem
         doc_title = frontmatter.get('title') or item.stem
 
@@ -363,7 +371,8 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
             "timestamp": timestamp,
             "tags": tags,
             "content_lower": content.lower(),
-            "preview": preview_text
+            "preview": preview_text,
+            "published": is_published
         })
     files.sort(key=lambda x: x['timestamp'], reverse=True)
 
@@ -377,7 +386,7 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
 
     return files
 
-def get_file_tree(directory: Path, relative_to: Path):
+def get_file_tree(directory: Path, relative_to: Path, published_only: bool = False):
     tree = []
     if not directory.exists(): return []
     items = list(directory.iterdir())
@@ -386,7 +395,7 @@ def get_file_tree(directory: Path, relative_to: Path):
         if item.name.startswith('.'): continue
         rel_path = item.relative_to(relative_to)
         if item.is_dir():
-            children = get_file_tree(item, relative_to)
+            children = get_file_tree(item, relative_to, published_only)
             if children:
                 tree.append({
                     "type": "directory",
@@ -396,18 +405,30 @@ def get_file_tree(directory: Path, relative_to: Path):
                 })
         elif item.suffix == '.md':
             title = item.stem
+            is_published = False
             try:
                 encodings = ["utf-8", "cp932", "shift_jis", "euc-jp"]
                 content = ""
                 for enc in encodings:
                     try:
                         with open(item, "r", encoding=enc) as f:
-                            head = [next(f) for _ in range(10)]
+                            # Read enough to get frontmatter
+                            head = [next(f) for _ in range(20)]
                             content = "".join(head)
                         break
                     except (UnicodeDecodeError, StopIteration): continue
                 fm, _ = parse_frontmatter(content)
+                
+                publish_val = fm.get('publish')
+                if isinstance(publish_val, bool):
+                    is_published = publish_val
+                elif isinstance(publish_val, str):
+                    is_published = publish_val.upper() == "TRUE"
             except Exception: pass
+            
+            if published_only and not is_published:
+                continue
+
             tree.append({
                 "type": "file",
                 "name": item.name,
@@ -458,32 +479,30 @@ def process_obsidian_images(content: str) -> str:
     return re.sub(pattern, replace_image, content, flags=re.IGNORECASE)
 
 @app.get("/api/search")
-async def search_files(q: str = ""):
+async def search_files(request: Request, q: str = ""):
     q = q.lower().strip()
     if not q: return []
+    
+    is_local = is_request_local(request)
+    all_files = get_all_files(CONTENT_DIR, CONTENT_DIR)
+    
     results = []
-    for item in CONTENT_DIR.rglob("*.md"):
-        try:
-            content = ""
-            encodings = ["utf-8", "cp932", "shift_jis", "euc-jp"]
-            for enc in encodings:
-                try:
-                    with open(item, "r", encoding=enc) as f:
-                        content = f.read().lower()
-                    break
-                except UnicodeDecodeError: continue
-            if q in item.name.lower() or q in content:
-                rel_path = item.relative_to(CONTENT_DIR)
-                results.append({
-                    "title": item.stem,
-                    "path": str(rel_path).replace("\\", "/"),
-                    "filename": item.name
-                })
-        except Exception: continue
-    return results[:10]
+    for f in all_files:
+        # Filter unpublished files for external users
+        if not is_local and not f.get('published', False):
+            continue
+            
+        if q in f['name'].lower() or q in f['content_lower'] or q in f['title'].lower():
+            results.append({
+                "title": f['title'],
+                "path": f['path'],
+                "filename": f['name']
+            })
+        if len(results) >= 10: break
+    return results
 
 @app.get("/api/preview")
-async def preview_file(path: str):
+async def preview_file(request: Request, path: str):
     clean_path = path.strip("/")
     safe_path = (CONTENT_DIR / clean_path).resolve()
     if not str(safe_path).startswith(str(CONTENT_DIR.resolve())):
@@ -500,6 +519,20 @@ async def preview_file(path: str):
                 break
             except UnicodeDecodeError: continue
         fm, content = parse_frontmatter(content)
+        
+        # Access control
+        is_local = is_request_local(request)
+        if not is_local:
+            publish_val = fm.get('publish')
+            is_published = False
+            if isinstance(publish_val, bool):
+                is_published = publish_val
+            elif isinstance(publish_val, str):
+                is_published = publish_val.upper() == "TRUE"
+            
+            if not is_published:
+                raise HTTPException(status_code=403, detail="Access denied")
+
         preview_length = 500
         preview_content = content[:preview_length]
         if len(content) > preview_length: preview_content += "..."
@@ -513,18 +546,32 @@ async def preview_file(path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request, page: int = 1, q: str = "", tag: str = ""):
+async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "", visibility: str = "all"):
     all_files = get_all_files(CONTENT_DIR, CONTENT_DIR)
-    file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR)
+    is_local = is_request_local(request)
+    
+    # Enforce visibility for external users
+    if not is_local:
+        visibility = "public"
+    
+    # Filter by publish status
+    if visibility == "public":
+        all_files = [f for f in all_files if f.get('published', False)]
+    elif visibility == "private":
+        all_files = [f for f in all_files if not f.get('published', False)]
+
+    file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=not is_local)
     all_tags = set()
     for f in all_files:
         for t in f['tags']: all_tags.add(t)
     sorted_tags = sorted(list(all_tags))
+    
     filtered_files = all_files
     if tag: filtered_files = [f for f in filtered_files if tag in f['tags']]
     if q:
         q_lower = q.lower().strip()
-        filtered_files = [f for f in filtered_files if q_lower in f['name'].lower() or q_lower in f['content_lower']]
+        filtered_files = [f for f in filtered_files if q_lower in f['name'].lower() or q_lower in f['content_lower'] or q_lower in f['title'].lower()]
+    
     limit = 12
     total_items = len(filtered_files)
     total_pages = math.ceil(total_items / limit)
@@ -533,13 +580,12 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "")
     start_idx = (page - 1) * limit
     end_idx = start_idx + limit
     paginated_files = filtered_files[start_idx:end_idx]
-    print(f"DEBUG: Client Host: {request.client.host}")
-    is_local = is_request_local(request)
+    
     return templates.TemplateResponse("index.html", {
         "request": request, "files": paginated_files, "title": "Obsidian-Render",
         "current_page": page, "total_pages": total_pages, "total_items": total_items,
         "q": q, "selected_tag": tag, "all_tags": sorted_tags, "file_tree": file_tree,
-        "is_localhost": is_local
+        "is_localhost": is_local, "visibility": visibility
     })
 
 @app.get("/view/{file_path:path}", response_class=HTMLResponse)
@@ -561,10 +607,24 @@ async def read_item(request: Request, file_path: str):
         raise HTTPException(status_code=500, detail="Could not decode file with supported encodings.")
     
     fm, content = parse_frontmatter(content)
+    
+    # Access control
+    is_local = is_request_local(request)
+    if not is_local:
+        publish_val = fm.get('publish')
+        is_published = False
+        if isinstance(publish_val, bool):
+            is_published = publish_val
+        elif isinstance(publish_val, str):
+            is_published = publish_val.upper() == "TRUE"
+        
+        if not is_published:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     content = process_admonition_blocks(content)
     content = process_obsidian_images(content)
     html_content = md.render(content)
-    file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR)
+    file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=not is_local)
     
     # Use frontmatter title if available
     doc_title = fm.get('title') or safe_path.stem
