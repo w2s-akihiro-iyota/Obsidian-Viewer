@@ -336,18 +336,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn("Failed to fetch config for base_url, using current URL:", err);
             }
 
-            // Generate HTML and Text versions
-            const blobHtml = new Blob([`<a href="${url}">${title}</a>`], { type: 'text/html' });
-            const blobText = new Blob([url], { type: 'text/plain' });
-
             try {
+                // Generate HTML and Text versions
+                const blobHtml = new Blob([`<a href="${url}">${title}</a>`], { type: 'text/html' });
+                const blobText = new Blob([url], { type: 'text/plain' });
+
                 // Use Clipboard API for both formats if available
                 if (navigator.clipboard && navigator.clipboard.write) {
-                    const data = [new ClipboardItem({
-                        'text/html': blobHtml,
-                        'text/plain': blobText
-                    })];
-                    await navigator.clipboard.write(data);
+                    try {
+                        const data = [new ClipboardItem({
+                            'text/html': blobHtml,
+                            'text/plain': blobText
+                        })];
+                        await navigator.clipboard.write(data);
+                    } catch (itemErr) {
+                        console.warn("ClipboardItem failed, falling back to writeText:", itemErr);
+                        await navigator.clipboard.writeText(url);
+                    }
                 } else {
                     // Fallback to text only if write() is not supported
                     await navigator.clipboard.writeText(url);
@@ -356,7 +361,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast("URLをコピーしました", "success");
             } catch (err) {
                 console.error("Failed to copy URL:", err);
-                showToast("コピーに失敗しました", "error");
+
+                // Final fallback using textarea
+                const textarea = document.createElement('textarea');
+                textarea.value = url;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast("URLをコピーしました (Fallback)", "success");
+                } catch (fallbackErr) {
+                    console.error('Final fallback copy failed:', fallbackErr);
+                    showToast("コピーに失敗しました", "error");
+                } finally {
+                    document.body.removeChild(textarea);
+                }
             }
         });
     }
@@ -1456,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentConfig = {};
 
         // Load Config
-        fetch('/api/config')
+        fetch('/api/sync/config')
             .then(res => res.json())
             .then(config => {
                 currentConfig = config;
@@ -1519,7 +1541,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 last_sync: "" // Server handles this
             };
 
-            fetch('/api/config', {
+            fetch('/api/sync/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
@@ -1644,14 +1666,18 @@ document.addEventListener('DOMContentLoaded', () => {
             manualSyncBtn.disabled = true;
 
             fetch('/api/sync', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    lastSyncLabel.textContent = `最終同期: ${data.last_sync}`;
-                    showToast("同期が完了しました", "success");
+                .then(async res => {
+                    const data = await res.json();
+                    if (res.ok) {
+                        lastSyncLabel.textContent = `最終同期: ${data.last_sync}`;
+                        showToast("同期が完了しました", "success");
+                    } else {
+                        throw new Error(data.message || "Sync failed");
+                    }
                 })
                 .catch(err => {
                     console.error("Sync failed", err);
-                    showToast("同期に失敗しました", "error");
+                    showToast(`同期に失敗しました: ${err.message}`, "error");
                 })
                 .finally(() => {
                     manualSyncBtn.classList.remove('loading');

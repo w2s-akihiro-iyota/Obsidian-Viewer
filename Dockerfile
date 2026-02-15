@@ -14,4 +14,4 @@ COPY . .
 
 # 5. アプリの起動設定
 # --host 0.0.0.0 を指定しないと、Docker外部（ブラウザ）からアクセスできません
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
