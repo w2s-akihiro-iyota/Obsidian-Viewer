@@ -2727,7 +2727,7 @@ details[open] .accordion-icon {
 }
 
 .settings-section {
-    margin-bottom: 24px;
+    margin-bottom: 40px;
 }
 
 .settings-section h4 {
@@ -3215,7 +3215,7 @@ pre.line-numbers .line-number-rows {
 }
 
 .settings-section {
-    margin-bottom: 24px;
+    margin-bottom: 48px;
 }
 
 .settings-section h4 {
@@ -3224,7 +3224,7 @@ pre.line-numbers .line-number-rows {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin: 24px 0 16px;
+    margin: 32px 0 16px;
     padding-bottom: 8px;
     border-bottom: 2px solid var(--border-color);
     display: flex;

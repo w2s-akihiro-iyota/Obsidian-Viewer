@@ -338,19 +338,6 @@
                                 </select>
                             </div>
                         </section>
-                        <section class="settings-section">
-                            <h4>詳細設定</h4>
-                            <div class="setting-item">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 500; margin-bottom: 4px;">コンテンツの再インデックス</div>
-                                    <div style="font-size: 0.85em; color: var(--text-muted);">
-                                        ファイル一覧と検索インデックスを更新します
-                                    </div>
-                                </div>
-                                <button id="rebuild-index-btn" class="secondary-btn">
-                                    <span class="btn-text">再構築</span>
-                                </button>
-                            </div>
                             <div class="setting-item">
                                 <div style="flex: 1;">
                                     <div style="font-weight: 500; margin-bottom: 4px;">キャッシュをクリア</div>
@@ -566,8 +553,20 @@
 
                             <section class="settings-section">
                                 <h4>手動操作</h4>
-                                <div class="setting-item" style="display: block;">
-                                    <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.9em;">
+                                <div class="setting-item">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; margin-bottom: 4px;">コンテンツの再インデックス</div>
+                                        <div style="font-size: 0.85em; color: var(--text-muted);">
+                                            ファイル一覧と検索インデックスを更新します
+                                        </div>
+                                    </div>
+                                    <button id="rebuild-index-btn" class="secondary-btn">
+                                        <span class="btn-text">再構築</span>
+                                    </button>
+                                </div>
+                                <div class="setting-item" style="display: block; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                                    <div style="font-weight: 500; margin-bottom: 4px;">ファイル同期</div>
+                                    <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.85em;">
                                         ファイルと画像の同期を今すぐ実行します。
                                     </p>
                                     <button id="manual-sync-btn" class="primary-btn">
