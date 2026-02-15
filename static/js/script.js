@@ -306,6 +306,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Copy URL functionality
+    const copyUrlBtn = document.getElementById('copy-url-btn');
+    if (copyUrlBtn) {
+        copyUrlBtn.addEventListener('click', async () => {
+            const title = document.title.replace(' - Obsidian Viewer', '');
+            let url = window.location.href;
+
+            try {
+                // Fetch current config to check for base_url
+                const configRes = await fetch('/api/config');
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    if (config.base_url) {
+                        const baseUrl = config.base_url.replace(/\/$/, ''); // Remove trailing slash
+                        const origin = window.location.origin;
+                        url = url.replace(origin, baseUrl);
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to fetch config for base_url, using current URL:", err);
+            }
+
+            // Generate HTML and Text versions
+            const blobHtml = new Blob([`<a href="${url}">${title}</a>`], { type: 'text/html' });
+            const blobText = new Blob([url], { type: 'text/plain' });
+
+            try {
+                // Use Clipboard API for both formats if available
+                if (navigator.clipboard && navigator.clipboard.write) {
+                    const data = [new ClipboardItem({
+                        'text/html': blobHtml,
+                        'text/plain': blobText
+                    })];
+                    await navigator.clipboard.write(data);
+                } else {
+                    // Fallback to text only if write() is not supported
+                    await navigator.clipboard.writeText(url);
+                }
+
+                showToast("URLをコピーしました", "success");
+            } catch (err) {
+                console.error("Failed to copy URL:", err);
+                showToast("コピーに失敗しました", "error");
+            }
+        });
+    }
+
     // Scroll to Top Button
     const scrollToTopBtn = document.getElementById('scroll-to-top');
 
@@ -1355,6 +1402,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const autoSyncToggle = document.getElementById('setting-auto-sync-enabled');
         const contentSrcInput = document.getElementById('setting-content-src');
         const imagesSrcInput = document.getElementById('setting-images-src');
+        const baseUrlInput = document.getElementById('setting-base-url');
         const intervalSelect = document.getElementById('setting-sync-interval');
         const intervalWrapper = document.getElementById('auto-sync-interval-wrapper');
         const wrapper = document.getElementById('sync-settings-wrapper');
@@ -1362,14 +1410,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const manualSyncBtn = document.getElementById('manual-sync-btn');
         const lastSyncLabel = document.getElementById('last-sync-time');
 
+        let currentConfig = {};
+
         // Load Config
         fetch('/api/config')
             .then(res => res.json())
             .then(config => {
+                currentConfig = config;
                 enabledToggle.checked = config.sync_enabled;
                 autoSyncToggle.checked = config.auto_sync_enabled;
                 contentSrcInput.value = config.content_src || '';
                 imagesSrcInput.value = config.images_src || '';
+                if (baseUrlInput) baseUrlInput.value = config.base_url || '';
                 intervalSelect.value = config.interval_minutes || 60;
                 lastSyncLabel.textContent = config.last_sync ? `最終同期: ${config.last_sync}` : '';
 
@@ -1419,6 +1471,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 auto_sync_enabled: autoSyncToggle.checked,
                 content_src: contentSrcInput.value,
                 images_src: imagesSrcInput.value,
+                base_url: baseUrlInput ? baseUrlInput.value.trim() : '',
                 interval_minutes: parseInt(intervalSelect.value),
                 last_sync: "" // Server handles this
             };

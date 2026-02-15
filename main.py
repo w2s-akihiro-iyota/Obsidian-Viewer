@@ -727,6 +727,7 @@ class SyncConfig(BaseModel):
     content_src: str = ""
     images_src: str = ""
     interval_minutes: int = 60
+    base_url: str = ""
     last_sync: str = ""
 
 def load_config() -> SyncConfig:
@@ -805,24 +806,17 @@ async def startup_event():
     asyncio.create_task(background_sync_loop())
 
 def is_request_local(request: Request) -> bool:
-    # 接続元IPをチェック (Docker等のブリッジ通信 172.x なども許容)
+    # 接続元IPをチェック
     client_host = request.client.host
-    is_ip_local = (
-        client_host in ("127.0.0.1", "::1") or
-        client_host.startswith("172.") or
-        client_host.startswith("192.168.") or
-        client_host.startswith("10.")
-    )
+    is_ip_strictly_local = client_host in ("127.0.0.1", "::1")
     
-    if is_ip_local:
-        return True
-
     # Hostヘッダーをチェック (ブラウザのアドレスバーの内容)
-    # 外部デバイスからIP直打ちアクセスされた場合も、client_hostがローカルならOK
+    # ポート番号を除いたホスト名のみを取得
     host_header = request.headers.get("host", "").split(":")[0].lower()
     is_host_local = host_header in ("localhost", "127.0.0.1", "[::1]")
     
-    return is_host_local
+    # IPv4/IPv6 のループバックIPからのアクセス、または Host が localhost の場合のみローカルとみなす
+    return is_ip_strictly_local or is_host_local
 
 def check_localhost(request: Request):
     if not is_request_local(request):
