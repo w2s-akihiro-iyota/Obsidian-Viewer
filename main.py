@@ -27,6 +27,28 @@ METADATA_CACHE_FILE = BASE_DIR / "metadata_cache.json"
 STATICS_DIR = BASE_DIR / "static"
 if not STATICS_DIR.exists():
     STATICS_DIR.mkdir()
+
+# In-memory Global Index Cache
+GLOBAL_FILE_CACHE = []
+GLOBAL_FILE_TREE_CACHE = []
+GLOBAL_FILE_TREE_CACHE_PUBLIC = []
+IMAGE_PATH_CACHE = {}      # {filename: url}
+MARKDOWN_CACHE = {}        # {file_path: {html, title, mtime}}
+
+def refresh_global_caches():
+    global GLOBAL_FILE_CACHE, GLOBAL_FILE_TREE_CACHE, GLOBAL_FILE_TREE_CACHE_PUBLIC, IMAGE_PATH_CACHE, MARKDOWN_CACHE
+    print("Refreshing global caches...")
+    # Clear per-file caches on full refresh
+    IMAGE_PATH_CACHE = {}
+    MARKDOWN_CACHE = {}
+    
+    # Refresh all files metadata
+    GLOBAL_FILE_CACHE = get_all_files(CONTENT_DIR, CONTENT_DIR, use_cache=False)
+    # Refresh tree views (Admin: all, Public: published only)
+    GLOBAL_FILE_TREE_CACHE = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=False)
+    GLOBAL_FILE_TREE_CACHE_PUBLIC = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=True)
+    print(f"Global cache refreshed: {len(GLOBAL_FILE_CACHE)} files indexed.")
+
 app.mount("/static", StaticFiles(directory=str(STATICS_DIR)), name="static")
 
 # Templates
@@ -452,17 +474,27 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     return tree
 
 def find_image_in_static(filename: str) -> str:
+    if filename in IMAGE_PATH_CACHE:
+        return IMAGE_PATH_CACHE[filename]
+        
     images_dir = STATICS_DIR / "images"
     if not images_dir.exists(): return f"/static/images/{quote(filename)}"
-    if (images_dir / filename).exists(): return f"/static/images/{quote(filename)}"
+    if (images_dir / filename).exists():
+        url = f"/static/images/{quote(filename)}"
+        IMAGE_PATH_CACHE[filename] = url
+        return url
     try:
         search_name = os.path.basename(filename)
         found_file = next(images_dir.rglob(search_name))
         parts = found_file.relative_to(STATICS_DIR).parts
         encoded_parts = [quote(p) for p in parts]
-        return "/static/" + "/".join(encoded_parts)
+        url = "/static/" + "/".join(encoded_parts)
+        IMAGE_PATH_CACHE[filename] = url
+        return url
     except StopIteration:
-        return f"/static/images/{quote(filename)}"
+        url = f"/static/images/{quote(filename)}"
+        IMAGE_PATH_CACHE[filename] = url
+        return url
 
 def process_obsidian_images(content: str) -> str:
     pattern = r'!\[\[([^|\]]+\.(png|jpg|jpeg|gif|svg|webp))\s*(?:\|\s*([^\]]+))?\]\]'
@@ -498,10 +530,11 @@ async def search_files(request: Request, q: str = ""):
     if not q: return []
     
     is_local = is_request_local(request)
-    all_files = get_all_files(CONTENT_DIR, CONTENT_DIR)
+    # Use global cache instead of get_all_files() call
+    source_files = GLOBAL_FILE_CACHE
     
     results = []
-    for f in all_files:
+    for f in source_files:
         # Filter unpublished files for external users
         if not is_local and not f.get('published', False):
             continue
@@ -561,7 +594,8 @@ async def preview_file(request: Request, path: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "", visibility: str = "all"):
-    all_files = get_all_files(CONTENT_DIR, CONTENT_DIR)
+    # Use global cache instead of get_all_files() call
+    all_files = GLOBAL_FILE_CACHE
     is_local = is_request_local(request)
     
     # Enforce visibility for external users
@@ -570,17 +604,21 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     
     # Filter by publish status
     if visibility == "public":
-        all_files = [f for f in all_files if f.get('published', False)]
+        current_files = [f for f in all_files if f.get('published', False)]
     elif visibility == "private":
-        all_files = [f for f in all_files if not f.get('published', False)]
+        current_files = [f for f in all_files if not f.get('published', False)]
+    else:
+        current_files = all_files
 
-    file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=not is_local)
+    # Use cached tree
+    file_tree = GLOBAL_FILE_TREE_CACHE_PUBLIC if not is_local else GLOBAL_FILE_TREE_CACHE
+    
     all_tags = set()
-    for f in all_files:
+    for f in current_files:
         for t in f['tags']: all_tags.add(t)
     sorted_tags = sorted(list(all_tags))
     
-    filtered_files = all_files
+    filtered_files = current_files
     if tag: filtered_files = [f for f in filtered_files if tag in f['tags']]
     if q:
         q_lower = q.lower().strip()
@@ -609,6 +647,24 @@ async def read_item(request: Request, file_path: str):
          raise HTTPException(status_code=403, detail="Access denied")
     if not safe_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
+        
+    current_mtime = safe_path.stat().st_mtime
+    
+    # Check Markdown Cache
+    if file_path in MARKDOWN_CACHE:
+        cached = MARKDOWN_CACHE[file_path]
+        if cached['mtime'] == current_mtime:
+            is_local = is_request_local(request)
+            if not is_local and not cached['is_published']:
+                raise HTTPException(status_code=403, detail="Access denied")
+            
+            file_tree = GLOBAL_FILE_TREE_CACHE_PUBLIC if not is_local else GLOBAL_FILE_TREE_CACHE
+            return templates.TemplateResponse("view.html", {
+                "request": request, "content": cached['html'], "title": cached['title'],
+                "filename": safe_path.name, "file_tree": file_tree, "is_localhost": is_local,
+                "is_published": cached['is_published']
+            })
+
     content = ""
     encodings = ["utf-8", "cp932", "shift_jis", "euc-jp"]
     for enc in encodings:
@@ -637,10 +693,20 @@ async def read_item(request: Request, file_path: str):
     content = process_admonition_blocks(content)
     content = process_obsidian_images(content)
     html_content = md.render(content)
-    file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=not is_local)
+    
+    # Update cached tree reference
+    file_tree = GLOBAL_FILE_TREE_CACHE_PUBLIC if not is_local else GLOBAL_FILE_TREE_CACHE
     
     # Use frontmatter title if available
     doc_title = fm.get('title') or safe_path.stem
+    
+    # Store in cache
+    MARKDOWN_CACHE[file_path] = {
+        'html': html_content,
+        'title': doc_title,
+        'mtime': current_mtime,
+        'is_published': is_published
+    }
     
     return templates.TemplateResponse("view.html", {
         "request": request, "content": html_content, "title": doc_title,
@@ -715,7 +781,7 @@ def perform_sync(config: SyncConfig):
     save_config(config)
 
     # Force metadata cache refresh
-    get_all_files(CONTENT_DIR, CONTENT_DIR, use_cache=False)
+    refresh_global_caches()
 
 background_task_running = False
 
@@ -735,6 +801,7 @@ async def background_sync_loop():
 
 @app.on_event("startup")
 async def startup_event():
+    refresh_global_caches() # Initial index
     asyncio.create_task(background_sync_loop())
 
 def is_request_local(request: Request) -> bool:
