@@ -3762,3 +3762,58 @@ input:checked+.slider:before {
     flex-shrink: 0;
     color: inherit;
 }
+
+/* Link Preview Tooltip */
+.preview-tooltip {
+    position: absolute;
+    z-index: 1000;
+    width: 520px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    padding: 0;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: auto;
+    /* Allow interaction (scrolling, clicking links inside) */
+}
+
+.preview-tooltip.active {
+    display: block;
+    opacity: 1;
+}
+
+.preview-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    border-radius: 8px 8px 0 0;
+}
+
+.preview-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-normal);
+}
+
+.preview-content {
+    padding: 12px;
+    font-size: 0.85rem;
+    color: var(--text-normal);
+}
+
+.preview-loading {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.preview-error {
+    padding: 12px;
+    text-align: center;
+    color: #ff4444;
+}

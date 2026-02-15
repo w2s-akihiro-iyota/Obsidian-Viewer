@@ -750,69 +750,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewCache = new Map();
     let previewTooltip = null;
     let hideTimeout = null;
+    let activeLink = null;
+    let previewRequestId = 0;
 
     function createPreviewTooltip() {
         if (previewTooltip) return previewTooltip;
 
         const tooltip = document.createElement('div');
         tooltip.className = 'preview-tooltip';
-        tooltip.innerHTML = '<div class="preview-loading">Loading...</div>';
+        tooltip.innerHTML = '<div class="preview-loading">読み込み中...</div>';
         document.body.appendChild(tooltip);
-        return tooltip;
-    }
 
-    function showPreview(link, path) {
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-            hideTimeout = null;
-        }
-
-        if (previewTooltip && previewTooltip.dataset.activePath !== path) {
-            hidePreview(0);
-        }
-
-        previewTooltip = createPreviewTooltip();
-        updateTooltipPosition(link);
-
-        if (previewCache.has(path)) {
-            renderPreviewContent(previewCache.get(path), link);
-        } else {
-            previewTooltip.innerHTML = '<div class="preview-loading">Loading...</div>';
-            fetch(`/api/preview?path=${encodeURIComponent(path)}`)
-                .then(res => {
-                    if (!res.ok) throw new Error('Failed to load');
-                    return res.json();
-                })
-                .then(data => {
-                    previewCache.set(path, data);
-                    if (previewTooltip && previewTooltip.dataset.activePath === path) {
-                        renderPreviewContent(data, link);
-                    }
-                })
-                .catch(err => {
-                    if (previewTooltip && previewTooltip.dataset.activePath === path) {
-                        previewTooltip.innerHTML = '<div class="preview-error">Failed to load preview</div>';
-                    }
-                });
-        }
-
-        previewTooltip.classList.add('active');
-        previewTooltip.dataset.activePath = path;
-
-        previewTooltip.addEventListener('mouseenter', () => {
+        // Keep tooltip alive when hovering over it
+        tooltip.addEventListener('mouseenter', () => {
             if (hideTimeout) {
                 clearTimeout(hideTimeout);
                 hideTimeout = null;
             }
         });
 
-        previewTooltip.addEventListener('mouseleave', () => {
+        tooltip.addEventListener('mouseleave', () => {
             hidePreview();
         });
+
+        return tooltip;
     }
 
-    function renderPreviewContent(data, link) {
-        if (!previewTooltip) return;
+    function showPreview(link, path) {
+        const requestId = ++previewRequestId;
+
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+        }
+
+        activeLink = link;
+        previewTooltip = createPreviewTooltip();
+        previewTooltip.dataset.activePath = path;
+
+        // Show immediately and position
+        previewTooltip.classList.add('active');
+        updateTooltipPosition(link);
+
+        if (previewCache.has(path)) {
+            renderPreviewContent(previewCache.get(path), link, requestId);
+        } else {
+            previewTooltip.innerHTML = '<div class="preview-loading">読み込み中...</div>';
+            fetch(`/api/preview?path=${encodeURIComponent(path)}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to load');
+                    return res.json();
+                })
+                .then(data => {
+                    if (requestId !== previewRequestId) return;
+                    previewCache.set(path, data);
+                    renderPreviewContent(data, link, requestId);
+                })
+                .catch(err => {
+                    if (requestId !== previewRequestId) return;
+                    previewTooltip.innerHTML = '<div class="preview-error">プレビューを表示できませんでした</div>';
+                });
+        }
+    }
+
+    function renderPreviewContent(data, link, requestId) {
+        if (!previewTooltip || requestId !== previewRequestId) return;
         previewTooltip.innerHTML = `
             <div class="preview-header">
                 <span class="preview-title">${data.title}</span>
@@ -828,16 +830,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!previewTooltip) return;
         const rect = link.getBoundingClientRect();
         const tooltipRect = previewTooltip.getBoundingClientRect();
-        const gap = 10;
-        let top = rect.top - tooltipRect.height - gap;
-        let left = rect.left;
+        const gap = 12;
 
+        let top;
+        // Default to TOP (Above), only flip to BOTTOM if it hits the top edge of viewport
+        top = rect.top - tooltipRect.height - gap;
         if (top < 10) {
             top = rect.bottom + gap;
         }
-        if (left + 400 > window.innerWidth) {
-            left = window.innerWidth - 410;
+
+        let left = rect.left;
+        // Keep within viewport width
+        if (left + tooltipRect.width > window.innerWidth - 20) {
+            left = window.innerWidth - tooltipRect.width - 20;
         }
+        if (left < 10) left = 10;
 
         previewTooltip.style.top = `${top + window.scrollY}px`;
         previewTooltip.style.left = `${left + window.scrollX}px`;
@@ -851,13 +858,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewTooltip.remove();
                 previewTooltip = null;
             }
+            activeLink = null;
         }, delay);
     }
 
+    // Use a single delegated listener for stability
     document.addEventListener('mouseover', (e) => {
         const link = e.target.closest('a');
-        if (link && !link.classList.contains('toc-item') && !link.closest('.toc-tree')) {
-            // Basic link hover logic if needed
+
+        // Internal link check
+        const isInternalLink = link &&
+            !link.classList.contains('toc-item') &&
+            !link.closest('.toc-tree') &&
+            !link.closest('.settings-modal');
+
+        if (isInternalLink) {
+            if (activeLink === link) return; // Same link, do nothing
+
+            const href = link.getAttribute('href');
+            if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('javascript:')) {
+                hidePreview(100);
+                return;
+            }
+
+            // Path Resolution
+            let path = '';
+            if (href.startsWith('/view/')) {
+                path = href.substring(6);
+            } else if (!href.startsWith('/')) {
+                const currentPath = window.location.pathname;
+                if (currentPath.startsWith('/view/')) {
+                    const currentDir = currentPath.substring(6, currentPath.lastIndexOf('/') + 1);
+                    path = currentDir + href;
+                }
+            }
+
+            if (path) {
+                path = decodeURIComponent(path);
+                showPreview(link, path);
+            }
+        } else {
+            // Check if we are over the tooltip itself
+            if (!e.target.closest('.preview-tooltip')) {
+                if (activeLink) {
+                    hidePreview();
+                }
+            }
         }
     });
 

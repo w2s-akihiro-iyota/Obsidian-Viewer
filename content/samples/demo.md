@@ -102,3 +102,10 @@ image: https://github.githubassets.com/images/modules/site/social-cards/github-s
 ![[sample-image.png|500]]
 ![[sample-image.png|300]]
 ![[sample-image.png|100]]
+
+## リンクテスト
+
+以下のリンクにマウスを乗せてみてください（PC）。
+
+- [theme_testへのリンク](theme_test.md)
+- [自分自身のリンク](demo.md)
