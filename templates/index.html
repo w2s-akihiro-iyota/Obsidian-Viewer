@@ -34,164 +34,170 @@
             </div>
         </div>
 
-        <div class="search-stats">
-            {{ total_items }} notes found
-        </div>
+        <div id="search-interactive-area">
 
-        <div class="search-container">
-            <!-- Search Form -->
-            <form action="/" method="get" class="search-form" hx-get="/" hx-target="#search-results-area"
-                hx-select="#search-results-area" hx-push-url="true" hx-trigger="submit">
-                <div class="search-input-wrapper">
-                    <input type="text" name="q" value="{{ q }}" placeholder="Search notes..." class="search-input">
-                    {% if selected_tag %}<input type="hidden" name="tag" value="{{ selected_tag }}">{% endif %}
-                    <button type="submit" class="search-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.3-4.3" />
-                        </svg>
-                    </button>
+            <div class="search-container">
+                <!-- Search Form -->
+                <form action="/" method="get" class="search-form" hx-get="/" hx-target="#search-interactive-area"
+                    hx-select="#search-interactive-area" hx-push-url="true" hx-trigger="submit">
+                    <div class="search-input-wrapper">
+                        <input type="text" name="q" value="{{ q }}" placeholder="Search notes..." class="search-input">
+                        {% if selected_tag %}<input type="hidden" name="tag" value="{{ selected_tag }}">{% endif %}
+                        <button type="submit" class="search-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Options Accordion -->
+                    <details class="search-accordion">
+                        <summary class="search-summary">
+                            <span class="accordion-hint">advanced search options
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="accordion-icon">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </span>
+                        </summary>
+
+                        {% if is_localhost %}
+                        <div class="visibility-filter">
+                            <span class="v-label">Publish:</span>
+                            <div class="segmented-control">
+                                <input type="radio" name="visibility" value="all" id="v-all" {% if visibility=='all'
+                                    %}checked{% endif %} hx-get="/" hx-target="#search-interactive-area"
+                                    hx-select="#search-interactive-area" hx-push-url="true">
+                                <label for="v-all">ALL</label>
+
+                                <input type="radio" name="visibility" value="public" id="v-public" {% if
+                                    visibility=='public' %}checked{% endif %} hx-get="/"
+                                    hx-target="#search-interactive-area" hx-select="#search-interactive-area"
+                                    hx-push-url="true">
+                                <label for="v-public">PUBLIC</label>
+
+                                <input type="radio" name="visibility" value="private" id="v-private" {% if
+                                    visibility=='private' %}checked{% endif %} hx-get="/"
+                                    hx-target="#search-interactive-area" hx-select="#search-interactive-area"
+                                    hx-push-url="true">
+                                <label for="v-private">PRIVATE</label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="tag-filter-container" style="padding: 10px 15px 0;">
+                            <input type="text" id="tag-filter-input" placeholder="Filter tags..."
+                                style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-normal);">
+                        </div>
+                        <script>
+                            document.getElementById('tag-filter-input').addEventListener('input', function (e) {
+                                const term = e.target.value.toLowerCase();
+                                const tags = document.querySelectorAll('.tag-chip');
+                                tags.forEach(tag => {
+                                    const text = tag.textContent.trim().replace('#', '').toLowerCase();
+                                    if (text.includes(term) || tag.textContent.trim() === 'All') {
+                                        tag.style.display = 'inline-block';
+                                    } else {
+                                        tag.style.display = 'none';
+                                    }
+                                });
+                            });
+                        </script>
+                        <div class="tag-cloud">
+                            <a href="/?q={{ q }}&visibility={{ visibility }}"
+                                class="tag-chip {% if not selected_tag %}active{% endif %}"
+                                hx-get="/?q={{ q }}&visibility={{ visibility }}" hx-target="#search-interactive-area"
+                                hx-select="#search-interactive-area" hx-push-url="true">
+                                All
+                            </a>
+                            {% for t in all_tags %}
+                            <a href="/?q={{ q }}&tag={{ t }}&visibility={{ visibility }}"
+                                class="tag-chip {% if selected_tag|string|trim == t|string|trim %}active{% endif %}"
+                                hx-get="/?q={{ q }}&tag={{ t }}&visibility={{ visibility }}"
+                                hx-target="#search-interactive-area" hx-select="#search-interactive-area"
+                                hx-push-url="true">
+                                #{{ t }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </form>
+            </div>
+
+            <div id="search-results-area">
+                <div class="search-stats">
+                    {{ total_items }} notes found
                 </div>
 
-                <!-- Options Accordion -->
-                <details class="search-accordion">
-                    <summary class="search-summary">
-                        <span class="accordion-hint">advanced search options
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" class="accordion-icon">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </span>
-                    </summary>
-
-                    {% if is_localhost %}
-                    <div class="visibility-filter">
-                        <span class="v-label">Publish:</span>
-                        <div class="segmented-control">
-                            <input type="radio" name="visibility" value="all" id="v-all" {% if visibility=='all'
-                                %}checked{% endif %} hx-get="/" hx-target="#search-results-area"
-                                hx-select="#search-results-area" hx-push-url="true">
-                            <label for="v-all">ALL</label>
-
-                            <input type="radio" name="visibility" value="public" id="v-public" {% if
-                                visibility=='public' %}checked{% endif %} hx-get="/" hx-target="#search-results-area"
-                                hx-select="#search-results-area" hx-push-url="true">
-                            <label for="v-public">PUBLIC</label>
-
-                            <input type="radio" name="visibility" value="private" id="v-private" {% if
-                                visibility=='private' %}checked{% endif %} hx-get="/" hx-target="#search-results-area"
-                                hx-select="#search-results-area" hx-push-url="true">
-                            <label for="v-private">PRIVATE</label>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <div class="tag-filter-container" style="padding: 10px 15px 0;">
-                        <input type="text" id="tag-filter-input" placeholder="Filter tags..."
-                            style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-normal);">
-                    </div>
-                    <script>
-                        document.getElementById('tag-filter-input').addEventListener('input', function (e) {
-                            const term = e.target.value.toLowerCase();
-                            const tags = document.querySelectorAll('.tag-chip');
-                            tags.forEach(tag => {
-                                const text = tag.textContent.trim().replace('#', '').toLowerCase();
-                                if (text.includes(term) || tag.textContent.trim() === 'All') {
-                                    tag.style.display = 'inline-block';
-                                } else {
-                                    tag.style.display = 'none';
-                                }
-                            });
-                        });
-                    </script>
-                    <div class="tag-cloud">
-                        <a href="/?q={{ q }}&visibility={{ visibility }}"
-                            class="tag-chip {% if not selected_tag %}active{% endif %}"
-                            hx-get="/?q={{ q }}&visibility={{ visibility }}" hx-target="#search-results-area"
-                            hx-select="#search-results-area" hx-push-url="true">
-                            All
-                        </a>
-                        {% for t in all_tags %}
-                        <a href="/?q={{ q }}&tag={{ t }}&visibility={{ visibility }}"
-                            class="tag-chip {% if selected_tag|string|trim == t|string|trim %}active{% endif %}"
-                            hx-get="/?q={{ q }}&tag={{ t }}&visibility={{ visibility }}"
-                            hx-target="#search-results-area" hx-select="#search-results-area" hx-push-url="true">
-                            #{{ t }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                </details>
-            </form>
-        </div>
-
-        <div id="search-results-area">
-            <div class="search-stats">
-                {{ total_items }} notes found
-            </div>
-
-            <div class="file-list-container">
-                <ul class="file-list">
-                    {% for file in files %}
-                    <li class="file-item">
-                        <a href="/view/{{ file.path }}" class="file-link">
-                            <div class="file-preview">
-                                <p>{{ file.preview }}</p>
-                            </div>
-                            <div class="file-content">
-                                <div class="file-name">
-                                    {{ file.title }}
-                                    {% if file.published %}
-                                    <span class="file-status-badge">公開中</span>
+                <div class="file-list-container">
+                    <ul class="file-list">
+                        {% for file in files %}
+                        <li class="file-item">
+                            <a href="/view/{{ file.path }}" class="file-link">
+                                <div class="file-preview">
+                                    <p>{{ file.preview }}</p>
+                                </div>
+                                <div class="file-content">
+                                    <div class="file-name">
+                                        {{ file.title }}
+                                        {% if file.published %}
+                                        <span class="file-status-badge">公開中</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if file.tags %}
+                                    <div class="file-tags">
+                                        {% for tag in file.tags %}
+                                        <span class="file-tag">#{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
                                     {% endif %}
-                                </div>
-                                {% if file.tags %}
-                                <div class="file-tags">
-                                    {% for tag in file.tags %}
-                                    <span class="file-tag">#{{ tag }}</span>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                                <div class="file-meta">
+                                    <div class="file-meta">
 
-                                    <div class="file-updated">modified: {{ file.updated }}</div>
+                                        <div class="file-updated">modified: {{ file.updated }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </a>
-                    </li>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="file-item empty-state">
+                            No notes found matching your criteria.
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                {% if total_pages > 1 %}
+                <div class="pagination">
+                    {% if current_page > 1 %}
+                    <a href="/?page={{ current_page - 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
+                        class="page-link"
+                        hx-get="/?page={{ current_page - 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
+                        hx-target="#search-interactive-area" hx-select="#search-interactive-area"
+                        hx-push-url="true">Previous</a>
                     {% else %}
-                    <li class="file-item empty-state">
-                        No notes found matching your criteria.
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            {% if total_pages > 1 %}
-            <div class="pagination">
-                {% if current_page > 1 %}
-                <a href="/?page={{ current_page - 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                    class="page-link"
-                    hx-get="/?page={{ current_page - 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                    hx-target="#search-results-area" hx-select="#search-results-area" hx-push-url="true">Previous</a>
-                {% else %}
-                <span class="page-link disabled">Previous</span>
-                {% endif %}
-
-                <span class="page-info">Page {{ current_page }} of {{ total_pages }}</span>
-
-                {% if current_page < total_pages %} <a
-                    href="/?page={{ current_page + 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                    class="page-link"
-                    hx-get="/?page={{ current_page + 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                    hx-target="#search-results-area" hx-select="#search-results-area" hx-push-url="true">Next</a>
-                    {% else %}
-                    <span class="page-link disabled">Next</span>
+                    <span class="page-link disabled">Previous</span>
                     {% endif %}
+
+                    <span class="page-info">Page {{ current_page }} of {{ total_pages }}</span>
+
+                    {% if current_page < total_pages %} <a
+                        href="/?page={{ current_page + 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
+                        class="page-link"
+                        hx-get="/?page={{ current_page + 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
+                        hx-target="#search-interactive-area" hx-select="#search-interactive-area" hx-push-url="true">
+                        Next</a>
+                        {% else %}
+                        <span class="page-link disabled">Next</span>
+                        {% endif %}
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
+
 
 
 

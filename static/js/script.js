@@ -466,48 +466,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // View toggle functionality (List/Grid)
-    const listViewBtn = document.getElementById('list-view-btn');
-    const gridViewBtn = document.getElementById('grid-view-btn');
+    // Use event delegation for dynamic buttons
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('.view-toggle-btn');
+        if (!btn) return;
 
-    if (listViewBtn && gridViewBtn) {
-        // Load saved view preference from localStorage
-        const savedView = localStorage.getItem('fileListView') || 'list';
+        if (btn.id === 'list-view-btn') {
+            setView('list');
+        } else if (btn.id === 'grid-view-btn') {
+            setView('grid');
+        }
+    });
 
-        function setView(view) {
-            const fileList = document.querySelector('.file-list');
-            if (!fileList) return;
+    function setView(view) {
+        const fileList = document.querySelector('.file-list');
+        const listViewBtn = document.getElementById('list-view-btn');
+        const gridViewBtn = document.getElementById('grid-view-btn');
 
+        if (fileList) {
             if (view === 'grid') {
                 fileList.classList.add('grid-view');
+            } else {
+                fileList.classList.remove('grid-view');
+            }
+        }
+
+        // Update button states if they exist in DOM
+        if (listViewBtn && gridViewBtn) {
+            if (view === 'grid') {
                 listViewBtn.classList.remove('active');
                 gridViewBtn.classList.add('active');
             } else {
-                fileList.classList.remove('grid-view');
                 listViewBtn.classList.add('active');
                 gridViewBtn.classList.remove('active');
             }
-            localStorage.setItem('fileListView', view);
         }
-
-        // Set initial view
-        setView(savedView);
-
-        // Button click handlers
-        listViewBtn.addEventListener('click', () => {
-            setView('list');
-        });
-        gridViewBtn.addEventListener('click', () => {
-            setView('grid');
-        });
-
-        // Re-apply view mode after HTMX swap
-        document.body.addEventListener('htmx:afterSwap', (event) => {
-            if (event.detail.target.id === 'search-results-area') {
-                const currentView = localStorage.getItem('fileListView') || 'list';
-                setView(currentView);
-            }
-        });
+        localStorage.setItem('fileListView', view);
     }
+
+    // Set initial view
+    const initialView = localStorage.getItem('fileListView') || 'list';
+    setView(initialView);
+
+    // HTMX State preservation
+    let accordionState = false;
+
+    document.body.addEventListener('htmx:beforeSwap', (event) => {
+        if (event.detail.target.id === 'search-interactive-area') {
+            const accordion = document.querySelector('.search-accordion');
+            if (accordion) {
+                accordionState = accordion.open;
+            }
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.detail.target.id === 'search-interactive-area') {
+            // Restore View Mode to the NEW file-list
+            const currentView = localStorage.getItem('fileListView') || 'list';
+            setView(currentView);
+
+            // Restore Accordion State
+            const accordion = document.querySelector('.search-accordion');
+            if (accordion) {
+                accordion.open = accordionState;
+            }
+        }
+    });
 
     // Mobile Search Modal Logic
     const mobileSearchBtn = document.getElementById('mobile-search-toggle');
