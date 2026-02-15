@@ -6,7 +6,7 @@ from pathlib import Path
 import markdown_it
 from markdown_it.tree import SyntaxTreeNode
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import yaml
 import re
 import math
@@ -600,7 +600,8 @@ def perform_sync(config: SyncConfig):
                     print(f"Error syncing {item}: {e}")
     
     # Update last sync time
-    config.last_sync = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    jst = timezone(timedelta(hours=9))
+    config.last_sync = datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
     save_config(config)
 
 background_task_running = False
