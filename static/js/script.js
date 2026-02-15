@@ -1195,6 +1195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         .then(res => {
                             if (res.ok) {
                                 showToast("インデックスを再構築しました", "success");
+                                setTimeout(() => location.reload(), 1500);
                             } else {
                                 showToast("再構築に失敗しました", "error");
                             }

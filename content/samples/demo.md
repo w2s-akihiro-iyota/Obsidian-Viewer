@@ -1,4 +1,8 @@
-﻿# Demo Document
+﻿---
+title: デモドキュメント
+category: Sample
+tags: demo
+---
 
 # H1 Heading (Centered, Brown)
 

@@ -11,6 +11,7 @@ import yaml
 import re
 import math
 from urllib.parse import quote
+import json
 
 app = FastAPI(title="Obsidian Viewer")
 
@@ -19,6 +20,8 @@ BASE_DIR = Path(__file__).resolve().parent
 CONTENT_DIR = BASE_DIR / "content"
 if not CONTENT_DIR.exists():
     CONTENT_DIR.mkdir()
+
+METADATA_CACHE_FILE = BASE_DIR / "metadata_cache.json"
 
 # Static Files
 STATICS_DIR = BASE_DIR / "static"
@@ -278,13 +281,20 @@ def process_admonition_blocks(content: str) -> str:
 def parse_frontmatter(content):
     frontmatter = {}
     body = content
-    if content.startswith("---"):
-        match = re.match(r'^---\s*\n(.*?)\n---\s*\n?', content, re.DOTALL)
+    # Remove BOM if present
+    if content.startswith('\ufeff'):
+        content = content[1:]
+        body = content
+
+    if content.strip().startswith("---"):
+        # Match allowing for leading whitespace (after BOM removal)
+        match = re.match(r'^\s*---\s*\n(.*?)\n---\s*\n?', content, re.DOTALL)
         if match:
             yaml_content = match.group(1)
-            try: frontmatter = yaml.safe_load(yaml_content) or {}
+            try:
+                frontmatter = yaml.safe_load(yaml_content) or {}
+                body = content[match.end():]
             except yaml.YAMLError: pass
-            body = content[match.end():]
     return frontmatter, body
 
 def parse_obsidian_date(date_str):
@@ -303,7 +313,15 @@ def parse_obsidian_date(date_str):
     except Exception: pass
     return None
 
-def get_all_files(directory: Path, relative_to: Path):
+def get_all_files(directory: Path, relative_to: Path, use_cache=True):
+    # Try to load from cache first if allowed
+    if use_cache and directory == CONTENT_DIR and METADATA_CACHE_FILE.exists():
+        try:
+            with open(METADATA_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Cache load error: {e}")
+
     files = []
     if not directory.exists(): return []
     encodings = ["utf-8", "cp932", "shift_jis", "euc-jp"]
@@ -333,9 +351,13 @@ def get_all_files(directory: Path, relative_to: Path):
             updated_str = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
         preview_text = body.strip()[:150]
         if len(body.strip()) > 150: preview_text += "..."
+        
+        # Use frontmatter title if available, otherwise use stem
+        doc_title = frontmatter.get('title') or item.stem
+
         files.append({
             "name": item.name,
-            "title": item.stem,
+            "title": doc_title,
             "path": str(rel_path).replace("\\", "/"),
             "updated": updated_str,
             "timestamp": timestamp,
@@ -344,6 +366,15 @@ def get_all_files(directory: Path, relative_to: Path):
             "preview": preview_text
         })
     files.sort(key=lambda x: x['timestamp'], reverse=True)
+
+    # Save to cache if it's the main scan
+    if directory == CONTENT_DIR:
+        try:
+            with open(METADATA_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(files, f, ensure_ascii=False)
+        except Exception as e:
+            print(f"Cache save error: {e}")
+
     return files
 
 def get_file_tree(directory: Path, relative_to: Path):
@@ -528,14 +559,19 @@ async def read_item(request: Request, file_path: str):
         except UnicodeDecodeError: continue
     else:
         raise HTTPException(status_code=500, detail="Could not decode file with supported encodings.")
-    _, content = parse_frontmatter(content)
+    
+    fm, content = parse_frontmatter(content)
     content = process_admonition_blocks(content)
     content = process_obsidian_images(content)
     html_content = md.render(content)
     file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR)
+    
+    # Use frontmatter title if available
+    doc_title = fm.get('title') or safe_path.stem
     is_local = is_request_local(request)
+    
     return templates.TemplateResponse("view.html", {
-        "request": request, "content": html_content, "title": safe_path.stem,
+        "request": request, "content": html_content, "title": doc_title,
         "filename": safe_path.name, "file_tree": file_tree, "is_localhost": is_local
     })
 
@@ -668,6 +704,13 @@ async def trigger_sync(request: Request):
     config = load_config()
     perform_sync(config)
     return {"status": "ok", "last_sync": config.last_sync}
+
+@app.post("/api/rebuild-index")
+async def rebuild_index(request: Request):
+    check_localhost(request)
+    # Scan without cache and force update the file
+    get_all_files(CONTENT_DIR, CONTENT_DIR, use_cache=False)
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
