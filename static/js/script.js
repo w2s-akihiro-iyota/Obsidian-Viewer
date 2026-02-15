@@ -866,8 +866,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('mouseover', (e) => {
         const link = e.target.closest('a');
 
-        // Internal link check
+        // Internal link check: Only trigger within markdown content or existing tooltips
         const isInternalLink = link &&
+            (link.closest('.markdown-body') || link.closest('.preview-tooltip')) &&
             !link.classList.contains('toc-item') &&
             !link.closest('.toc-tree') &&
             !link.closest('.settings-modal');

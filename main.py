@@ -503,7 +503,7 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "")
     end_idx = start_idx + limit
     paginated_files = filtered_files[start_idx:end_idx]
     print(f"DEBUG: Client Host: {request.client.host}")
-    is_local = request.client.host in ("127.0.0.1", "::1", "localhost") or request.client.host.startswith("172.")
+    is_local = is_request_local(request)
     return templates.TemplateResponse("index.html", {
         "request": request, "files": paginated_files, "title": "Obsidian-Render",
         "current_page": page, "total_pages": total_pages, "total_items": total_items,
@@ -533,7 +533,7 @@ async def read_item(request: Request, file_path: str):
     content = process_obsidian_images(content)
     html_content = md.render(content)
     file_tree = get_file_tree(CONTENT_DIR, CONTENT_DIR)
-    is_local = request.client.host in ("127.0.0.1", "::1", "localhost") or request.client.host.startswith("172.")
+    is_local = is_request_local(request)
     return templates.TemplateResponse("view.html", {
         "request": request, "content": html_content, "title": safe_path.stem,
         "filename": safe_path.name, "file_tree": file_tree, "is_localhost": is_local
@@ -624,17 +624,29 @@ async def background_sync_loop():
 async def startup_event():
     asyncio.create_task(background_sync_loop())
 
-def check_localhost(request: Request):
-    host = request.client.host
-    # Allow localhost,::1, and private networks (Docker often uses 172.x or 192.168.x)
-    is_allowed = (
-        host in ("127.0.0.1", "::1", "localhost") or
-        host.startswith("172.") or
-        host.startswith("192.168.") or
-        host.startswith("10.")
+def is_request_local(request: Request) -> bool:
+    # 1. Hostヘッダーをチェック (ブラウザのアドレスバーの内容)
+    # 外部デバイスからのアクセス(IP直打ちやホスト名)はここを通過できない
+    host_header = request.headers.get("host", "").split(":")[0].lower()
+    is_host_local = host_header in ("localhost", "127.0.0.1", "[::1]")
+    
+    if not is_host_local:
+        return False
+        
+    # 2. 接続元IPをチェック (Docker等のブリッジ通信 172.x なども許容)
+    client_host = request.client.host
+    is_ip_local = (
+        client_host in ("127.0.0.1", "::1") or
+        client_host.startswith("172.") or
+        client_host.startswith("192.168.") or
+        client_host.startswith("10.")
     )
-    if not is_allowed:
-        print(f"Access denied for host: {host}") # Log the rejected host
+    
+    return is_ip_local
+
+def check_localhost(request: Request):
+    if not is_request_local(request):
+        print(f"Access denied for host: {request.client.host}") # Log the rejected host
         raise HTTPException(status_code=403, detail="Access denied")
 
 @app.get("/api/config")
