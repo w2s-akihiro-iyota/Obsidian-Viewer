@@ -701,6 +701,9 @@ def perform_sync(config: SyncConfig):
     config.last_sync = datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
     save_config(config)
 
+    # Force metadata cache refresh
+    get_all_files(CONTENT_DIR, CONTENT_DIR, use_cache=False)
+
 background_task_running = False
 
 async def background_sync_loop():
