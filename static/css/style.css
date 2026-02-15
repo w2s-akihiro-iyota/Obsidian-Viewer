@@ -2938,7 +2938,8 @@ body.font-large {
 /* Readable Width */
 /* Default .container is width: 0 (flex trick) and max-width: 100% */
 /* We need to target .container when body has .readable-width */
-body.readable-width .container {
+body.readable-width .container,
+body.readable-width .container-wide {
     max-width: 900px;
     margin: 0 auto;
     /* Center it */
