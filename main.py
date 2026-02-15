@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -584,6 +584,7 @@ CONFIG_FILE = BASE_DIR / "server_config.yaml"
 
 class SyncConfig(BaseModel):
     sync_enabled: bool = False
+    auto_sync_enabled: bool = False
     content_src: str = ""
     images_src: str = ""
     interval_minutes: int = 60
@@ -648,7 +649,7 @@ async def background_sync_loop():
     background_task_running = True
     while True:
         config = load_config()
-        if config.sync_enabled:
+        if config.sync_enabled and config.auto_sync_enabled:
             perform_sync(config)
             # Wait for interval (minutes to seconds)
             await asyncio.sleep(config.interval_minutes * 60)
@@ -693,9 +694,39 @@ async def get_config(request: Request):
 @app.post("/api/config")
 async def update_config(request: Request, config: SyncConfig):
     check_localhost(request)
+    
+    # Validation
+    errors = {}
+    if config.sync_enabled:
+        # Check content_src
+        if not config.content_src:
+            errors["content_src"] = "コンテンツフォルダのパスを入力してください。"
+        else:
+            path = Path(config.content_src)
+            if not path.exists() or not path.is_dir():
+                errors["content_src"] = "指定されたディレクトリが存在しません。"
+            else:
+                # Recursively check for .md files
+                md_found = any(path.rglob("*.md"))
+                if not md_found:
+                    errors["content_src"] = "指定されたフォルダに .md ファイルが見つかりません。"
+        
+        # Check images_src (optional, but if provided, must be valid)
+        if config.images_src:
+            path = Path(config.images_src)
+            if not path.exists() or not path.is_dir():
+                errors["images_src"] = "指定されたディレクトリが存在しません。"
+            else:
+                # Recursively check for images
+                extensions = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"}
+                img_found = any(p.suffix.lower() in extensions for p in path.rglob("*") if p.is_file())
+                if not img_found:
+                    errors["images_src"] = "指定されたフォルダに画像ファイルが見当たりません。"
+
+    if errors:
+        return JSONResponse(status_code=400, content={"status": "error", "errors": errors})
+
     save_config(config)
-    # Trigger sync immediately if enabled? No, manual button exists.
-    # But we might want to reset the background loop timer or re-read config is handled by loop.
     return {"status": "ok", "config": config}
 
 @app.post("/api/sync")
@@ -711,6 +742,43 @@ async def rebuild_index(request: Request):
     # Scan without cache and force update the file
     get_all_files(CONTENT_DIR, CONTENT_DIR, use_cache=False)
     return {"status": "ok"}
+
+@app.get("/api/list-dirs")
+async def list_dirs(request: Request, path: str = "/"):
+    check_localhost(request)
+    try:
+        target_path = Path(path)
+        if not target_path.exists() or not target_path.is_dir():
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid directory"})
+        
+        dirs = []
+        # Support parent dir navigation
+        parent = str(target_path.parent) if target_path != target_path.parent else None
+        
+        # List subdirectories (sorted)
+        try:
+            for item in sorted(target_path.iterdir()):
+                if item.is_dir():
+                    try:
+                        # Permission check
+                        item.iterdir()
+                        dirs.append({
+                            "name": item.name,
+                            "path": str(item).replace("\\", "/")
+                        })
+                    except (PermissionError, OSError):
+                        continue
+        except (PermissionError, OSError):
+            return JSONResponse(status_code=403, content={"status": "error", "message": "Permission denied"})
+
+        return {
+            "status": "ok",
+            "current": str(target_path).replace("\\", "/"),
+            "parent": parent.replace("\\", "/") if parent else None,
+            "dirs": dirs
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 if __name__ == "__main__":
     import uvicorn

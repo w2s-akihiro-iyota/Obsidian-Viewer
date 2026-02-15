@@ -1352,9 +1352,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!syncTabBtn) return; // Not localhost or not present
 
         const enabledToggle = document.getElementById('setting-sync-enabled');
+        const autoSyncToggle = document.getElementById('setting-auto-sync-enabled');
         const contentSrcInput = document.getElementById('setting-content-src');
         const imagesSrcInput = document.getElementById('setting-images-src');
         const intervalSelect = document.getElementById('setting-sync-interval');
+        const intervalWrapper = document.getElementById('auto-sync-interval-wrapper');
         const wrapper = document.getElementById('sync-settings-wrapper');
         const saveBtn = document.getElementById('save-sync-settings-btn');
         const manualSyncBtn = document.getElementById('manual-sync-btn');
@@ -1365,27 +1367,32 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(res => res.json())
             .then(config => {
                 enabledToggle.checked = config.sync_enabled;
+                autoSyncToggle.checked = config.auto_sync_enabled;
                 contentSrcInput.value = config.content_src || '';
                 imagesSrcInput.value = config.images_src || '';
                 intervalSelect.value = config.interval_minutes || 60;
-                lastSyncLabel.textContent = config.last_sync ? `Last Sync: ${config.last_sync}` : '';
+                lastSyncLabel.textContent = config.last_sync ? `最終同期: ${config.last_sync}` : '';
 
                 toggleInputs(config.sync_enabled);
+                toggleAutoSyncInputs(config.auto_sync_enabled);
             })
             .catch(err => console.error("Failed to load sync config", err));
 
         // Toggle Visibility (Accordion)
         function toggleInputs(enabled) {
-            if (enabled) {
-                wrapper.style.display = 'block';
-                // Optional: Insert animation logic here if needed
-            } else {
-                wrapper.style.display = 'none';
-            }
+            wrapper.style.display = enabled ? 'block' : 'none';
+        }
+
+        function toggleAutoSyncInputs(autoEnabled) {
+            intervalWrapper.style.display = autoEnabled ? 'block' : 'none';
         }
 
         enabledToggle.addEventListener('change', () => {
             toggleInputs(enabledToggle.checked);
+        });
+
+        autoSyncToggle.addEventListener('change', () => {
+            toggleAutoSyncInputs(autoSyncToggle.checked);
         });
 
         // Save Button Handler
@@ -1398,9 +1405,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        function clearErrors() {
+            document.querySelectorAll('.setting-error').forEach(el => {
+                el.textContent = '';
+                el.style.display = 'none';
+            });
+        }
+
         function saveConfig() {
+            clearErrors();
             const config = {
                 sync_enabled: enabledToggle.checked,
+                auto_sync_enabled: autoSyncToggle.checked,
                 content_src: contentSrcInput.value,
                 images_src: imagesSrcInput.value,
                 interval_minutes: parseInt(intervalSelect.value),
@@ -1412,9 +1428,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             })
-                .then(res => res.json())
-                .then(data => {
-                    showToast("設定を保存しました", "success");
+                .then(async res => {
+                    const data = await res.json();
+                    if (res.ok) {
+                        showToast("設定を保存しました", "success");
+                    } else if (res.status === 400 && data.errors) {
+                        // Display validation errors
+                        Object.keys(data.errors).forEach(key => {
+                            const errorEl = document.getElementById(`${key.replace('_', '-')}-error`);
+                            if (errorEl) {
+                                errorEl.textContent = data.errors[key];
+                                errorEl.style.display = 'block';
+                            }
+                        });
+                        showToast("入力内容に誤りがあります", "error");
+                    } else {
+                        throw new Error("Save failed");
+                    }
                 })
                 .catch(err => {
                     console.error("Failed to save config", err);
@@ -1422,7 +1452,95 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         }
 
-        // Manual Sync
+        // --- Directory Browser Logic ---
+        const dirModal = document.getElementById('dir-browser-modal');
+        const dirList = document.getElementById('dir-browser-list');
+        const dirCurrentPathLabel = document.getElementById('dir-current-path');
+        const dirSelectBtn = document.getElementById('select-dir-btn');
+        const dirCloseBtn = document.getElementById('close-dir-browser-modal');
+        const browseBtns = document.querySelectorAll('.browser-dir-btn');
+
+        let currentActiveInput = null;
+        let selectedDirPath = null;
+
+        function openDirBrowser(targetInputId) {
+            currentActiveInput = document.getElementById(targetInputId);
+            selectedDirPath = currentActiveInput.value || '/';
+            // If it's a Windows path in Docker, it might fail, so default to /mnt/host_data if it exists
+            if (selectedDirPath.includes(':') || selectedDirPath === '') {
+                selectedDirPath = '/';
+            }
+            dirModal.classList.add('active');
+            loadDirs(selectedDirPath);
+        }
+
+        async function loadDirs(path) {
+            dirList.innerHTML = '<div class="loading-spinner">読み込み中...</div>';
+            try {
+                const res = await fetch(`/api/list-dirs?path=${encodeURIComponent(path)}`);
+                const data = await res.json();
+                if (res.ok) {
+                    renderDirList(data);
+                } else {
+                    dirList.innerHTML = `<div class="error-msg">${data.message || 'フォルダの取得に失敗しました'}</div>`;
+                }
+            } catch (err) {
+                console.error("Failed to load dirs", err);
+                dirList.innerHTML = '<div class="error-msg">通信エラーが発生しました</div>';
+            }
+        }
+
+        function renderDirList(data) {
+            dirList.innerHTML = '';
+            dirCurrentPathLabel.textContent = data.current;
+            selectedDirPath = data.current;
+
+            // Parent Dir
+            if (data.parent) {
+                const item = document.createElement('div');
+                item.className = 'dir-item parent-dir';
+                item.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 12H6"/></svg>
+                    <span>.. (親フォルダへ)</span>
+                `;
+                item.onclick = () => loadDirs(data.parent);
+                dirList.appendChild(item);
+            }
+
+            // Subdirs
+            data.dirs.forEach(dir => {
+                const item = document.createElement('div');
+                item.className = 'dir-item';
+                item.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <span>${dir.name}</span>
+                `;
+                item.onclick = () => loadDirs(dir.path);
+                dirList.appendChild(item);
+            });
+
+            if (data.dirs.length === 0 && !data.parent) {
+                dirList.innerHTML = '<div class="empty-msg">ディレクトリが見つかりませんでした</div>';
+            }
+        }
+
+        browseBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openDirBrowser(btn.dataset.target);
+            });
+        });
+
+        dirCloseBtn.onclick = () => dirModal.classList.remove('active');
+
+        dirSelectBtn.onclick = () => {
+            if (currentActiveInput && selectedDirPath) {
+                currentActiveInput.value = selectedDirPath;
+                dirModal.classList.remove('active');
+            }
+        };
+
+        // Manual Sync Logic (rest of the code)
         manualSyncBtn.addEventListener('click', () => {
             if (!confirm("ファイルと画像の同期を今すぐ実行しますか？")) return;
 
