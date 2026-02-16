@@ -2,5 +2,6 @@ fastapi
 uvicorn
 jinja2
 markdown-it-py[plugins]
+mdit-py-plugins
 python-multipart
 PyYAML

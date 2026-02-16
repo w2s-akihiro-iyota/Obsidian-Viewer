@@ -12,8 +12,19 @@
 <!-- KaTeX for Math -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
-    onload="renderMathInElement(document.body);"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false
+        });
+        document.querySelectorAll('.math.inline').forEach(el => katex.render(el.textContent, el, {throwOnError: false, displayMode: false}));
+        document.querySelectorAll('.math.block').forEach(el => katex.render(el.textContent, el, {throwOnError: false, displayMode: true}));
+    "></script>
 {% endblock %}
 
 {% block container_class %}container-wide{% endblock %}

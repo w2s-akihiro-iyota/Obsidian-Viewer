@@ -2,6 +2,7 @@ import markdown_it
 from markdown_it.tree import SyntaxTreeNode
 from markdown_it.token import Token
 import re
+from mdit_py_plugins.dollarmath import dollarmath_plugin
 
 # Markdown Setup
 def mark_plugin(md):
@@ -33,6 +34,7 @@ md = (
     .enable("table")
     .enable("strikethrough")
     .use(mark_plugin)
+    .use(dollarmath_plugin)
 )
 
 # Cardlink renderer
