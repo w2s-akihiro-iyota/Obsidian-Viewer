@@ -28,8 +28,20 @@ async def preview_file(request: Request, path: str):
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     
-    with open(full_path, "r", encoding="utf-8") as f:
-        content = f.read()
+    # Validation for non-localhost
+    is_localhost = is_request_local(request)
+    if not is_localhost:
+        # We need to check if this file is published
+        from app.core.indexing import parse_frontmatter
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        frontmatter, _ = parse_frontmatter(content)
+        is_published = frontmatter.get('publish') is True or str(frontmatter.get('publish')).lower() == 'true'
+        if not is_published:
+            raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
+    else:
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
     
     # Pre-process admonitions
     content = process_admonition_blocks(content)
@@ -51,10 +63,14 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     if tag:
         filtered = [f for f in filtered if tag in (f.get('tags') or [])]
         
-    if visibility == "public":
+    if not is_request_local(request):
+        # Force public visibility for external requests
         filtered = [f for f in filtered if f.get('published')]
-    elif visibility == "private":
-        filtered = [f for f in filtered if not f.get('published')]
+    else:
+        if visibility == "public":
+            filtered = [f for f in filtered if f.get('published')]
+        elif visibility == "private":
+            filtered = [f for f in filtered if not f.get('published')]
 
     # Tags for cloud
     all_tags = set()
@@ -130,6 +146,9 @@ async def read_item(request: Request, file_path: str):
 
     is_published = frontmatter.get('publish') is True or str(frontmatter.get('publish')).lower() == 'true'
 
+    if not is_localhost and not is_published:
+        raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
+
     return templates.TemplateResponse("view.html", {
         "request": request,
         "title": title,
@@ -192,15 +211,21 @@ async def api_reindex(request: Request):
     return {"status": "success"}
 
 @router.get("/api/search")
-async def api_search(q: str = ""):
+async def api_search(request: Request, q: str = ""):
     if not q:
         return []
+    
+    is_localhost = is_request_local(request)
     q_lower = q.lower()
-    results = [
-        {"title": f['title'], "path": f['path']} 
-        for f in cache.GLOBAL_FILE_CACHE 
-        if q_lower in f['title'].lower() or q_lower in f['path'].lower()
-    ]
+    results = []
+    
+    for f in cache.GLOBAL_FILE_CACHE:
+        if not is_localhost and not f.get('published'):
+            continue
+            
+        if q_lower in f['title'].lower() or q_lower in f['path'].lower():
+            results.append({"title": f['title'], "path": f['path']})
+            
     return results[:10] # limit 10
 
 @router.get("/api/dirs")
