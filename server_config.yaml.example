@@ -1,10 +1,10 @@
 # Obsidian-Viewer Server Config Example
 # Copy this file to server_config.yaml and customize for your environment.
 
-sync_enabled: true
+sync_enabled: false
 auto_sync_enabled: false
 interval_minutes: 60
-base_url: http://localhost:8000
-content_src: /0_host_pc/Notes
-images_src: /0_host_pc/Images
+base_url: ''
+content_src: ''
+images_src: ''
 last_sync: ''

@@ -8,9 +8,20 @@ from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
 
 def load_config():
-    """設定ファイルを読み込む。存在しない場合はデフォルト値を返す。"""
+    """設定ファイルを読み込む。存在しない場合はデフォルト値を生成して保存する。"""
     if not CONFIG_FILE.exists():
-        return SyncConfig()
+        print(f"Config file not found at {CONFIG_FILE}. Creating default.", flush=True)
+        # テンプレートがあればコピー、なければデフォルトSyncConfigを保存
+        example_file = Path(CONFIG_FILE).parent.parent / "server_config.yaml.example"
+        if example_file.exists():
+            try:
+                shutil.copy2(example_file, CONFIG_FILE)
+            except Exception as e:
+                print(f"Failed to copy example config: {e}", flush=True)
+                save_config(SyncConfig())
+        else:
+            save_config(SyncConfig())
+            
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}

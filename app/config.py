@@ -12,7 +12,7 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 
 # Cache files
 METADATA_CACHE_FILE = BASE_DIR / "metadata_cache.json"
-CONFIG_FILE = BASE_DIR / "server_config.yaml"
+CONFIG_FILE = BASE_DIR / "app" / "server_config.yaml"
 
 # Ensure directories exist
 for d in [CONTENT_DIR, STATICS_DIR, IMAGES_DIR, TEMPLATES_DIR]:
