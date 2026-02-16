@@ -61,6 +61,8 @@ $$
 
 - [x] Completed task
 - [ ] Pending task
+	- [ ] Nested task
+		- [x] Nested Completed task
 - [ ] Another pending task
 
 ## Mermaid

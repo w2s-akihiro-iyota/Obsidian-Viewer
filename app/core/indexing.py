@@ -57,7 +57,7 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
                 
                 mtime = datetime.fromtimestamp(full_path.stat().st_mtime)
                 
-                with open(full_path, 'r', encoding='utf-8') as f:
+                with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
                     content = f.read()
                 
                 frontmatter, body = parse_frontmatter(content)
@@ -127,7 +127,7 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
                 rel_path = full_path.relative_to(relative_to)
                 
                 # Check metadata for title/published
-                with open(full_path, 'r', encoding='utf-8') as f:
+                with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
                     content = f.read()
                 
                 frontmatter, _ = parse_frontmatter(content)

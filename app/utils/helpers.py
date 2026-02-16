@@ -7,7 +7,17 @@ def is_request_local(request: Request):
     if "localhost" in host_header or "127.0.0.1" in host_header or "[::1]" in host_header:
         return True
 
-    # Priority 2: Check environment variable (manual override)
+    # Check against base_url in config
+    try:
+        from app.services.sync import load_config
+        config = load_config()
+        if config.base_url:
+            base_host = config.base_url.replace("http://", "").replace("https://", "").split("/")[0].lower()
+            if base_host in host_header:
+                return True
+    except Exception:
+        pass
+
     import os
     if os.getenv("IS_LOCALHOST", "").lower() == "true":
         return True

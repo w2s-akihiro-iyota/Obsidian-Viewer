@@ -54,8 +54,12 @@ def perform_sync(config: SyncConfig):
             return False, f"Content source directory not found: {src_path}"
 
         print(f"Cleaning destination: {CONTENT_DIR}", flush=True)
+        PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
         if CONTENT_DIR.exists():
             for item in CONTENT_DIR.iterdir():
+                if item.name in PROTECTED_ITEMS:
+                    print(f"Skipping protected item: {item.name}", flush=True)
+                    continue
                 try:
                     if item.is_dir():
                         shutil.rmtree(item)

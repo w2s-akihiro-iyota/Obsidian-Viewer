@@ -109,44 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize mermaid after page load
     initMermaid();
 
-    // Task list checkbox rendering
-    function renderTaskLists() {
-        // Find all list items
-        const listItems = document.querySelectorAll('li');
-
-        listItems.forEach((li) => {
-            const text = li.textContent.trim();
-
-            // Check for unchecked task: [ ]
-            if (text.startsWith('[ ]')) {
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'task-list-item-checkbox';
-                checkbox.disabled = true; // Read-only
-
-                // Replace the [ ] with checkbox
-                li.innerHTML = li.innerHTML.replace(/^\s*\[ \]\s*/, '');
-                li.insertBefore(checkbox, li.firstChild);
-                li.className += ' task-list-item';
-            }
-            // Check for checked task: [x] or [X]
-            else if (text.startsWith('[x]') || text.startsWith('[X]')) {
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'task-list-item-checkbox';
-                checkbox.checked = true;
-                checkbox.disabled = true; // Read-only
-
-                // Replace the [x] with checkbox
-                li.innerHTML = li.innerHTML.replace(/^\s*\[[xX]\]\s*/, '');
-                li.insertBefore(checkbox, li.firstChild);
-                li.className += ' task-list-item';
-            }
-        });
-    }
-
     // Render task lists after page load
-    renderTaskLists();
+    // renderTaskLists(); // Removed: handled by backend markdown plugin
 
     // Table copy functionality
     function addTableCopyButtons() {
