@@ -26,3 +26,6 @@ images/*
 
 # Docker
 docker-compose.yml
+
+# Environment Specific Configs
+server_config.yaml

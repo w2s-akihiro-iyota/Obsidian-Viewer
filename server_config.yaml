@@ -1,7 +1,0 @@
-auto_sync_enabled: false
-base_url: http://desktop-ceoc8do.local:8000
-content_src: /0_host_pc/003_Notes
-images_src: /0_host_pc/000_Config/Files
-interval_minutes: 60
-last_sync: ''
-sync_enabled: true
