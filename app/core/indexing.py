@@ -104,7 +104,7 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     # Helper to find or create folder in tree
     def get_folder(parent_list, folder_name):
         for item in parent_list:
-            if item['type'] == 'folder' and item['name'] == folder_name:
+            if item['type'] == 'directory' and item['name'] == folder_name:
                 return item
         new_folder = {"name": folder_name, "type": "directory", "children": []}
         parent_list.append(new_folder)
@@ -148,16 +148,15 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
 
     # Sort tree (folders first, then alphabetical)
     def sort_tree(node_list):
-        node_list.sort(key=lambda x: (0 if x['type'] == 'folder' else 1, x['title'].lower() if 'title' in x else x['name'].lower()))
+        node_list.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['title'].lower() if 'title' in x else x['name'].lower()))
         for item in node_list:
-            if item['type'] == 'folder':
+            if item['type'] == 'directory':
                 sort_tree(item['children'])
     
     sort_tree(tree)
     return tree
 
 def refresh_global_caches():
-    print("Refreshing global caches...")
     # Clear per-file caches on full refresh
     cache.IMAGE_PATH_CACHE = {}
     cache.MARKDOWN_CACHE = {}

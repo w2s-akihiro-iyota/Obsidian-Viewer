@@ -5,7 +5,6 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. 必要なライブラリのインストール
-# キャッシュを利用してビルドを速くするため、まずrequirementsだけコピーします
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -13,5 +12,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 5. アプリの起動設定
-# --host 0.0.0.0 を指定しないと、Docker外部（ブラウザ）からアクセスできません
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --workers 1 を指定することで、プロセスの重複を防ぎ、ログの重複も解消します
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

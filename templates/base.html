@@ -559,8 +559,9 @@
                                         外部共有時に localhost:8000 を置換するURLです<br />
                                         （例: https://example.com）
                                     </p>
+                                    <div class="setting-error" id="base-url-error"></div>
                                 </div>
-                                <div class="setting-item">
+                                <div class="setting-item" style="display: block;">
                                     <label class="setting-toggle">
                                         <span>自動同期を有効にする</span>
                                         <div class="toggle-switch">
@@ -568,10 +569,15 @@
                                             <span class="slider"></span>
                                         </div>
                                     </label>
+                                    <p class="setting-desc"
+                                        style="font-size: 0.8em; margin-top: 4px; color: var(--text-muted);">
+                                        有効化または設定の保存時に、初回の同期が即座に実行されます。
+                                    </p>
                                 </div>
                                 <div class="setting-item" id="auto-sync-interval-wrapper" style="display: none;">
                                     <label for="setting-sync-interval">自動同期の間隔</label>
                                     <select id="setting-sync-interval">
+                                        <option value="1">1分ごと (テスト用)</option>
                                         <option value="60">1時間ごと</option>
                                         <option value="120">2時間ごと</option>
                                         <option value="360">6時間ごと</option>

@@ -11,7 +11,9 @@ from app.core.indexing import get_all_files, get_file_tree, refresh_global_cache
 from app.core.markdown import md, process_admonition_blocks
 from app.services.images import process_obsidian_images
 from app.services.sync import load_config, save_config, perform_sync
-from app.utils.helpers import is_request_local
+from app.events import config_updated_event
+from app.utils.helpers import is_request_local, get_client_ip
+from app.utils.messages import get_all_messages, get_error, get_warning
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -161,16 +163,63 @@ async def read_item(request: Request, file_path: str):
         "is_localhost": is_localhost
     })
 
+@router.get("/api/messages")
+async def api_get_messages():
+    """
+    フロントエンド用のメッセージ定義を返します。
+    """
+    return get_all_messages()
+
 @router.post("/api/sync/save")
 async def api_save_sync_settings(request: Request):
     if not is_request_local(request):
-        return JSONResponse({"status": "error", "message": "Only local access allowed"}, status_code=403)
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
     
     data = await request.json()
     from app.models.sync import SyncConfig
+    
+    errors = {}
+    warnings = {}
+    
+    # 1. Validation (Errors)
+    content_src = data.get('content_src', '')
+    if not content_src:
+        errors['content-src'] = get_error("E001")
+    else:
+        p = Path(content_src)
+        if not p.exists() or not p.is_dir():
+            errors['content-src'] = get_error("E002")
+            
+    images_src = data.get('images_src', '')
+    if images_src:
+        p = Path(images_src)
+        if not p.exists() or not p.is_dir():
+            errors['images-src'] = get_error("E002")
+            
+    # 2. Warnings (Non-blocking)
+    images_src_trimmed = images_src.strip()
+    if not images_src_trimmed:
+        warnings['images-src'] = get_warning("W001")
+
+    base_url = data.get('base_url', '').strip()
+    if not base_url:
+        warnings['base-url'] = get_warning("W002")
+        
+    if errors:
+        return JSONResponse({
+            "status": "error",
+            "errors": errors
+        }, status_code=400)
+    
     config = SyncConfig(**data)
     save_config(config)
-    return {"status": "success"}
+    # 通知を送ってバックグラウンドタスクを起こす
+    config_updated_event.set()
+    
+    return {
+        "status": "success",
+        "warnings": warnings
+    }
 
 @router.get("/api/sync/config")
 async def api_get_sync_config(request: Request):
@@ -196,6 +245,8 @@ async def api_sync_now(request: Request):
     from app.services.sync import load_config, perform_sync
     config = load_config()
     success, message = perform_sync(config)
+    # 同期後、定期実行のタイマーをリセットさせるために通知を送る
+    config_updated_event.set()
     if success:
         return {"status": "success", "last_sync": config.last_sync, "message": message}
     else:

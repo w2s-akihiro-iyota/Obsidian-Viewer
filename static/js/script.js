@@ -1,4 +1,20 @@
-document.addEventListener('DOMContentLoaded', () => {
+let MESSAGES = { errors: {}, warnings: {}, system: {} };
+
+async function loadMessages() {
+    try {
+        const response = await fetch('/api/messages');
+        if (response.ok) {
+            MESSAGES = await response.json();
+            console.log("Messages loaded successfully");
+        }
+    } catch (err) {
+        console.error("Failed to load messages", err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load messages first
+    await loadMessages();
     // Theme toggle functionality
     // Theme toggle functionality (Now handled via Settings)
     // const themeToggleBtn = document.getElementById('theme-toggle'); 
@@ -322,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await navigator.clipboard.writeText(url);
                 }
 
-                showToast("URLをコピーしました", "success");
+                showToast(MESSAGES.system?.S002 || "URLをコピーしました", "success");
             } catch (err) {
                 console.error("Failed to copy URL:", err);
 
@@ -336,10 +352,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 textarea.select();
                 try {
                     document.execCommand('copy');
-                    showToast("URLをコピーしました (Fallback)", "success");
+                    showToast(MESSAGES.system?.S002 || "URLをコピーしました", "success");
                 } catch (fallbackErr) {
                     console.error('Final fallback copy failed:', fallbackErr);
-                    showToast("コピーに失敗しました", "error");
+                    showToast(MESSAGES.system?.S003 || "コピーに失敗しました", "error");
                 } finally {
                     document.body.removeChild(textarea);
                 }
@@ -1490,6 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.setting-error').forEach(el => {
                 el.textContent = '';
                 el.style.display = 'none';
+                el.classList.remove('warning'); // Clear warning state
             });
         }
 
@@ -1513,24 +1530,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(async res => {
                     const data = await res.json();
                     if (res.ok) {
-                        showToast("設定を保存しました", "success");
+                        showToast(MESSAGES.system?.S001 || "設定を保存しました", "success");
+                        if (data.warnings) {
+                            Object.keys(data.warnings).forEach(key => {
+                                const errorEl = document.getElementById(`${key}-error`);
+                                if (errorEl) {
+                                    errorEl.textContent = data.warnings[key];
+                                    errorEl.style.display = 'block';
+                                    errorEl.classList.add('warning'); // Use CSS class for warnings
+                                }
+                            });
+                        }
                     } else if (res.status === 400 && data.errors) {
                         // Display validation errors
                         Object.keys(data.errors).forEach(key => {
-                            const errorEl = document.getElementById(`${key.replace('_', '-')}-error`);
+                            const errorEl = document.getElementById(`${key}-error`);
                             if (errorEl) {
                                 errorEl.textContent = data.errors[key];
                                 errorEl.style.display = 'block';
                             }
                         });
-                        showToast("入力内容に誤りがあります", "error");
+                        showToast(MESSAGES.errors?.E003 || "入力内容に誤りがあります", "error");
                     } else {
                         throw new Error("Save failed");
                     }
                 })
                 .catch(err => {
                     console.error("Failed to save config", err);
-                    showToast("設定の保存に失敗しました", "error");
+                    showToast(MESSAGES.errors?.E004 || "設定の保存に失敗しました", "error");
                 });
         }
 

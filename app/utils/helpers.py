@@ -36,3 +36,12 @@ def is_request_local(request: Request):
 def check_localhost(request: Request):
     if not is_request_local(request):
         raise HTTPException(status_code=403, detail="Forbidden: Access allowed only from localhost")
+
+def get_client_ip(request: Request):
+    """
+    リクエストからクライアントのIPアドレスを取得します（プロキシ考慮）。
+    """
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host

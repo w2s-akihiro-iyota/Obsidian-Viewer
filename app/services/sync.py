@@ -6,6 +6,7 @@ from pathlib import Path
 from app.config import CONFIG_FILE, CONTENT_DIR, STATICS_DIR, IMAGES_DIR
 from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
+from app.events import config_updated_event
 
 def load_config():
     """設定ファイルを読み込む。存在しない場合はデフォルト値を生成して保存する。"""
@@ -121,12 +122,28 @@ async def background_sync_loop():
     while True:
         try:
             config = load_config()
+            # 1. 動作条件の確認と実行
             if config.sync_enabled and config.auto_sync_enabled:
-                print("Checking for auto-sync...", flush=True)
-                perform_sync(config)
+                print("Checking for auto-sync (Triggered)...", flush=True)
+                # Run sync in a thread to avoid blocking the event loop
+                await asyncio.to_thread(perform_sync, config)
             
-            # Wait for interval (minutes to seconds)
-            await asyncio.sleep(max(1, config.interval_minutes) * 60)
+            # 2. 待機フェーズ
+            # 自動同期がOFFの場合は信号が来るまで無限に待機(None)、ONの場合は設定時間待機
+            wait_time = (config.interval_minutes * 60) if config.auto_sync_enabled else None
+            
+            try:
+                # 設定変更イベントまたはタイムアウトを待つ
+                # wait_for に None を渡すとタイムアウトなし（無限待機）になる
+                await asyncio.wait_for(config_updated_event.wait(), timeout=wait_time)
+                print("Config updated signal received. Restarting loop.", flush=True)
+            except asyncio.TimeoutError:
+                # タイムアウト（時間経過）による通常の自動実行へ
+                pass
+            finally:
+                # 次の待機のためにイベントをクリア
+                config_updated_event.clear()
+
         except Exception as e:
             print(f"Error in background sync loop: {e}", flush=True)
             await asyncio.sleep(60)
