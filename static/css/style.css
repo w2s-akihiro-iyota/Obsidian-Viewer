@@ -4466,7 +4466,7 @@ input:checked+.slider:before {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 3px;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.2), inset 0 0 0 2px var(--bg-primary);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 2px var(--bg-primary);
     color: var(--text-normal);
     display: inline-block;
     font-family: var(--code-font);
@@ -4542,9 +4542,98 @@ input:checked+.slider:before {
     margin-top: 2px;
 }
 
+
+/* Help Tabbed UI */
+.help-tabs {
+    display: flex;
+    padding: 0 24px;
+    background: var(--bg-secondary);
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.help-tab {
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 6px 6px 0 0;
+    margin-top: 8px;
+    position: relative;
+    outline: none;
+}
+
+.help-tab:hover {
+    color: var(--text-normal);
+    background: rgba(123, 97, 255, 0.05);
+}
+
+.help-tab.active {
+    color: var(--accent-purple);
+    background: var(--bg-primary);
+    border-bottom: 2px solid var(--accent-purple);
+    /* Elevation effect requested by user */
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    z-index: 2;
+}
+
+/* Ensure the bottom border of the active tab covers the container's bottom border */
+.help-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--bg-primary);
+}
+
+.help-panel {
+    display: none;
+    animation: helpPanelFadeIn 0.3s ease-out;
+}
+
+.help-panel.active {
+    display: block;
+}
+
+@keyframes helpPanelFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile adjustments for help tabs */
+@media (max-width: 600px) {
+    .help-tabs {
+        padding: 0 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .help-tab {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+}
+
 .step p {
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.5;
 }
-

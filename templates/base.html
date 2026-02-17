@@ -248,123 +248,142 @@
                     </svg>
                 </button>
             </div>
-            <div class="settings-body" style="flex: 1; overflow-y: auto; padding: 24px;">
-                <section class="settings-section">
-                    <h4>基本操作</h4>
-                    <div class="help-grid">
-                        <div class="help-card">
-                            <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                    <polyline points="10 9 9 9 8 9"></polyline>
-                                </svg> ファイル閲覧</h5>
-                            <p>左側のサイドバーでファイルを選択して閲覧します。<br />右上のアイコンから<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。</p>
-                        </div>
-                        <div class="help-card">
-                            <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg> 検索</h5>
-                            <p>上部の検索バーにキーワードを入力して、ファイルを即座に検索できます。<br />モバイルでは虫眼鏡アイコンをタップしてください。</p>
-                        </div>
-                        <div class="help-card">
-                            <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg> PDF書き出し</h5>
-                            <p>記事表示時の右上の「...」メニューから、現在の記事をPDFとして保存、または印刷することができます。</p>
-                        </div>
-                        <div class="help-card">
-                            <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon
-                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                                    </polygon>
-                                </svg> アウトライン</h5>
-                            <p>サイドバーの<b>Outline</b>タブに、現在の記事の見出し一覧が表示されます。<br />クリックするとその場所へスクロールします。</p>
-                        </div>
-                    </div>
-                </section>
+            <div class="settings-body" style="flex: 1; overflow-y: auto; padding: 0;">
+                <div class="help-tabs line-bottom">
+                    <button class="help-tab active" data-tab="basic">基本操作</button>
+                    <button class="help-tab" data-tab="sync">同期手順</button>
+                    <button class="help-tab" data-tab="display">表示機能</button>
+                </div>
 
-                <section class="settings-section">
-                    <h4>ファイル同期の設定手順</h4>
-                    <p>ローカルの Obsidian フォルダを本システムと同期させるには、以下の手順を行ってください。</p>
-                    <div class="sync-steps">
-                        <div class="step">
-                            <span class="step-num">1</span>
-                            <div>
-                                <p>「サイドバー」下の <b>歯車マーク</b> アイコンをクリックして設定画面を開きます。</p>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <span class="step-num">2</span>
-                            <div>
-                                <p><b>「システム＞ファイル同期」</b>セクションで、「<b>ファイル同期を有効にする</b>」のトグルボタンを有効します。</p>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <span class="step-num">3</span>
-                            <div>
-                                <p>同期したいローカルパスを入力します。</p>
-                                <p style="font-size: 0.9em; margin: 16px 0 0 0; color: var(--text-muted);">
-                                    ・<b>コンテンツの元フォルダ：</b> Markdownファイルが格納されているフォルダ<br />
-                                    ・<b>画像の元フォルダ：</b> 画像ファイルが格納されているフォルダ（任意）<br />
-                                    ・<b>公開URL：</b>他の人にページのURLを公開する際に、アクセス可能なドメイン名を含めたベースURLを設定してください（任意）
-                                </p>
-                                <div class="help-tip"
-                                    style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                                    <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
-                                        <b>ヒント：</b><br />
-                                        パスは、インストール時に編集した <code>docker-compose.yml</code> の
-                                        <code>ObsidianVault</code> フォルダからの相対パスで指定してください。<br />
-                                        例：<code>/0_host_pc/003_Notes</code>
-                                    </p>
+                <div class="help-content-wrapper" style="padding: 24px;">
+                    <!-- Basic Operations Panel -->
+                    <div id="help-panel-basic" class="help-panel active">
+                        <section class="settings-section">
+                            <h4>基本操作</h4>
+                            <div class="help-grid">
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg> ファイル閲覧</h5>
+                                    <p>左側のサイドバーでファイルを選択して閲覧します。<br />右上のアイコンから<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg> 検索</h5>
+                                    <p>上部の検索バーにキーワードを入力して、ファイルを即座に検索できます。<br />モバイルでは虫眼鏡アイコンをタップしてください。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg> PDF書き出し</h5>
+                                    <p>記事表示時の右上の「...」メニューから、現在の記事をPDFとして保存、または印刷することができます。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon
+                                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                            </polygon>
+                                        </svg> アウトライン</h5>
+                                    <p>サイドバーの<b>Outline</b>タブに、現在の記事の見出し一覧が表示されます。<br />クリックするとその場所へスクロールします。</p>
                                 </div>
                             </div>
-                        </div>
-                        <div class="step">
-                            <span class="step-num">4</span>
-                            <div>
-                                <p>「<b>設定を保存</b>」ボタンをクリックして設定を保存する。</p>
-                                <div class="help-tip"
-                                    style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                                    <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
-                                        <b>ヒント：</b><br />
-                                        設定を保存するだけで、同期は即時に行われません。<br />
-                                        各パスの入力チェックが行われ、問題が無ければ保存に成功します。
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <span class="step-num">5</span>
-                            <div>
-                                <p>「<b>今すぐ同期</b>」ボタンをクリックして、設定したパスからファイルの同期を開始する。</p>
-                                <div class="help-tip"
-                                    style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                                    <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
-                                        <b>ヒント：</b><br />
-                                        同期は即時に行われますが、ファイルの変更を検知するには、数秒程度の待ち時間がかかることがあります。
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        </section>
                     </div>
-                </section>
 
-                <section class="settings-section">
-                    <h4>表示機能</h4>
-                    <ul class="help-list">
-                        <li><strong>ダークモード / ライトモード:</strong> 設定画面でテーマ（Dark, Light, Letter, Midnight）を切り替えられます。</li>
-                        <li><strong>Mermaid図表:</strong> <code>mermaid</code> コードブロックを記述すると、自動的に図表としてレンダリングされます。</li>
-                    </ul>
-                </section>
+                    <!-- Sync Instructions Panel -->
+                    <div id="help-panel-sync" class="help-panel">
+                        <section class="settings-section">
+                            <h4>ファイル同期の設定手順</h4>
+                            <p>ローカルの Obsidian フォルダを本システムと同期させるには、以下の手順を行ってください。</p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>「サイドバー」下の <b>歯車マーク</b> アイコンをクリックして設定画面を開きます。</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p><b>「システム＞ファイル同期」</b>セクションで、「<b>ファイル同期を有効にする</b>」のトグルボタンを有効します。</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p>同期したいローカルパスを入力します。</p>
+                                        <p style="font-size: 0.9em; margin: 16px 0 0 0; color: var(--text-muted);">
+                                            ・<b>コンテンツの元フォルダ：</b> Markdownファイルが格納されているフォルダ<br />
+                                            ・<b>画像の元フォルダ：</b> 画像ファイルが格納されているフォルダ（任意）<br />
+                                            ・<b>公開URL：</b>他の人にページのURLを公開する際に、アクセス可能なドメイン名を含めたベースURLを設定してください（任意）
+                                        </p>
+                                        <div class="help-tip"
+                                            style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
+                                            <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
+                                                <b>ヒント：</b><br />
+                                                パスは、インストール時に編集した <code>docker-compose.yml</code> の
+                                                <code>ObsidianVault</code> フォルダからの相対パスで指定してください。<br />
+                                                例：<code>/0_host_pc/003_Notes</code>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">4</span>
+                                    <div>
+                                        <p>「<b>設定を保存</b>」ボタンをクリックして設定を保存する。</p>
+                                        <div class="help-tip"
+                                            style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
+                                            <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
+                                                <b>ヒント：</b><br />
+                                                設定を保存するだけで、同期は即時に行われません。<br />
+                                                各パスの入力チェックが行われ、問題が無ければ保存に成功します。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">5</span>
+                                    <div>
+                                        <p>「<b>今すぐ同期</b>」ボタンをクリックして、設定したパスからファイルの同期を開始する。</p>
+                                        <div class="help-tip"
+                                            style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
+                                            <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
+                                                <b>ヒント：</b><br />
+                                                同期は即時に行われますが、ファイルの変更を検知するには、数秒程度の待ち時間がかかることがあります。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Features Panel -->
+                    <div id="help-panel-display" class="help-panel">
+                        <section class="settings-section">
+                            <h4>表示機能</h4>
+                            <ul class="help-list">
+                                <li><strong>ダークモード / ライトモード:</strong> 設定画面でテーマ（Dark, Light, Letter, Midnight）を切り替えられます。
+                                </li>
+                                <li><strong>Mermaid図表:</strong> <code>mermaid</code> コードブロックを記述すると、自動的に図表としてレンダリングされます。
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

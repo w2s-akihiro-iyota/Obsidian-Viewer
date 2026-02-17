@@ -668,6 +668,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Keep existing search focus or handle s key
             }
         });
+
+        // Help Modal Tabs logic
+        const helpTabs = document.querySelectorAll('.help-tab');
+        const helpPanels = document.querySelectorAll('.help-panel');
+
+        if (helpTabs.length > 0 && helpPanels.length > 0) {
+            helpTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.dataset.tab;
+
+                    // Update tabs
+                    helpTabs.forEach(t => t.classList.toggle('active', t === tab));
+
+                    // Update panels
+                    helpPanels.forEach(panel => {
+                        panel.classList.toggle('active', panel.id === `help-panel-${targetTab}`);
+                    });
+                });
+            });
+        }
     }
 
     // Sidebar Logic (Toggle, Tabs, TOC)
