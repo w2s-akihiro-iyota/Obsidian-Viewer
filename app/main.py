@@ -19,6 +19,7 @@ app.include_router(router)
 @app.on_event("startup")
 async def startup_event():
     # Initialize cache in a thread to avoid blocking startup
-    asyncio.create_task(asyncio.to_thread(refresh_global_caches))
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, refresh_global_caches)
     # Start background sync
     asyncio.create_task(background_sync_loop())

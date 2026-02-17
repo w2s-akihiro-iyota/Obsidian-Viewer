@@ -4454,6 +4454,18 @@ input:checked+.slider:before {
     line-height: 1.5;
 }
 
+.help-list ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin-top: 8px;
+    color: var(--text-muted);
+}
+
+.help-list ul li {
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
 .help-list.shortcuts li {
     display: flex;
     justify-content: space-between;

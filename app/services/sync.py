@@ -126,7 +126,8 @@ async def background_sync_loop():
             config = load_config()
             if config.sync_enabled and config.auto_sync_enabled:
                 print("Checking for auto-sync (Triggered)...", flush=True)
-                await asyncio.to_thread(perform_sync, config)
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, perform_sync, config)
             
             wait_time = (config.interval_minutes * 60) if config.auto_sync_enabled else None
             
