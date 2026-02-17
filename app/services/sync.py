@@ -9,6 +9,7 @@ from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 
 def load_config():
+    """Load config file. Create default if missing."""
     if not CONFIG_FILE.exists():
         print(f"Config file not found at {CONFIG_FILE}. Creating default.", flush=True)
         example_file = Path(CONFIG_FILE).parent.parent / "server_config.yaml.example"
@@ -30,6 +31,7 @@ def load_config():
         return SyncConfig()
 
 def save_config(config: SyncConfig):
+    """Save config file."""
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.safe_dump(config.model_dump(), f)
@@ -37,6 +39,7 @@ def save_config(config: SyncConfig):
         print(f"Failed to save config: {e}", flush=True)
 
 def perform_sync(config: SyncConfig):
+    """Perform file synchronization."""
     print(f"Starting perform_sync. sync_enabled={config.sync_enabled}, content_src={config.content_src}", flush=True)
     if not config.sync_enabled:
         return False, "Sync is disabled in settings"
@@ -100,11 +103,14 @@ def perform_sync(config: SyncConfig):
     except Exception as e:
         error_msg = f"Sync failed: {str(e)}"
         print(error_msg, flush=True)
+        import traceback
+        traceback.print_exc()
         return False, error_msg
 
 background_task_running = False
 
 async def background_sync_loop():
+    """Background sync loop."""
     global background_task_running
     if background_task_running:
         return
