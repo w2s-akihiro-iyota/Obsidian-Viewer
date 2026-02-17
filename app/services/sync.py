@@ -1,7 +1,7 @@
 import yaml
 import shutil
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from app.config import CONFIG_FILE, CONTENT_DIR, STATICS_DIR, IMAGES_DIR
 from app.models.sync import SyncConfig
@@ -9,10 +9,8 @@ from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 
 def load_config():
-    """設定ファイルを読み込む。存在しない場合はデフォルト値を生成して保存する。"""
     if not CONFIG_FILE.exists():
         print(f"Config file not found at {CONFIG_FILE}. Creating default.", flush=True)
-        # テンプレートがあればコピー、なければデフォルトSyncConfigを保存
         example_file = Path(CONFIG_FILE).parent.parent / "server_config.yaml.example"
         if example_file.exists():
             try:
@@ -32,7 +30,6 @@ def load_config():
         return SyncConfig()
 
 def save_config(config: SyncConfig):
-    """設定ファイルを保存する。"""
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.safe_dump(config.model_dump(), f)
@@ -40,7 +37,6 @@ def save_config(config: SyncConfig):
         print(f"Failed to save config: {e}", flush=True)
 
 def perform_sync(config: SyncConfig):
-    """ファイル同期を実行する。"""
     print(f"Starting perform_sync. sync_enabled={config.sync_enabled}, content_src={config.content_src}", flush=True)
     if not config.sync_enabled:
         return False, "Sync is disabled in settings"
@@ -83,7 +79,6 @@ def perform_sync(config: SyncConfig):
             img_src_path = Path(config.images_src)
             if img_src_path.exists() and IMAGES_DIR.exists():
                 print(f"Syncing images from {img_src_path} to {IMAGES_DIR}...", flush=True)
-                # Recursive sync for images
                 for item in img_src_path.iterdir():
                     dest_item = IMAGES_DIR / item.name
                     if item.is_dir():
@@ -91,28 +86,25 @@ def perform_sync(config: SyncConfig):
                     else:
                         shutil.copy2(item, dest_item)
             else:
-                print(f"Skipping image sync (path not found or IMAGES_DIR missing)", flush=True)
+                print(f"Skipping image sync", flush=True)
         
         # 3. Finalize
-        config.last_sync = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        JST = timezone(timedelta(hours=9))
+        config.last_sync = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         print(f"Sync successful at {config.last_sync}", flush=True)
         save_config(config)
         
-        # Trigger cache refresh
         refresh_global_caches()
         return True, "Sync completed successfully"
 
     except Exception as e:
         error_msg = f"Sync failed: {str(e)}"
         print(error_msg, flush=True)
-        import traceback
-        traceback.print_exc()
         return False, error_msg
 
 background_task_running = False
 
 async def background_sync_loop():
-    """バックグラウンド同期ループ。"""
     global background_task_running
     if background_task_running:
         return
@@ -122,26 +114,18 @@ async def background_sync_loop():
     while True:
         try:
             config = load_config()
-            # 1. 動作条件の確認と実行
             if config.sync_enabled and config.auto_sync_enabled:
                 print("Checking for auto-sync (Triggered)...", flush=True)
-                # Run sync in a thread to avoid blocking the event loop
                 await asyncio.to_thread(perform_sync, config)
             
-            # 2. 待機フェーズ
-            # 自動同期がOFFの場合は信号が来るまで無限に待機(None)、ONの場合は設定時間待機
             wait_time = (config.interval_minutes * 60) if config.auto_sync_enabled else None
             
             try:
-                # 設定変更イベントまたはタイムアウトを待つ
-                # wait_for に None を渡すとタイムアウトなし（無限待機）になる
                 await asyncio.wait_for(config_updated_event.wait(), timeout=wait_time)
                 print("Config updated signal received. Restarting loop.", flush=True)
             except asyncio.TimeoutError:
-                # タイムアウト（時間経過）による通常の自動実行へ
                 pass
             finally:
-                # 次の待機のためにイベントをクリア
                 config_updated_event.clear()
 
         except Exception as e:
