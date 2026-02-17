@@ -8,6 +8,8 @@ from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 
+from app.utils.messages import get_system, get_error
+
 def load_config():
     """設定ファイルを読み込みます。存在しない場合はデフォルトを作成します。"""
     if not CONFIG_FILE.exists():
@@ -43,16 +45,16 @@ def perform_sync(config: SyncConfig):
     """ファイルの同期を実行します。"""
     print(f"Starting perform_sync. sync_enabled={config.sync_enabled}, content_src={config.content_src}", flush=True)
     if not config.sync_enabled:
-        return False, "Sync is disabled in settings"
+        return False, get_system("S104")
     
     if not config.content_src:
-        return False, "Content source path is not set"
+        return False, get_error("E001")
 
     try:
         # 1. コンテンツの同期
         src_path = Path(config.content_src)
         if not src_path.exists():
-            return False, f"Content source directory not found: {src_path}"
+            return False, get_error("E002")
 
         print(f"Cleaning destination: {CONTENT_DIR}", flush=True)
         PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
@@ -82,7 +84,7 @@ def perform_sync(config: SyncConfig):
         if config.images_src:
             img_src_path = Path(config.images_src)
             if img_src_path.exists() and IMAGES_DIR.exists():
-                print(f"Syncing images from {img_src_path} to {IMAGES_DIR}...", flush=True)
+                print(get_system("S105"), flush=True)
                 for item in img_src_path.iterdir():
                     dest_item = IMAGES_DIR / item.name
                     if item.is_dir():
@@ -100,10 +102,10 @@ def perform_sync(config: SyncConfig):
         
         # キャッシュリフレッシュのトリガー
         refresh_global_caches()
-        return True, "Sync completed successfully"
+        return True, get_system("S102")
 
     except Exception as e:
-        error_msg = f"Sync failed: {str(e)}"
+        error_msg = f"{get_system('S103')}: {str(e)}"
         print(error_msg, flush=True)
         import traceback
         traceback.print_exc()

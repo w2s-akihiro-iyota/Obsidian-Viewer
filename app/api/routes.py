@@ -224,7 +224,7 @@ async def api_save_sync_settings(request: Request):
 @router.get("/api/sync/config")
 async def api_get_sync_config(request: Request):
     if not is_request_local(request):
-        return JSONResponse({"status": "error", "message": "Only local access allowed"}, status_code=403)
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
     config = load_config()
     return config
 
@@ -241,7 +241,7 @@ async def api_get_public_config():
 @router.post("/api/sync")
 async def api_sync_now(request: Request):
     if not is_request_local(request):
-        return JSONResponse({"status": "error", "message": "Only local access allowed"}, status_code=403)
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
     from app.services.sync import load_config, perform_sync
     config = load_config()
     success, message = perform_sync(config)
@@ -256,7 +256,7 @@ async def api_sync_now(request: Request):
 @router.post("/api/rebuild-index")
 async def api_reindex(request: Request):
     if not is_request_local(request):
-        return JSONResponse({"status": "error", "message": "Only local access allowed"}, status_code=403)
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
     
     refresh_global_caches()
     return {"status": "success"}
