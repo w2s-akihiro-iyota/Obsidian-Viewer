@@ -555,6 +555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Open Modal
         mobileSearchBtn.addEventListener('click', () => {
             searchModal.classList.add('active');
+            document.body.classList.add('no-scroll'); // Lock scroll
             setTimeout(() => {
                 if (modalSearchInput) modalSearchInput.focus();
             }, 100);
@@ -563,6 +564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Close Modal
         const closeModal = () => {
             searchModal.classList.remove('active');
+            document.body.classList.remove('no-scroll'); // Unlock scroll
             if (modalSearchInput) modalSearchInput.value = '';
             if (modalSearchResults) modalSearchResults.innerHTML = '';
         };
@@ -643,13 +645,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const helpModal = document.getElementById('help-modal');
     const closeHelpModalBtn = document.getElementById('close-help-modal');
 
-    if (helpOpenBtn && helpModal && closeHelpModalBtn) {
-        helpOpenBtn.addEventListener('click', () => {
-            helpModal.classList.add('active');
+    if (helpModal && closeHelpModalBtn) {
+        const helpBtns = [
+            document.getElementById('help-open-btn'),
+            document.getElementById('help-open-btn-mobile')
+        ].filter(btn => btn !== null);
+
+        helpBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                helpModal.classList.add('active');
+                document.body.classList.add('no-scroll'); // Lock scroll
+            });
         });
 
         const closeHelp = () => {
             helpModal.classList.remove('active');
+            document.body.classList.remove('no-scroll'); // Unlock scroll
         };
 
         closeHelpModalBtn.addEventListener('click', closeHelp);
@@ -1055,8 +1066,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Settings Logic
     function initSettings() {
         const settingsModal = document.getElementById('settings-modal');
-        const openBtn = document.getElementById('settings-open-btn');
+        const openBtns = [
+            document.getElementById('settings-open-btn'),
+            document.getElementById('settings-open-btn-mobile')
+        ].filter(btn => btn !== null);
         const closeBtn = document.getElementById('close-settings-modal');
+
+        if (settingsModal && openBtns.length > 0 && closeBtn) {
+            openBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    settingsModal.classList.add('active');
+                });
+            });
+        }
 
         // Inputs
         const fontSizeSelect = document.getElementById('setting-font-size');
@@ -1161,15 +1183,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        // Event Listeners
-        if (openBtn && settingsModal) {
-            openBtn.addEventListener('click', () => {
-                settingsModal.classList.add('active');
-                document.body.classList.add('no-scroll'); // Lock scroll
+        // Event Listeners (Moved inside initial check)
+        if (settingsModal && openBtns.length > 0 && closeBtn) {
+            openBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    settingsModal.classList.add('active');
+                    document.body.classList.add('no-scroll'); // Lock scroll
+                });
             });
-        }
 
-        if (closeBtn && settingsModal) {
             closeBtn.addEventListener('click', () => {
                 settingsModal.classList.remove('active');
                 document.body.classList.remove('no-scroll'); // Unlock scroll

@@ -130,7 +130,10 @@ a:hover {
 
 /* Utility to lock scroll */
 body.no-scroll {
-    overflow: hidden;
+    overflow: hidden !important;
+    height: 100%;
+    touch-action: none;
+    -webkit-overflow-scrolling: none;
 }
 
 /* Layout */
@@ -1526,6 +1529,11 @@ details[open] .accordion-icon {
     height: 16px;
 }
 
+/* Mobile specific buttons */
+.mobile-only-btn {
+    display: none;
+}
+
 /* Scroll to Top Button */
 .scroll-to-top {
     position: fixed;
@@ -1971,7 +1979,11 @@ details[open] .accordion-icon {
     }
 
     .header-actions {
-        gap: 8px;
+        gap: 12px;
+    }
+
+    .mobile-only-btn {
+        display: flex !important;
     }
 
     .brand-text {
@@ -2205,12 +2217,57 @@ details>summary::-webkit-details-marker {
     background-color: #1e1e1e;
     /* Darker than sidebar */
     border-right: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 2000;
-    /* Topmost */
+    z-index: 2050;
+    /* Above sidebar resizer */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+}
+
+.activity-top,
+.activity-bottom {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 12px;
+    gap: 8px;
+    width: 100%;
+}
+
+.activity-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: var(--activity-bar-width);
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    position: relative;
+    border-radius: 0;
+}
+
+.activity-btn:hover {
+    color: var(--text-normal);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.activity-btn.active {
+    color: var(--accent-purple);
+}
+
+.activity-btn.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    background-color: var(--accent-purple);
+    border-radius: 0 3px 3px 0;
 }
 
 [data-theme="light"] .activity-bar {
