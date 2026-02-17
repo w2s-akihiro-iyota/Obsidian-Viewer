@@ -9,9 +9,10 @@ from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 
 def load_config():
-    """Load config file. Create default if missing."""
+    """設定ファイルを読み込みます。存在しない場合はデフォルトを作成します。"""
     if not CONFIG_FILE.exists():
         print(f"Config file not found at {CONFIG_FILE}. Creating default.", flush=True)
+        # 例からコピー（存在する場合）
         example_file = Path(CONFIG_FILE).parent.parent / "server_config.yaml.example"
         if example_file.exists():
             try:
@@ -31,7 +32,7 @@ def load_config():
         return SyncConfig()
 
 def save_config(config: SyncConfig):
-    """Save config file."""
+    """設定をファイルに保存します。"""
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.safe_dump(config.model_dump(), f)
@@ -39,7 +40,7 @@ def save_config(config: SyncConfig):
         print(f"Failed to save config: {e}", flush=True)
 
 def perform_sync(config: SyncConfig):
-    """Perform file synchronization."""
+    """ファイルの同期を実行します。"""
     print(f"Starting perform_sync. sync_enabled={config.sync_enabled}, content_src={config.content_src}", flush=True)
     if not config.sync_enabled:
         return False, "Sync is disabled in settings"
@@ -48,7 +49,7 @@ def perform_sync(config: SyncConfig):
         return False, "Content source path is not set"
 
     try:
-        # 1. Content Sync
+        # 1. コンテンツの同期
         src_path = Path(config.content_src)
         if not src_path.exists():
             return False, f"Content source directory not found: {src_path}"
@@ -76,7 +77,7 @@ def perform_sync(config: SyncConfig):
             else:
                 shutil.copy2(item, dest_item)
 
-        # 2. Image Sync (Optional)
+        # 2. 画像の同期（オプション）
         from app.config import IMAGES_DIR
         if config.images_src:
             img_src_path = Path(config.images_src)
@@ -91,12 +92,13 @@ def perform_sync(config: SyncConfig):
             else:
                 print(f"Skipping image sync", flush=True)
         
-        # 3. Finalize
+        # 3. 完了処理
         JST = timezone(timedelta(hours=9))
         config.last_sync = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         print(f"Sync successful at {config.last_sync}", flush=True)
         save_config(config)
         
+        # キャッシュリフレッシュのトリガー
         refresh_global_caches()
         return True, "Sync completed successfully"
 
@@ -110,7 +112,7 @@ def perform_sync(config: SyncConfig):
 background_task_running = False
 
 async def background_sync_loop():
-    """Background sync loop."""
+    """バックグラウンド同期ループ。"""
     global background_task_running
     if background_task_running:
         return

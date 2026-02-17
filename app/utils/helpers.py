@@ -2,15 +2,15 @@ from fastapi import Request, HTTPException
 
 def is_request_local(request: Request):
     """
-    Check if the request is from localhost.
+    リクエストがローカルアドレスからのものか確認します。
     """
-    # Check if request is from localhost/127.0.0.1
-    # Priority 1: Check HOST header (most reliable for localhost usage)
+    # localhost/127.0.0.1 からのリクエストかチェック
+    # 優先順位 1: HOST ヘッダー（localhost での利用に最も信頼性が高い）
     host_header = request.headers.get("host", "").lower()
     if "localhost" in host_header or "127.0.0.1" in host_header or "[::1]" in host_header:
         return True
 
-    # If behind proxy, check forwarded header
+    # プロキシ経由の場合、forwarded ヘッダーをチェック
     forwarded_for = request.headers.get("X-Forwarded-For")
     
     client_host = request.client.host
@@ -18,19 +18,19 @@ def is_request_local(request: Request):
     if client_host == "127.0.0.1" or client_host == "localhost":
         return True
     
-    # In some Docker environments, the host might be different.
+    # Docker環境下では、ホスト名が異なる場合があります。
     return False
 
 def check_localhost(request: Request):
     """
-    Raise 403 if request is not local.
+    リクエストがローカルからでない場合、403 エラーをスローします。
     """
     if not is_request_local(request):
         raise HTTPException(status_code=403, detail="Forbidden: Access allowed only from localhost")
 
 def get_client_ip(request: Request):
     """
-    Get client IP from request (considering proxy).
+    クライアントの IP アドレスを取得します（プロキシを考慮）。
     """
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:

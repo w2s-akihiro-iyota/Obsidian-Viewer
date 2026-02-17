@@ -4422,3 +4422,129 @@ input:checked+.slider:before {
     font-size: 0.9rem;
     color: var(--text-muted);
 }
+
+/* Help UI Styles */
+.header-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-btn:hover {
+    color: var(--accent-purple);
+    background-color: var(--bg-primary);
+}
+
+.help-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.help-list li {
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.help-list.shortcuts li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.help-list.shortcuts kbd {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2), inset 0 0 0 2px var(--bg-primary);
+    color: var(--text-normal);
+    display: inline-block;
+    font-family: var(--code-font);
+    font-size: 0.85em;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
+
+/* Refined Help Modal Styles */
+.help-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.help-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.help-card:hover {
+    border-color: var(--accent-purple);
+    transform: translateY(-2px);
+}
+
+.help-card h5 {
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent-purple);
+}
+
+.help-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.sync-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.step-num {
+    background: var(--accent-purple);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.step p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+

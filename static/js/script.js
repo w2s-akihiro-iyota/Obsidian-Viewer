@@ -638,6 +638,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Help Modal Logic
+    const helpOpenBtn = document.getElementById('help-open-btn');
+    const helpModal = document.getElementById('help-modal');
+    const closeHelpModalBtn = document.getElementById('close-help-modal');
+
+    if (helpOpenBtn && helpModal && closeHelpModalBtn) {
+        helpOpenBtn.addEventListener('click', () => {
+            helpModal.classList.add('active');
+        });
+
+        const closeHelp = () => {
+            helpModal.classList.remove('active');
+        };
+
+        closeHelpModalBtn.addEventListener('click', closeHelp);
+
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                closeHelp();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && helpModal.classList.contains('active')) {
+                closeHelp();
+            }
+            if ((e.key === '/' || e.key === 's') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                // Keep existing search focus or handle s key
+            }
+        });
+    }
+
     // Sidebar Logic (Toggle, Tabs, TOC)
     const sidebar = document.getElementById('sidebar');
     const sidebarToggleBtns = document.querySelectorAll('.sidebar-toggle-btn');
