@@ -707,15 +707,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const closeWelcomeBtn = document.getElementById('close-welcome-modal');
         const welcomeStartBtn = document.getElementById('welcome-start-btn');
 
-        // 初回判定: localStorageにフラグがなければ表示
+        // 初回判定: localStorageにフラグがなければ1秒後にポップアップ表示
         if (!localStorage.getItem('welcomeShown')) {
-            welcomeModal.classList.add('active');
-            document.body.classList.add('no-scroll');
+            setTimeout(() => {
+                welcomeModal.classList.add('active');
+                document.body.classList.add('no-scroll');
+            }, 1000);
         }
 
         const closeWelcome = () => {
-            welcomeModal.classList.remove('active');
-            document.body.classList.remove('no-scroll');
+            welcomeModal.classList.add('closing');
+            setTimeout(() => {
+                welcomeModal.classList.remove('active', 'closing');
+                document.body.classList.remove('no-scroll');
+            }, 300);
             localStorage.setItem('welcomeShown', 'true');
         };
 

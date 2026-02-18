@@ -4707,15 +4707,45 @@ input:checked+.slider:before {
     line-height: 1.5;
 }
 
-/* Welcome Modal Logo Animation */
-.welcome-logo {
-    animation: welcomeFadeIn 0.6s ease-out;
+/* Welcome Modal Animation */
+#welcome-modal.settings-modal {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
-@keyframes welcomeFadeIn {
+#welcome-modal.settings-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#welcome-modal .settings-modal-container {
+    transform: scale(0.85) translateY(20px);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.3s ease;
+}
+
+#welcome-modal.active .settings-modal-container {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+#welcome-modal.closing .settings-modal-container {
+    transform: scale(0.9) translateY(10px);
+    opacity: 0;
+    transition: transform 0.25s ease-in,
+                opacity 0.2s ease-in;
+}
+
+.welcome-logo {
+    animation: welcomeLogoIn 0.6s 0.3s ease-out both;
+}
+
+@keyframes welcomeLogoIn {
     from {
         opacity: 0;
-        transform: scale(0.8);
+        transform: scale(0.6);
     }
 
     to {
