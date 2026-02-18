@@ -1531,7 +1531,7 @@ details[open] .accordion-icon {
 
 /* Mobile specific buttons */
 .mobile-only-btn {
-    display: none;
+    display: none !important;
 }
 
 /* Scroll to Top Button */
