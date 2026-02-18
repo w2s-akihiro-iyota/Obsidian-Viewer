@@ -1,3 +1,10 @@
+const DEBOUNCE_DELAY = 300;
+const SCROLL_SHOW_THRESHOLD = 300;
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 600;
+const TOAST_DURATION = 3000;
+const COPY_FEEDBACK_DURATION = 2000;
+
 let MESSAGES = { errors: {}, warnings: {}, system: {} };
 let tutorialMode = false;
 let tutorialStep = 0;
@@ -14,14 +21,303 @@ async function loadMessages() {
     }
 }
 
+// --- Toast Notification System ---
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    // Icon based on type
+    let icon = '';
+    if (type === 'success') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    else if (type === 'error') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+
+    toast.innerHTML = `${icon}<span>${message}</span>`;
+
+    container.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    // Remove after duration
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, TOAST_DURATION);
+}
+
+// --- Clipboard Utility ---
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (err) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+            document.execCommand('copy');
+        } catch (fallbackErr) {
+            throw fallbackErr;
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+}
+
+// --- Table Copy ---
+async function copyTableToClipboard(table, format) {
+    let content = '';
+
+    if (format === 'excel') {
+        // TSV format for Excel
+        const rows = table.querySelectorAll('tr');
+        rows.forEach((row) => {
+            const cells = row.querySelectorAll('th, td');
+            const rowData = Array.from(cells).map(cell => {
+                let text = cell.textContent.trim();
+                // Escape quotes and wrap in quotes if necessary for Excel
+                if (text.includes('"') || text.includes('\t') || text.includes('\n')) {
+                    text = '"' + text.replace(/"/g, '""') + '"';
+                }
+                return text;
+            }).join('\t');
+            content += rowData + '\n';
+        });
+    } else if (format === 'markdown') {
+        // Markdown format
+        const headerRow = table.querySelector('thead tr');
+        const bodyRows = table.querySelectorAll('tbody tr');
+
+        // Header
+        if (headerRow) {
+            const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim());
+            content += '| ' + headers.join(' | ') + ' |\n';
+            content += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+        }
+
+        // Body
+        bodyRows.forEach((row) => {
+            const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim());
+            content += '| ' + cells.join(' | ') + ' |\n';
+        });
+    }
+
+    // Copy to clipboard with fallback
+    try {
+        await copyToClipboard(content);
+    } catch (err) {
+        console.error('Copy failed:', err);
+        alert('Copy failed. Please try manually.');
+    }
+}
+
+function addTableCopyButtons() {
+    const tables = document.querySelectorAll('.markdown-body table');
+
+    tables.forEach((table) => {
+        // Create wrapper for table
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-wrapper';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+
+        // Create copy button container
+        const copyContainer = document.createElement('div');
+        copyContainer.className = 'table-copy-container';
+
+        // Create copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'table-copy-btn';
+        copyBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>Copy</span>
+        `;
+
+        // Create dropdown menu
+        const dropdown = document.createElement('div');
+        dropdown.className = 'table-copy-dropdown';
+        dropdown.innerHTML = `
+            <button type="button" class="copy-option" data-format="excel">Excel Format</button>
+            <button type="button" class="copy-option" data-format="markdown">Markdown Format</button>
+        `;
+
+        copyContainer.appendChild(copyBtn);
+        copyContainer.appendChild(dropdown);
+        wrapper.insertBefore(copyContainer, table);
+
+        // Toggle dropdown
+        copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            dropdown.classList.toggle('show');
+        });
+
+        // Copy options
+        dropdown.querySelectorAll('.copy-option').forEach((option) => {
+            option.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const format = option.dataset.format;
+                await copyTableToClipboard(table, format);
+                dropdown.classList.remove('show');
+
+                // Show feedback
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Copied!</span>
+                `;
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, COPY_FEEDBACK_DURATION);
+            });
+        });
+    });
+}
+
+// --- Mermaid Diagram Rendering ---
+function initMermaid() {
+    if (typeof window.mermaid === 'undefined') {
+        // Mermaid not loaded yet, retry after a short delay
+        setTimeout(initMermaid, 100);
+        return;
+    }
+
+    // Find all mermaid code blocks (first run)
+    const mermaidBlocks = document.querySelectorAll('pre code.language-mermaid');
+    mermaidBlocks.forEach((block) => {
+        const pre = block.parentElement;
+        const mermaidCode = block.textContent;
+
+        // Create a div for mermaid rendering
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = mermaidCode;
+        // Store original code for re-rendering
+        mermaidDiv.setAttribute('data-original-code', mermaidCode);
+
+        // Replace the pre element with the mermaid div
+        pre.replaceWith(mermaidDiv);
+    });
+
+    updateMermaidConfig();
+}
+
+function updateMermaidConfig() {
+    if (typeof window.mermaid === 'undefined') return;
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    let mermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
+
+    // If 'default' (Adaptive), choose based on current mode
+    if (mermaidTheme === 'default') {
+        if (currentTheme === 'light' || currentTheme === 'letter') {
+            mermaidTheme = 'default';
+        } else {
+            mermaidTheme = 'dark';
+        }
+    }
+
+    try {
+        // Re-initialize mermaid
+        window.mermaid.initialize({
+            startOnLoad: false,
+            theme: mermaidTheme,
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: false },
+            sequence: { useMaxWidth: false },
+            gantt: { useMaxWidth: false },
+            journey: { useMaxWidth: false },
+            timeline: { useMaxWidth: false },
+            class: { useMaxWidth: false },
+            state: { useMaxWidth: false },
+            erd: { useMaxWidth: false }
+        });
+
+        // Re-render
+        const mermaidDivs = document.querySelectorAll('.mermaid');
+        mermaidDivs.forEach(div => {
+            // Restore original code
+            const originalCode = div.getAttribute('data-original-code');
+            if (originalCode) {
+                div.textContent = originalCode;
+                div.removeAttribute('data-processed'); // Clear processed flag
+            }
+        });
+
+        if (mermaidDivs.length > 0) {
+            window.mermaid.run().catch(err => console.error('Mermaid render error:', err));
+        }
+    } catch (e) {
+        console.error('Mermaid update error:', e);
+    }
+}
+
+// --- Celebration Animation ---
+function showCelebration() {
+    const overlay = document.createElement('div');
+    overlay.className = 'celebration-overlay';
+
+    // 紙吹雪パーティクル
+    const colors = ['#7b61ff', '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#01a3a4'];
+    const shapes = ['square', 'circle', 'strip'];
+    for (let i = 0; i < 60; i++) {
+        const piece = document.createElement('div');
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        piece.className = `confetti-piece confetti-${shape}`;
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.left = Math.random() * 100 + '%';
+        piece.style.animationDelay = Math.random() * 0.8 + 's';
+        piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+        overlay.appendChild(piece);
+    }
+
+    // お祝いメッセージ
+    const msg = document.createElement('div');
+    msg.className = 'celebration-message';
+    msg.innerHTML = `
+        <div class="celebration-icon">&#127881;</div>
+        <div class="celebration-title">セットアップ完了！</div>
+        <div class="celebration-subtitle">ファイルの同期が正常に完了しました。<br>さっそくファイルを閲覧してみましょう。</div>
+    `;
+    overlay.appendChild(msg);
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    // クリックまたは5秒後にフェードアウト
+    let removed = false;
+    const remove = () => {
+        if (removed) return;
+        removed = true;
+        overlay.classList.add('fade-out');
+        overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+        setTimeout(() => overlay.remove(), 600);
+    };
+
+    overlay.addEventListener('click', remove);
+    setTimeout(remove, 5000);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Load messages first
     await loadMessages();
-    // Theme toggle functionality
-    // Theme toggle functionality (Now handled via Settings)
-    // const themeToggleBtn = document.getElementById('theme-toggle'); 
-    // Kept comment for reference or valid if we re-add a quick toggle later.
-
     // Load saved theme or default to dark
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -39,234 +335,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     updateHighlightTheme(savedTheme);
 
-    // Old toggle logic removed
-
-    // Mermaid diagram rendering
-
-    // Mermaid diagram rendering
-    function initMermaid() {
-        if (typeof window.mermaid === 'undefined') {
-            // Mermaid not loaded yet, retry after a short delay
-            setTimeout(initMermaid, 100);
-            return;
-        }
-
-        // Find all mermaid code blocks (first run)
-        const mermaidBlocks = document.querySelectorAll('pre code.language-mermaid');
-        mermaidBlocks.forEach((block) => {
-            const pre = block.parentElement;
-            const mermaidCode = block.textContent;
-
-            // Create a div for mermaid rendering
-            const mermaidDiv = document.createElement('div');
-            mermaidDiv.className = 'mermaid';
-            mermaidDiv.textContent = mermaidCode;
-            // Store original code for re-rendering
-            mermaidDiv.setAttribute('data-original-code', mermaidCode);
-
-            // Replace the pre element with the mermaid div
-            pre.replaceWith(mermaidDiv);
-        });
-
-        updateMermaidConfig();
-    }
-
-    function updateMermaidConfig() {
-        if (typeof window.mermaid === 'undefined') return;
-
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        let mermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
-
-        // If 'default' (Adaptive), choose based on current mode
-        if (mermaidTheme === 'default') {
-            if (currentTheme === 'light' || currentTheme === 'letter') {
-                mermaidTheme = 'default';
-            } else {
-                mermaidTheme = 'dark';
-            }
-        }
-
-        try {
-            // Re-initialize mermaid
-            window.mermaid.initialize({
-                startOnLoad: false,
-                theme: mermaidTheme,
-                securityLevel: 'loose',
-                flowchart: { useMaxWidth: false },
-                sequence: { useMaxWidth: false },
-                gantt: { useMaxWidth: false },
-                journey: { useMaxWidth: false },
-                timeline: { useMaxWidth: false },
-                class: { useMaxWidth: false },
-                state: { useMaxWidth: false },
-                erd: { useMaxWidth: false }
-            });
-
-            // Re-render
-            const mermaidDivs = document.querySelectorAll('.mermaid');
-            mermaidDivs.forEach(div => {
-                // Restore original code
-                const originalCode = div.getAttribute('data-original-code');
-                if (originalCode) {
-                    div.textContent = originalCode;
-                    div.removeAttribute('data-processed'); // Clear processed flag
-                }
-            });
-
-            if (mermaidDivs.length > 0) {
-                window.mermaid.run().catch(err => console.error('Mermaid render error:', err));
-            }
-        } catch (e) {
-            console.error('Mermaid update error:', e);
-        }
-    }
-
     // Expose for usage in settings
     window.updateMermaidConfig = updateMermaidConfig;
 
     // Initialize mermaid after page load
     initMermaid();
-
-    // Render task lists after page load
-    // renderTaskLists(); // Removed: handled by backend markdown plugin
-
-    // Table copy functionality
-    function addTableCopyButtons() {
-        const tables = document.querySelectorAll('.markdown-body table');
-
-        tables.forEach((table) => {
-            // Create wrapper for table
-            const wrapper = document.createElement('div');
-            wrapper.className = 'table-wrapper';
-            table.parentNode.insertBefore(wrapper, table);
-            wrapper.appendChild(table);
-
-            // Create copy button container
-            const copyContainer = document.createElement('div');
-            copyContainer.className = 'table-copy-container';
-
-            // Create copy button
-            const copyBtn = document.createElement('button');
-            copyBtn.type = 'button';
-            copyBtn.className = 'table-copy-btn';
-            copyBtn.innerHTML = `
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span>Copy</span>
-            `;
-
-            // Create dropdown menu
-            const dropdown = document.createElement('div');
-            dropdown.className = 'table-copy-dropdown';
-            dropdown.innerHTML = `
-                <button type="button" class="copy-option" data-format="excel">Excel Format</button>
-                <button type="button" class="copy-option" data-format="markdown">Markdown Format</button>
-            `;
-
-            copyContainer.appendChild(copyBtn);
-            copyContainer.appendChild(dropdown);
-            wrapper.insertBefore(copyContainer, table);
-
-            // Toggle dropdown
-            copyBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                dropdown.classList.toggle('show');
-            });
-
-            // Close dropdown when clicking outside
-            document.addEventListener('click', () => {
-                dropdown.classList.remove('show');
-            });
-
-            // Copy options
-            dropdown.querySelectorAll('.copy-option').forEach((option) => {
-                option.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const format = option.dataset.format;
-                    await copyTableToClipboard(table, format);
-                    dropdown.classList.remove('show');
-
-                    // Show feedback
-                    const originalText = copyBtn.innerHTML;
-                    copyBtn.innerHTML = `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        <span>Copied!</span>
-                    `;
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalText;
-                    }, 2000);
-                });
-            });
-        });
-    }
-
-    async function copyTableToClipboard(table, format) {
-        let content = '';
-
-        if (format === 'excel') {
-            // TSV format for Excel
-            const rows = table.querySelectorAll('tr');
-            rows.forEach((row) => {
-                const cells = row.querySelectorAll('th, td');
-                const rowData = Array.from(cells).map(cell => {
-                    let text = cell.textContent.trim();
-                    // Escape quotes and wrap in quotes if necessary for Excel
-                    if (text.includes('"') || text.includes('\t') || text.includes('\n')) {
-                        text = '"' + text.replace(/"/g, '""') + '"';
-                    }
-                    return text;
-                }).join('\t');
-                content += rowData + '\n';
-            });
-        } else if (format === 'markdown') {
-            // Markdown format
-            const headerRow = table.querySelector('thead tr');
-            const bodyRows = table.querySelectorAll('tbody tr');
-
-            // Header
-            if (headerRow) {
-                const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim());
-                content += '| ' + headers.join(' | ') + ' |\n';
-                content += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
-            }
-
-            // Body
-            bodyRows.forEach((row) => {
-                const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim());
-                content += '| ' + cells.join(' | ') + ' |\n';
-            });
-        }
-
-        // Copy to clipboard with fallback
-        try {
-            await navigator.clipboard.writeText(content);
-            console.log('Table copied to clipboard in', format, 'format via API');
-        } catch (err) {
-            console.warn('Clipboard API failed, trying fallback:', err);
-            const textarea = document.createElement('textarea');
-            textarea.value = content;
-            textarea.style.position = 'fixed'; // Avoid scrolling
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                console.log('Table copied to clipboard via execCommand');
-            } catch (fallbackErr) {
-                console.error('Fallback copy failed:', fallbackErr);
-                alert('Copy failed. Please try manually.');
-            } finally {
-                document.body.removeChild(textarea);
-            }
-        }
-    }
 
     // Add copy buttons to all tables
     addTableCopyButtons();
@@ -281,11 +354,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             pageMenuDropdown.classList.toggle('show');
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', () => {
-            pageMenuDropdown.classList.remove('show');
         });
     }
 
@@ -345,21 +413,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error("Failed to copy URL:", err);
 
                 // Final fallback using textarea
-                const textarea = document.createElement('textarea');
-                textarea.value = url;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                document.body.appendChild(textarea);
-                textarea.focus();
-                textarea.select();
                 try {
-                    document.execCommand('copy');
+                    await copyToClipboard(url);
                     showToast(MESSAGES.system?.S002 || "URLをコピーしました", "success");
                 } catch (fallbackErr) {
                     console.error('Final fallback copy failed:', fallbackErr);
                     showToast(MESSAGES.system?.S003 || "コピーに失敗しました", "error");
-                } finally {
-                    document.body.removeChild(textarea);
                 }
             }
         });
@@ -371,7 +430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (scrollToTopBtn) {
         // Show/hide button based on scroll position
         window.addEventListener('scroll', () => {
-            if (window.pageYOffset > 300) {
+            if (window.pageYOffset > SCROLL_SHOW_THRESHOLD) {
                 scrollToTopBtn.classList.add('show');
             } else {
                 scrollToTopBtn.classList.remove('show');
@@ -394,36 +453,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         button.type = 'button';
         button.className = 'copy-button';
         button.textContent = 'Copy';
-        button.style.position = 'absolute';
-        button.style.top = '5px';
-        button.style.right = '5px';
-        button.style.padding = '5px 10px';
-        button.style.background = 'rgba(255, 255, 255, 0.1)';
-        button.style.border = 'none';
-        button.style.borderRadius = '4px';
-        button.style.color = '#dcddde';
-        button.style.cursor = 'pointer';
-        button.style.fontSize = '12px';
-        button.style.opacity = '0';
-        button.style.transition = 'opacity 0.2s';
 
-        pre.style.position = 'relative';
         pre.appendChild(button);
 
-        pre.addEventListener('mouseenter', () => {
-            button.style.opacity = '1';
-        });
-
-        pre.addEventListener('mouseleave', () => {
-            button.style.opacity = '0';
-        });
-
         button.addEventListener('click', () => {
-            navigator.clipboard.writeText(codeBlock.textContent).then(() => {
+            copyToClipboard(codeBlock.textContent).then(() => {
                 button.textContent = 'Copied!';
                 setTimeout(() => {
                     button.textContent = 'Copy';
-                }, 2000);
+                }, COPY_FEEDBACK_DURATION);
             });
         });
     });
@@ -466,16 +504,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                             searchResults.style.display = 'block';
                         }
                     });
-            }, 300); // 300ms debounce
+            }, DEBOUNCE_DELAY);
         });
 
-        // Hide results when clicking outside
-        document.addEventListener('click', (e) => {
-            if (searchResults && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-                searchResults.style.display = 'none';
-            }
-        });
     }
+
+    // Unified dropdown/search close listener (delegated)
+    document.addEventListener('click', (e) => {
+        // Close all table copy dropdowns
+        document.querySelectorAll('.table-copy-dropdown.show').forEach(d => d.classList.remove('show'));
+
+        // Close page menu dropdown
+        const pageMenuDropdown = document.getElementById('page-menu-dropdown');
+        if (pageMenuDropdown && !e.target.closest('#page-menu-btn')) {
+            pageMenuDropdown.classList.remove('show');
+        }
+
+        // Close search results
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        if (searchResults && searchInput && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
 
     // View toggle functionality (List/Grid)
     // Use event delegation for dynamic buttons
@@ -637,7 +688,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 }
                             }
                         });
-                }, 300);
+                }, DEBOUNCE_DELAY);
             });
         }
     }
@@ -1661,51 +1712,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
     }
 
-    function showCelebration() {
-        const overlay = document.createElement('div');
-        overlay.className = 'celebration-overlay';
-
-        // 紙吹雪パーティクル
-        const colors = ['#7b61ff', '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#01a3a4'];
-        const shapes = ['square', 'circle', 'strip'];
-        for (let i = 0; i < 60; i++) {
-            const piece = document.createElement('div');
-            const shape = shapes[Math.floor(Math.random() * shapes.length)];
-            piece.className = `confetti-piece confetti-${shape}`;
-            piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            piece.style.left = Math.random() * 100 + '%';
-            piece.style.animationDelay = Math.random() * 0.8 + 's';
-            piece.style.animationDuration = (2 + Math.random() * 2) + 's';
-            overlay.appendChild(piece);
-        }
-
-        // お祝いメッセージ
-        const msg = document.createElement('div');
-        msg.className = 'celebration-message';
-        msg.innerHTML = `
-            <div class="celebration-icon">&#127881;</div>
-            <div class="celebration-title">セットアップ完了！</div>
-            <div class="celebration-subtitle">ファイルの同期が正常に完了しました。<br>さっそくファイルを閲覧してみましょう。</div>
-        `;
-        overlay.appendChild(msg);
-
-        document.body.appendChild(overlay);
-        requestAnimationFrame(() => overlay.classList.add('active'));
-
-        // クリックまたは5秒後にフェードアウト
-        let removed = false;
-        const remove = () => {
-            if (removed) return;
-            removed = true;
-            overlay.classList.add('fade-out');
-            overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
-            setTimeout(() => overlay.remove(), 600);
-        };
-
-        overlay.addEventListener('click', remove);
-        setTimeout(remove, 5000);
-    }
-
     // --- File Sync Logic (Localhost Only) ---
     function initSyncSettings() {
         const syncTabBtn = document.querySelector('[data-tab="files"]');
@@ -2014,37 +2020,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- Toast Notification System ---
-    function showToast(message, type = 'info') {
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            document.body.appendChild(container);
-        }
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-
-        // Icon based on type
-        let icon = '';
-        if (type === 'success') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-        else if (type === 'error') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
-
-        toast.innerHTML = `${icon}<span>${message}</span>`;
-
-        container.appendChild(toast);
-
-        // Animate in
-        requestAnimationFrame(() => toast.classList.add('show'));
-
-        // Remove after 3s
-        setTimeout(() => {
-            toast.classList.remove('show');
-            toast.addEventListener('transitionend', () => toast.remove());
-        }, 3000);
-    }
-
     // --- Sidebar Resize Logic ---
     function initSidebarResize() {
         const resizer = document.getElementById('sidebar-resizer');
@@ -2074,8 +2049,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             let newWidth = e.clientX - activityBarWidth;
 
             // Constraints
-            if (newWidth < 200) newWidth = 200;
-            if (newWidth > 600) newWidth = 600;
+            if (newWidth < SIDEBAR_MIN_WIDTH) newWidth = SIDEBAR_MIN_WIDTH;
+            if (newWidth > SIDEBAR_MAX_WIDTH) newWidth = SIDEBAR_MAX_WIDTH;
 
             document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
         });

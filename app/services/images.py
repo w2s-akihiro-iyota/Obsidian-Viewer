@@ -4,7 +4,7 @@ from pathlib import Path
 from app.config import STATICS_DIR
 from app import cache
 
-def find_image_in_static(filename: str):
+def find_image_in_static(filename: str) -> str | None:
     if filename in cache.IMAGE_PATH_CACHE:
         return cache.IMAGE_PATH_CACHE[filename]
     
@@ -34,7 +34,7 @@ def find_image_in_static(filename: str):
                     
     return None
 
-def process_obsidian_images(content: str):
+def process_obsidian_images(content: str) -> str:
     def replace_image(match):
         full_match = match.group(0)
         filename = match.group(1).strip()

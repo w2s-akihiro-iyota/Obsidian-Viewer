@@ -10,7 +10,7 @@ from app.events import config_updated_event
 
 from app.utils.messages import get_system, get_error
 
-def load_config():
+def load_config() -> SyncConfig:
     """設定ファイルを読み込みます。存在しない場合はデフォルトを作成します。"""
     if not CONFIG_FILE.exists():
         print(f"Config file not found at {CONFIG_FILE}. Creating default.", flush=True)
@@ -33,7 +33,7 @@ def load_config():
         print(f"Failed to load config: {e}", flush=True)
         return SyncConfig()
 
-def save_config(config: SyncConfig):
+def save_config(config: SyncConfig) -> None:
     """設定をファイルに保存します。"""
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -41,7 +41,7 @@ def save_config(config: SyncConfig):
     except Exception as e:
         print(f"Failed to save config: {e}", flush=True)
 
-def perform_sync(config: SyncConfig):
+def perform_sync(config: SyncConfig) -> tuple[bool, str]:
     """ファイルの同期を実行します。"""
     print(f"Starting perform_sync. sync_enabled={config.sync_enabled}, content_src={config.content_src}", flush=True)
     if not config.sync_enabled:
@@ -80,7 +80,6 @@ def perform_sync(config: SyncConfig):
                 shutil.copy2(item, dest_item)
 
         # 2. 画像の同期（オプション）
-        from app.config import IMAGES_DIR
         if config.images_src:
             img_src_path = Path(config.images_src)
             if img_src_path.exists() and IMAGES_DIR.exists():
@@ -113,7 +112,7 @@ def perform_sync(config: SyncConfig):
 
 background_task_running = False
 
-async def background_sync_loop():
+async def background_sync_loop() -> None:
     """バックグラウンド同期ループ。"""
     global background_task_running
     if background_task_running:

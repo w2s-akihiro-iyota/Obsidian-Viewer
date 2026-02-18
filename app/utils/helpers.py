@@ -1,6 +1,6 @@
 from fastapi import Request, HTTPException
 
-def is_request_local(request: Request):
+def is_request_local(request: Request) -> bool:
     """
     リクエストがローカルアドレスからのものか確認します。
     """
@@ -21,14 +21,14 @@ def is_request_local(request: Request):
     # Docker環境下では、ホスト名が異なる場合があります。
     return False
 
-def check_localhost(request: Request):
+def check_localhost(request: Request) -> None:
     """
     リクエストがローカルからでない場合、403 エラーをスローします。
     """
     if not is_request_local(request):
         raise HTTPException(status_code=403, detail="Forbidden: Access allowed only from localhost")
 
-def get_client_ip(request: Request):
+def get_client_ip(request: Request) -> str:
     """
     クライアントの IP アドレスを取得します（プロキシを考慮）。
     """

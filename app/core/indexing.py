@@ -2,12 +2,12 @@ from pathlib import Path
 import re
 import yaml
 import os
-import math
+
 from datetime import datetime, timezone, timedelta
-from app.config import CONTENT_DIR, METADATA_CACHE_FILE
+from app.config import CONTENT_DIR
 from app import cache
 
-def parse_frontmatter(content):
+def parse_frontmatter(content: str) -> tuple[dict, str]:
     frontmatter = {}
     body = content
     if content.startswith('\ufeff'):
@@ -27,7 +27,12 @@ def parse_frontmatter(content):
                 pass
     return frontmatter, body
 
-def parse_obsidian_date(date_str):
+def is_published(frontmatter: dict) -> bool:
+    """frontmatterのpublishフィールドがTrueかどうかを判定します。"""
+    publish_state = frontmatter.get('publish')
+    return publish_state is True or str(publish_state).lower() == 'true'
+
+def parse_obsidian_date(date_str: str) -> datetime | None:
     if not date_str: return None
     if isinstance(date_str, (datetime, datetime.date)): return date_str
     
@@ -45,7 +50,7 @@ def parse_obsidian_date(date_str):
             continue
     return None
 
-def get_all_files(directory: Path, relative_to: Path, use_cache=True):
+def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
     files_list = []
     
     # Simple recursive walk
@@ -77,11 +82,8 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
                 tags = [t.strip().lstrip('#') for t in tags if t and str(t).strip()]
                 
                 # Check Visibility
-                publish_state = frontmatter.get('publish')
-                is_published = False
-                if publish_state is True or str(publish_state).lower() == 'true':
-                    is_published = True
-                
+                published = is_published(frontmatter)
+
                 files_list.append({
                     "name": file,
                     "path": str(rel_path).replace('\\', '/'),
@@ -89,7 +91,7 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
                     "mtime": mtime,
                     "updated": mtime.strftime("%Y-%m-%d %H:%M"),
                     "tags": tags,
-                    "published": is_published,
+                    "published": published,
                     "frontmatter": frontmatter,
                     "preview": preview
                 })
@@ -98,7 +100,7 @@ def get_all_files(directory: Path, relative_to: Path, use_cache=True):
     files_list.sort(key=lambda x: x['mtime'], reverse=True)
     return files_list
 
-def get_file_tree(directory: Path, relative_to: Path, published_only: bool = False):
+def get_file_tree(directory: Path, relative_to: Path, published_only: bool = False) -> list[dict]:
     tree = []
     
     # Helper to find or create folder in tree
@@ -133,10 +135,8 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
                 frontmatter, _ = parse_frontmatter(content)
                 
                 # Filter if published_only
-                if published_only:
-                    publish_state = frontmatter.get('publish')
-                    if not (publish_state is True or str(publish_state).lower() == 'true'):
-                        continue
+                if published_only and not is_published(frontmatter):
+                    continue
 
                 title = frontmatter.get('title') or rel_path.stem
                 current_level.append({
@@ -156,14 +156,14 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     sort_tree(tree)
     return tree
 
-def refresh_global_caches():
+def refresh_global_caches() -> None:
     # Clear per-file caches on full refresh
     cache.IMAGE_PATH_CACHE = {}
     cache.MARKDOWN_CACHE = {}
     
     # Refresh all files metadata
-    cache.GLOBAL_FILE_CACHE = get_all_files(CONTENT_DIR, CONTENT_DIR, use_cache=False)
+    cache.GLOBAL_FILE_CACHE = get_all_files(CONTENT_DIR, CONTENT_DIR)
     # Refresh tree views (Admin: all, Public: published only)
     cache.GLOBAL_FILE_TREE_CACHE = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=False)
     cache.GLOBAL_FILE_TREE_CACHE_PUBLIC = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=True)
-    print(f"Global cache refreshed: {len(cache.GLOBAL_FILE_CACHE)} files indexed.")
+    print(f"Global cache refreshed: {len(cache.GLOBAL_FILE_CACHE)} files indexed.", flush=True)

@@ -254,10 +254,9 @@
 
     <!-- Welcome Modal (localhost only, first visit) -->
     {% if is_localhost %}
-    <div id="welcome-modal" class="settings-modal" style="z-index: 3100;">
-        <div class="settings-modal-container"
-            style="max-width: 560px; height: auto; max-height: 90vh; display: flex; flex-direction: column;">
-            <div class="settings-header line-bottom" style="padding: 16px 24px;">
+    <div id="welcome-modal" class="settings-modal">
+        <div class="settings-modal-container">
+            <div class="settings-header line-bottom">
                 <h3>Obsidian Viewer へようこそ</h3>
                 <button id="close-welcome-modal" class="close-modal-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -267,22 +266,21 @@
                     </svg>
                 </button>
             </div>
-            <div class="settings-body" style="flex: 1; overflow-y: auto; padding: 24px;">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <img src="/static/images/logo.png" alt="Obsidian Viewer Logo" class="welcome-logo"
-                        style="width: 80px; height: 80px;">
-                    <p style="margin-top: 12px; color: var(--text-muted); font-size: 0.95rem;">
+            <div class="settings-body">
+                <div class="welcome-hero">
+                    <img src="/static/images/logo.png" alt="Obsidian Viewer Logo" class="welcome-logo">
+                    <p class="welcome-desc">
                         Obsidianのナレッジベースをブラウザで快適に閲覧・検索できるビューアーです。
                     </p>
                 </div>
 
-                <h4 style="margin-bottom: 12px;">クイックスタート</h4>
+                <h4 class="welcome-section-title">クイックスタート</h4>
                 <div class="sync-steps">
                     <div class="step">
                         <span class="step-num">1</span>
                         <div>
                             <p><b>同期を設定する</b></p>
-                            <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 4px;">
+                            <p class="welcome-step-desc">
                                 サイドバー下の歯車アイコンから設定を開き、Obsidian Vaultのフォルダパスを指定して同期してください。
                             </p>
                         </div>
@@ -291,7 +289,7 @@
                         <span class="step-num">2</span>
                         <div>
                             <p><b>ファイルを閲覧する</b></p>
-                            <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 4px;">
+                            <p class="welcome-step-desc">
                                 同期完了後、サイドバーのファイルツリーからMarkdownファイルを選択して閲覧できます。
                             </p>
                         </div>
@@ -300,19 +298,18 @@
                         <span class="step-num">3</span>
                         <div>
                             <p><b>検索・カスタマイズ</b></p>
-                            <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 4px;">
+                            <p class="welcome-step-desc">
                                 上部の検索バーでファイルを素早く検索。テーマやフォントサイズも設定から変更できます。
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 20px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                    <p style="font-size: 0.85em; margin: 0; color: var(--text-muted);">
+                <div class="welcome-hint">
+                    <p>
                         <b>ヒント：</b>詳しい使い方は、サイドバー下の
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            style="vertical-align: middle;">
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                             <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -321,8 +318,8 @@
                     </p>
                 </div>
 
-                <div style="text-align: center; margin-top: 24px;">
-                    <button id="welcome-start-btn" class="primary-btn" style="padding: 10px 32px; font-size: 1rem;">
+                <div class="welcome-cta">
+                    <button id="welcome-start-btn" class="primary-btn">
                         はじめる
                     </button>
                 </div>
@@ -332,10 +329,9 @@
     {% endif %}
 
     <!-- Help Modal -->
-    <div id="help-modal" class="settings-modal" style="z-index: 3000;">
-        <div class="settings-modal-container"
-            style="max-width: 700px; height: 90vh; display: flex; flex-direction: column;">
-            <div class="settings-header line-bottom" style="padding: 16px 24px;">
+    <div id="help-modal" class="settings-modal">
+        <div class="settings-modal-container">
+            <div class="settings-header line-bottom">
                 <h3>ヘルプと使い方</h3>
                 <button id="close-help-modal" class="close-modal-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -345,14 +341,14 @@
                     </svg>
                 </button>
             </div>
-            <div class="settings-body" style="flex: 1; overflow-y: auto; padding: 0;">
+            <div class="settings-body">
                 <div class="help-tabs line-bottom">
                     <button class="help-tab active" data-tab="basic">基本操作</button>
                     <button class="help-tab" data-tab="sync">同期手順</button>
                     <button class="help-tab" data-tab="display">表示機能</button>
                 </div>
 
-                <div class="help-content-wrapper" style="padding: 24px;">
+                <div class="help-content-wrapper">
                     <!-- Basic Operations Panel -->
                     <div id="help-panel-basic" class="help-panel active">
                         <section class="settings-section">
@@ -421,14 +417,13 @@
                                     <span class="step-num">3</span>
                                     <div>
                                         <p>同期したいローカルパスを入力します。</p>
-                                        <p style="font-size: 0.9em; margin: 16px 0 0 0; color: var(--text-muted);">
+                                        <p class="help-tip" style="margin-top: 16px;">
                                             ・<b>コンテンツの元フォルダ：</b> Markdownファイルが格納されているフォルダ<br />
                                             ・<b>画像の元フォルダ：</b> 画像ファイルが格納されているフォルダ（任意）<br />
                                             ・<b>公開URL：</b>他の人にページのURLを公開する際に、アクセス可能なドメイン名を含めたベースURLを設定してください（任意）
                                         </p>
-                                        <div class="help-tip"
-                                            style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                                            <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
+                                        <div class="help-tip">
+                                            <p>
                                                 <b>ヒント：</b><br />
                                                 パスは、インストール時に編集した <code>docker-compose.yml</code> の
                                                 <code>ObsidianVault</code> フォルダからの相対パスで指定してください。<br />
@@ -441,9 +436,8 @@
                                     <span class="step-num">4</span>
                                     <div>
                                         <p>「<b>設定を保存</b>」ボタンをクリックして設定を保存する。</p>
-                                        <div class="help-tip"
-                                            style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                                            <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
+                                        <div class="help-tip">
+                                            <p>
                                                 <b>ヒント：</b><br />
                                                 設定を保存するだけで、同期は即時に行われません。<br />
                                                 各パスの入力チェックが行われ、問題が無ければ保存に成功します。
@@ -455,9 +449,8 @@
                                     <span class="step-num">5</span>
                                     <div>
                                         <p>「<b>今すぐ同期</b>」ボタンをクリックして、設定したパスからファイルの同期を開始する。</p>
-                                        <div class="help-tip"
-                                            style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border-left: 4px solid var(--accent-purple); border-radius: 4px;">
-                                            <p style="font-size: 0.9em; margin: 0; color: var(--text-muted);">
+                                        <div class="help-tip">
+                                            <p>
                                                 <b>ヒント：</b><br />
                                                 同期は即時に行われますが、ファイルの変更を検知するには、数秒程度の待ち時間がかかることがあります。
                                             </p>
@@ -474,10 +467,8 @@
                             <h4>表示機能とカスタマイズ</h4>
                             <p>設定画面では、閲覧体験を向上させるための様々なカスタマイズが可能です。</p>
 
-                            <div class="help-image-container"
-                                style="margin: 16px 0; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
-                                <img src="/static/images/samples/help-display-settings.png" alt="表示設定画面"
-                                    style="width: 100%; display: block;">
+                            <div class="help-image-container">
+                                <img src="/static/images/samples/help-display-settings.png" alt="表示設定画面">
                             </div>
 
                             <ul class="help-list">
@@ -927,7 +918,7 @@
             </div>
         </div>
         <!-- Directory Browser Modal -->
-        <div id="dir-browser-modal" class="settings-modal" style="z-index: 1200;">
+        <div id="dir-browser-modal" class="settings-modal" style="z-index: var(--z-dropdown);">
             <div class="settings-modal-container" style="max-width: 600px; height: 500px;">
                 <div class="settings-content-wrapper" style="padding: 24px;">
                     <div class="settings-header line-bottom">

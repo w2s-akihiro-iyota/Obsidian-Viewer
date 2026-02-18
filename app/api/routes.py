@@ -7,12 +7,13 @@ import math
 from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR, TEMPLATES_DIR
 from app import cache
-from app.core.indexing import get_all_files, get_file_tree, refresh_global_caches
+from app.core.indexing import get_all_files, get_file_tree, refresh_global_caches, parse_frontmatter, is_published
+from app.models.sync import SyncConfig
 from app.core.markdown import md, process_admonition_blocks
 from app.services.images import process_obsidian_images
 from app.services.sync import load_config, save_config, perform_sync
 from app.events import config_updated_event
-from app.utils.helpers import is_request_local, get_client_ip
+from app.utils.helpers import is_request_local
 from app.utils.messages import get_all_messages, get_error, get_warning
 
 router = APIRouter()
@@ -30,20 +31,15 @@ async def preview_file(request: Request, path: str):
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     
+    with open(full_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
     # Validation for non-localhost
     is_localhost = is_request_local(request)
     if not is_localhost:
-        # We need to check if this file is published
-        from app.core.indexing import parse_frontmatter
-        with open(full_path, "r", encoding="utf-8") as f:
-            content = f.read()
         frontmatter, _ = parse_frontmatter(content)
-        is_published = frontmatter.get('publish') is True or str(frontmatter.get('publish')).lower() == 'true'
-        if not is_published:
+        if not is_published(frontmatter):
             raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
-    else:
-        with open(full_path, "r", encoding="utf-8") as f:
-            content = f.read()
     
     # Pre-process admonitions
     content = process_admonition_blocks(content)
@@ -125,7 +121,6 @@ async def read_item(request: Request, file_path: str):
         with open(full_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        from app.core.indexing import parse_frontmatter
         frontmatter, body = parse_frontmatter(content)
         title = frontmatter.get('title') or Path(file_path).stem
         
@@ -146,9 +141,9 @@ async def read_item(request: Request, file_path: str):
     is_localhost = is_request_local(request)
     file_tree = cache.GLOBAL_FILE_TREE_CACHE if is_localhost else cache.GLOBAL_FILE_TREE_CACHE_PUBLIC
 
-    is_published = frontmatter.get('publish') is True or str(frontmatter.get('publish')).lower() == 'true'
+    is_pub = is_published(frontmatter)
 
-    if not is_localhost and not is_published:
+    if not is_localhost and not is_pub:
         raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
 
     return templates.TemplateResponse("view.html", {
@@ -159,7 +154,7 @@ async def read_item(request: Request, file_path: str):
         "filename": Path(file_path).name,
         "file_tree": file_tree,
         "frontmatter": frontmatter,
-        "is_published": is_published,
+        "is_published": is_pub,
         "is_localhost": is_localhost
     })
 
@@ -176,8 +171,7 @@ async def api_save_sync_settings(request: Request):
         return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
     
     data = await request.json()
-    from app.models.sync import SyncConfig
-    
+
     errors = {}
     warnings = {}
 
@@ -246,7 +240,6 @@ async def api_get_public_config():
 async def api_sync_now(request: Request):
     if not is_request_local(request):
         return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
-    from app.services.sync import load_config, perform_sync
     config = load_config()
     success, message = perform_sync(config)
     # 同期後、定期実行のタイマーをリセットさせるために通知を送る
@@ -287,7 +280,7 @@ async def api_search(request: Request, q: str = ""):
 @router.get("/api/list-dirs")
 async def list_dirs(request: Request, path: str = ""):
     if not is_request_local(request):
-        return JSONResponse({"status": "error", "message": "Only local access allowed"}, status_code=403)
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
     
     try:
         if not path:
