@@ -1,4 +1,6 @@
 let MESSAGES = { errors: {}, warnings: {}, system: {} };
+let tutorialMode = false;
+let tutorialStep = 0;
 
 async function loadMessages() {
     try {
@@ -725,7 +727,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (closeWelcomeBtn) closeWelcomeBtn.addEventListener('click', closeWelcome);
-        if (welcomeStartBtn) welcomeStartBtn.addEventListener('click', closeWelcome);
+        if (welcomeStartBtn) {
+            welcomeStartBtn.addEventListener('click', () => {
+                tutorialMode = true;
+                tutorialStep = 0;
+                closeWelcome();
+                // 閉じアニメーション完了後に設定モーダルのファイル同期タブを開く
+                setTimeout(() => {
+                    const settingsModal = document.getElementById('settings-modal');
+                    if (!settingsModal) return;
+                    settingsModal.classList.add('active');
+                    document.body.classList.add('no-scroll');
+                    // ファイル同期タブをアクティブにする
+                    const navItems = document.querySelectorAll('.settings-nav-item');
+                    const tabPanes = document.querySelectorAll('.settings-tab-pane');
+                    navItems.forEach(nav => nav.classList.toggle('active', nav.getAttribute('data-tab') === 'files'));
+                    tabPanes.forEach(pane => pane.classList.toggle('active', pane.id === 'settings-tab-files'));
+                    // チュートリアル開始
+                    setTimeout(() => startTutorial(), 100);
+                }, 350);
+            });
+        }
 
         welcomeModal.addEventListener('click', (e) => {
             if (e.target === welcomeModal) closeWelcome();
@@ -1232,6 +1254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             closeBtn.addEventListener('click', () => {
                 settingsModal.classList.remove('active');
                 document.body.classList.remove('no-scroll'); // Unlock scroll
+                if (tutorialMode) endTutorial();
             });
         }
 
@@ -1240,6 +1263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (e.target === settingsModal) {
                     settingsModal.classList.remove('active');
                     document.body.classList.remove('no-scroll'); // Unlock scroll
+                    if (tutorialMode) endTutorial();
                 }
             });
         }
@@ -1549,6 +1573,139 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // --- Tutorial Logic ---
+    const TUTORIAL_STEPS = [
+        {
+            step: 1,
+            title: 'ステップ 1: 同期を有効化',
+            message: '「ファイル同期を有効にする」のトグルをONにしてください。',
+            highlight: '.setting-custom-toggle'
+        },
+        {
+            step: 2,
+            title: 'ステップ 2: パスを入力して保存',
+            message: 'コンテンツの元フォルダ、画像の元フォルダ、公開URLを入力し、「設定を保存」ボタンをクリックしてください。<br><span style="font-size:0.8em;color:var(--text-muted);">※ 画像フォルダと公開URLは任意です</span>',
+            highlight: '#save-sync-settings-btn'
+        },
+        {
+            step: 3,
+            title: 'ステップ 3: 今すぐ同期',
+            message: '「今すぐ同期」ボタンをクリックして、ファイルを同期しましょう。',
+            highlight: '#manual-sync-btn'
+        }
+    ];
+
+    function startTutorial() {
+        const banner = document.getElementById('tutorial-banner');
+        if (!banner) return;
+        banner.style.display = 'block';
+        tutorialStep = 1;
+        updateTutorialStep(1);
+
+        const skipBtn = document.getElementById('tutorial-skip-btn');
+        if (skipBtn) {
+            skipBtn.onclick = () => endTutorial();
+        }
+    }
+
+    function updateTutorialStep(step) {
+        tutorialStep = step;
+        const contentEl = document.getElementById('tutorial-step-content');
+        const dots = document.querySelectorAll('.tutorial-dot');
+        const connectors = document.querySelectorAll('.tutorial-connector');
+
+        // インジケータ更新
+        dots.forEach(dot => {
+            const dotStep = parseInt(dot.dataset.step);
+            dot.classList.remove('active', 'completed');
+            if (dotStep < step) dot.classList.add('completed');
+            else if (dotStep === step) dot.classList.add('active');
+        });
+        connectors.forEach((conn, i) => {
+            conn.classList.toggle('completed', i < step - 1);
+        });
+
+        // ステップ内容更新
+        const stepData = TUTORIAL_STEPS[step - 1];
+        if (contentEl && stepData) {
+            contentEl.innerHTML = `
+                <div class="tutorial-step-title">${stepData.title}</div>
+                <div class="tutorial-step-message">${stepData.message}</div>
+            `;
+        }
+
+        // ハイライト更新
+        document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+        if (stepData && stepData.highlight) {
+            const target = document.querySelector(stepData.highlight);
+            if (target) target.classList.add('tutorial-highlight');
+        }
+    }
+
+    function advanceTutorial() {
+        if (!tutorialMode) return;
+        const nextStep = tutorialStep + 1;
+        if (nextStep > TUTORIAL_STEPS.length) {
+            endTutorial();
+            showCelebration();
+        } else {
+            updateTutorialStep(nextStep);
+        }
+    }
+
+    function endTutorial() {
+        tutorialMode = false;
+        tutorialStep = 0;
+        const banner = document.getElementById('tutorial-banner');
+        if (banner) banner.style.display = 'none';
+        document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+    }
+
+    function showCelebration() {
+        const overlay = document.createElement('div');
+        overlay.className = 'celebration-overlay';
+
+        // 紙吹雪パーティクル
+        const colors = ['#7b61ff', '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#01a3a4'];
+        const shapes = ['square', 'circle', 'strip'];
+        for (let i = 0; i < 60; i++) {
+            const piece = document.createElement('div');
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            piece.className = `confetti-piece confetti-${shape}`;
+            piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.left = Math.random() * 100 + '%';
+            piece.style.animationDelay = Math.random() * 0.8 + 's';
+            piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+            overlay.appendChild(piece);
+        }
+
+        // お祝いメッセージ
+        const msg = document.createElement('div');
+        msg.className = 'celebration-message';
+        msg.innerHTML = `
+            <div class="celebration-icon">&#127881;</div>
+            <div class="celebration-title">セットアップ完了！</div>
+            <div class="celebration-subtitle">ファイルの同期が正常に完了しました。<br>さっそくファイルを閲覧してみましょう。</div>
+        `;
+        overlay.appendChild(msg);
+
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('active'));
+
+        // クリックまたは5秒後にフェードアウト
+        let removed = false;
+        const remove = () => {
+            if (removed) return;
+            removed = true;
+            overlay.classList.add('fade-out');
+            overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+            setTimeout(() => overlay.remove(), 600);
+        };
+
+        overlay.addEventListener('click', remove);
+        setTimeout(remove, 5000);
+    }
+
     // --- File Sync Logic (Localhost Only) ---
     function initSyncSettings() {
         const syncTabBtn = document.querySelector('[data-tab="files"]');
@@ -1597,6 +1754,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         enabledToggle.addEventListener('change', () => {
             toggleInputs(enabledToggle.checked);
+            if (tutorialMode && tutorialStep === 1 && enabledToggle.checked) {
+                setTimeout(() => advanceTutorial(), 500);
+            }
         });
 
         autoSyncToggle.addEventListener('change', () => {
@@ -1606,6 +1766,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Save Button Handler
         if (saveBtn) {
             saveBtn.addEventListener('click', () => {
+                if (tutorialMode && tutorialStep === 2) {
+                    saveConfig();
+                    return;
+                }
                 const confirmed = confirm("この設定を保存してもよろしいですか？");
                 if (confirmed) {
                     saveConfig();
@@ -1642,6 +1806,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const data = await res.json();
                     if (res.ok) {
                         showToast(MESSAGES.system?.S001 || "設定を保存しました", "success");
+                        if (tutorialMode && tutorialStep === 2) {
+                            setTimeout(() => advanceTutorial(), 600);
+                        }
                         if (data.warnings) {
                             Object.keys(data.warnings).forEach(key => {
                                 const errorEl = document.getElementById(`${key}-error`);
@@ -1762,7 +1929,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Manual Sync Logic (rest of the code)
         manualSyncBtn.addEventListener('click', () => {
-            if (!confirm("ファイルと画像の同期を今すぐ実行しますか？")) return;
+            if (!(tutorialMode && tutorialStep === 3)) {
+                if (!confirm("ファイルと画像の同期を今すぐ実行しますか？")) return;
+            }
 
             manualSyncBtn.classList.add('loading');
             manualSyncBtn.disabled = true;
@@ -1773,6 +1942,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (res.ok) {
                         lastSyncLabel.textContent = `最終同期: ${data.last_sync}`;
                         showToast("同期が完了しました", "success");
+                        if (tutorialMode && tutorialStep === 3) {
+                            setTimeout(() => advanceTutorial(), 800);
+                        }
                     } else {
                         throw new Error(data.message || "Sync failed");
                     }
