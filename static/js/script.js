@@ -1647,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const nextStep = tutorialStep + 1;
         if (nextStep > TUTORIAL_STEPS.length) {
             endTutorial();
-            showCelebration();
+            // お祝いアニメーションはトップページ遷移後に表示（同期ハンドラ側で処理）
         } else {
             updateTutorialStep(nextStep);
         }
@@ -1754,8 +1754,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         enabledToggle.addEventListener('change', () => {
             toggleInputs(enabledToggle.checked);
-            if (tutorialMode && tutorialStep === 1 && enabledToggle.checked) {
-                setTimeout(() => advanceTutorial(), 500);
+            if (enabledToggle.checked) {
+                // 有効化: チュートリアル進行
+                if (tutorialMode && tutorialStep === 1) {
+                    setTimeout(() => advanceTutorial(), 500);
+                }
+            } else {
+                // 無効化: 確認の上で即座に保存
+                if (!confirm("ファイル同期を無効にしますか？")) {
+                    enabledToggle.checked = true;
+                    toggleInputs(true);
+                    return;
+                }
+                disableSync();
             }
         });
 
@@ -1836,6 +1847,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .catch(err => {
                     console.error("Failed to save config", err);
                     showToast(MESSAGES.errors?.E004 || "設定の保存に失敗しました", "error");
+                });
+        }
+
+        // 同期を無効化して全設定を初期化
+        function disableSync() {
+            const config = {
+                sync_enabled: false,
+                auto_sync_enabled: false,
+                content_src: "",
+                images_src: "",
+                base_url: "",
+                interval_minutes: 60,
+                last_sync: ""
+            };
+
+            fetch('/api/sync/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+                .then(async res => {
+                    if (res.ok) {
+                        // UI側の入力値も初期化
+                        autoSyncToggle.checked = false;
+                        contentSrcInput.value = '';
+                        imagesSrcInput.value = '';
+                        if (baseUrlInput) baseUrlInput.value = '';
+                        intervalSelect.value = 60;
+                        lastSyncLabel.textContent = '';
+                        toggleAutoSyncInputs(false);
+                        clearErrors();
+                        showToast("ファイル同期を無効にしました", "success");
+                    } else {
+                        throw new Error("Save failed");
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to disable sync", err);
+                    showToast("設定の保存に失敗しました", "error");
+                    // 保存失敗時はトグルを元に戻す
+                    enabledToggle.checked = true;
+                    toggleInputs(true);
                 });
         }
 
@@ -1940,11 +1993,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .then(async res => {
                     const data = await res.json();
                     if (res.ok) {
-                        lastSyncLabel.textContent = `最終同期: ${data.last_sync}`;
-                        showToast("同期が完了しました", "success");
                         if (tutorialMode && tutorialStep === 3) {
-                            setTimeout(() => advanceTutorial(), 800);
+                            endTutorial();
+                            // チュートリアル完了時のみお祝いアニメーションを表示
+                            localStorage.setItem('showCelebration', 'true');
                         }
+                        window.location.href = '/';
                     } else {
                         throw new Error(data.message || "Sync failed");
                     }
@@ -2055,5 +2109,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSettings();
     initSyncSettings();
     initSidebarResize();
+
+    // 同期完了後のリダイレクトでお祝いアニメーションを表示
+    if (localStorage.getItem('showCelebration') === 'true') {
+        localStorage.removeItem('showCelebration');
+        setTimeout(() => showCelebration(), 300);
+    }
 
 });

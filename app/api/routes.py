@@ -180,31 +180,35 @@ async def api_save_sync_settings(request: Request):
     
     errors = {}
     warnings = {}
-    
-    # 1. Validation (Errors)
-    content_src = data.get('content_src', '')
-    if not content_src:
-        errors['content-src'] = get_error("E001")
-    else:
-        p = Path(content_src)
-        if not p.exists() or not p.is_dir():
-            errors['content-src'] = get_error("E002")
-            
-    images_src = data.get('images_src', '')
-    if images_src:
-        p = Path(images_src)
-        if not p.exists() or not p.is_dir():
-            errors['images-src'] = get_error("E002")
-            
-    # 2. Warnings (Non-blocking)
-    images_src_trimmed = images_src.strip()
-    if not images_src_trimmed:
-        warnings['images-src'] = get_warning("W001")
 
-    base_url = data.get('base_url', '').strip()
-    if not base_url:
-        warnings['base-url'] = get_warning("W002")
-        
+    sync_enabled = data.get('sync_enabled', False)
+
+    # 同期が有効な場合のみパスのバリデーションを実行
+    if sync_enabled:
+        # 1. Validation (Errors)
+        content_src = data.get('content_src', '')
+        if not content_src:
+            errors['content-src'] = get_error("E001")
+        else:
+            p = Path(content_src)
+            if not p.exists() or not p.is_dir():
+                errors['content-src'] = get_error("E002")
+
+        images_src = data.get('images_src', '')
+        if images_src:
+            p = Path(images_src)
+            if not p.exists() or not p.is_dir():
+                errors['images-src'] = get_error("E002")
+
+        # 2. Warnings (Non-blocking)
+        images_src_trimmed = images_src.strip()
+        if not images_src_trimmed:
+            warnings['images-src'] = get_warning("W001")
+
+        base_url = data.get('base_url', '').strip()
+        if not base_url:
+            warnings['base-url'] = get_warning("W002")
+
     if errors:
         return JSONResponse({
             "status": "error",
