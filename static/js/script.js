@@ -701,6 +701,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Welcome Modal Logic (localhost only, first visit)
+    const welcomeModal = document.getElementById('welcome-modal');
+    if (welcomeModal) {
+        const closeWelcomeBtn = document.getElementById('close-welcome-modal');
+        const welcomeStartBtn = document.getElementById('welcome-start-btn');
+
+        // 初回判定: localStorageにフラグがなければ表示
+        if (!localStorage.getItem('welcomeShown')) {
+            welcomeModal.classList.add('active');
+            document.body.classList.add('no-scroll');
+        }
+
+        const closeWelcome = () => {
+            welcomeModal.classList.remove('active');
+            document.body.classList.remove('no-scroll');
+            localStorage.setItem('welcomeShown', 'true');
+        };
+
+        if (closeWelcomeBtn) closeWelcomeBtn.addEventListener('click', closeWelcome);
+        if (welcomeStartBtn) welcomeStartBtn.addEventListener('click', closeWelcome);
+
+        welcomeModal.addEventListener('click', (e) => {
+            if (e.target === welcomeModal) closeWelcome();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && welcomeModal.classList.contains('active')) {
+                closeWelcome();
+            }
+        });
+    }
+
     // Sidebar Logic (Toggle, Tabs, TOC)
     const sidebar = document.getElementById('sidebar');
     const sidebarToggleBtns = document.querySelectorAll('.sidebar-toggle-btn');
