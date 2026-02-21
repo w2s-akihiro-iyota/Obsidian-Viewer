@@ -14,7 +14,7 @@ from app.services.images import process_obsidian_images
 from app.services.sync import load_config, save_config, perform_sync
 from app.events import config_updated_event
 from app.utils.helpers import is_request_local
-from app.utils.messages import get_all_messages, get_error, get_warning
+from app.utils.messages import get_all_messages, get_error, get_warning, get_system
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -86,12 +86,10 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     paginated_files = filtered[start:end]
 
     is_localhost = is_request_local(request)
-    file_tree = cache.GLOBAL_FILE_TREE_CACHE if is_localhost else cache.GLOBAL_FILE_TREE_CACHE_PUBLIC
 
     return templates.TemplateResponse("index.html", {
         "request": request,
         "files": paginated_files,
-        "file_tree": file_tree,
         "total_items": total,
         "current_page": page,
         "total_pages": pages,
@@ -139,7 +137,6 @@ async def read_item(request: Request, file_path: str):
         }
 
     is_localhost = is_request_local(request)
-    file_tree = cache.GLOBAL_FILE_TREE_CACHE if is_localhost else cache.GLOBAL_FILE_TREE_CACHE_PUBLIC
 
     is_pub = is_published(frontmatter)
 
@@ -152,7 +149,6 @@ async def read_item(request: Request, file_path: str):
         "content": html,
         "file_path": file_path,
         "filename": Path(file_path).name,
-        "file_tree": file_tree,
         "frontmatter": frontmatter,
         "is_published": is_pub,
         "is_localhost": is_localhost
@@ -313,3 +309,86 @@ async def list_dirs(request: Request, path: str = ""):
         }
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+# --- Editor Endpoints (localhost only) ---
+
+@router.get("/editor", response_class=HTMLResponse)
+async def editor_page(request: Request):
+    """エディタページを表示する（localhost限定）"""
+    if not is_request_local(request):
+        raise HTTPException(status_code=403, detail=get_error("E101"))
+
+    return templates.TemplateResponse("editor.html", {
+        "request": request,
+        "is_localhost": True
+    })
+
+
+@router.post("/api/editor/preview")
+async def editor_preview(request: Request):
+    """Markdownプレビューを返す（localhost限定）"""
+    if not is_request_local(request):
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
+
+    data = await request.json()
+    content = data.get("content", "")
+
+    if not content.strip():
+        return HTMLResponse(content="<p style='color:var(--text-muted);'>プレビューするコンテンツがありません</p>")
+
+    # 既存のMarkdownレンダリングパイプラインを再利用
+    try:
+        content = process_admonition_blocks(content)
+        content = process_obsidian_images(content)
+        html = md.render(content)
+    except Exception as e:
+        print(f"[Editor] Preview render error: {e}", flush=True)
+        html = f"<p style='color:#ff6b6b;'>レンダリングエラー: {e}</p>"
+
+    return HTMLResponse(content=html)
+
+
+@router.post("/api/editor/save")
+async def editor_save(request: Request):
+    """Markdownファイルを保存する（localhost限定）"""
+    if not is_request_local(request):
+        return JSONResponse({"status": "error", "message": get_error("E101")}, status_code=403)
+
+    data = await request.json()
+    filename = data.get("filename", "").strip()
+    content = data.get("content", "")
+
+    # バリデーション: ファイル名必須
+    if not filename:
+        return JSONResponse({"status": "error", "message": get_error("E201")}, status_code=400)
+
+    # バリデーション: パストラバーサル防止・無効文字チェック
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return JSONResponse({"status": "error", "message": get_error("E202")}, status_code=400)
+
+    # Windows無効文字チェック
+    invalid_chars = '<>:"|?*'
+    if any(c in filename for c in invalid_chars):
+        return JSONResponse({"status": "error", "message": get_error("E202")}, status_code=400)
+
+    # .md 拡張子の自動付与
+    if not filename.endswith(".md"):
+        filename += ".md"
+
+    # コンテンツ空チェック
+    if not content.strip():
+        return JSONResponse({"status": "error", "message": get_error("E203")}, status_code=400)
+
+    file_path = CONTENT_DIR / filename
+    is_overwrite = file_path.exists()
+
+    # ファイル書き込み
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    # キャッシュ更新
+    refresh_global_caches()
+
+    message = get_system("S202") if is_overwrite else get_system("S201")
+    return {"status": "success", "message": message, "filename": filename}

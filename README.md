@@ -100,5 +100,57 @@ title: タイトル
 ```yaml
 ---
 tags: [tag1, tag2]
+publish: true
 ---
 ```
+
+### 記事の公開設定
+
+Obsidian Viewer は、外部（localhost以外）からアクセスされた場合、Frontmatter に `publish: true` が設定されたファイルのみを表示します。
+localhost からのアクセスでは、すべてのファイルが閲覧可能です。
+
+#### 方法1: Obsidian Linter プラグインで自動付与する（推奨）
+
+Obsidian のコミュニティプラグイン「**Linter**」を使うと、保存時に Frontmatter を自動挿入・管理できます。
+
+1. Obsidian の **設定 > コミュニティプラグイン** から「Linter」をインストールして有効化する
+2. Linter の設定画面を開き、**YAML > Default Value for YAML Key** に以下を設定する
+   - Key: `publish`
+   - Value: `true`
+3. これにより、ファイル保存時に `publish: true` が Frontmatter に自動追加される
+
+> **ヒント:** 特定のファイルを非公開にしたい場合は、手動で `publish: false` に変更してください。Linter は既に値がある場合は上書きしません。
+
+#### 方法2: 手動で Frontmatter に記述する
+
+Markdownファイルの先頭に、以下のように記述します。
+
+```yaml
+---
+publish: true
+---
+```
+
+`publish: true` のないファイルは、外部からアクセスした際に非公開（403エラー）となります。
+
+### 共有URLの設定
+
+記事ページの「URLをコピー」機能では、デフォルトで `http://localhost:8000/view/...` 形式のURLが生成されます。
+外部の人にURLを共有する場合は、**公開URL (Base URL)** を設定することで、コピーされるURLのドメイン部分を置換できます。
+
+#### 設定手順
+
+1. localhost でアプリにアクセスし、サイドバー下の **歯車アイコン** から設定画面を開く
+2. **システム > ファイル同期** タブを選択する
+3. 「**公開URL (Base URL)**」欄に、外部からアクセス可能なURLを入力する
+   - 例: `https://docs.example.com`
+4. 「**設定を保存**」をクリックする
+
+#### 動作例
+
+| 公開URL設定 | コピーされるURL |
+|---|---|
+| 未設定 | `http://localhost:8000/view/記事名.md` |
+| `https://docs.example.com` | `https://docs.example.com/view/記事名.md` |
+
+> **注意:** 公開URLは、ポートフォワーディングやリバースプロキシなどで外部からアクセスできる状態になっている必要があります。本設定はURLのコピー時の置換のみを行い、ネットワーク設定自体は変更しません。

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Markdown Editor - Obsidian Viewer{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/editor.css?v=20260221">
+<!-- KaTeX for Math -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+{% endblock %}
+
+{% block body_class %}page-editor{% endblock %}
+
+{% block container_class %}container-wide editor-container{% endblock %}
+
+{% block content %}
+<div class="editor-toolbar">
+    <div class="editor-toolbar-left">
+        <h2 class="editor-title">Markdown Editor</h2>
+    </div>
+    <div class="editor-toolbar-right">
+        <div class="editor-filename-group">
+            <input type="text" id="editor-filename" placeholder="ファイル名" autocomplete="off">
+            <span class="editor-filename-ext">.md</span>
+        </div>
+        <button id="editor-save-btn" class="primary-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span>保存</span>
+        </button>
+    </div>
+</div>
+
+<div class="editor-panes">
+    <div class="editor-pane editor-input-pane">
+        <div class="editor-pane-header">
+            <span>Editor</span>
+        </div>
+        <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false"></textarea>
+    </div>
+    <div class="editor-resizer" id="editor-resizer"></div>
+    <div class="editor-pane editor-preview-pane">
+        <div class="editor-pane-header">
+            <span>Preview</span>
+        </div>
+        <div id="editor-preview" class="markdown-body"></div>
+    </div>
+</div>
+{% endblock %}

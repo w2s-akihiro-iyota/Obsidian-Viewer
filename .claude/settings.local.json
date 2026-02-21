@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /d/SANDBOX/Antigravity/Obsidian-Viewer && docker-compose up -d --build 2>&1)"
+    ]
+  }
+}

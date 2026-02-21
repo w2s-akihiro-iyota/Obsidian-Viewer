@@ -1,0 +1,230 @@
+/* === Markdown Editor Styles === */
+
+/* mainタグはapp-wrapperのflex子要素。flex-growで全幅展開 */
+main.editor-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    width: 0;
+    max-width: 100% !important;
+    height: calc(100vh - 60px);
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+}
+
+/* readable-width設定時もエディタは全幅を維持 */
+body.readable-width main.editor-container {
+    max-width: 100% !important;
+}
+
+/* エディタページではfooter・サイドバーFilesタブを非表示 */
+body.page-editor footer {
+    display: none;
+}
+
+
+
+/* --- Toolbar --- */
+.editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    gap: 12px;
+}
+
+.editor-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-normal);
+    white-space: nowrap;
+}
+
+.editor-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.editor-filename-group {
+    display: flex;
+    align-items: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.editor-filename-group input {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    color: var(--text-normal);
+    outline: none;
+    width: 180px;
+    font-family: inherit;
+}
+
+.editor-filename-group input::placeholder {
+    color: var(--text-muted);
+}
+
+.editor-filename-ext {
+    padding: 6px 10px 6px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+#editor-save-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* --- Editor Panes --- */
+.editor-panes {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.editor-pane-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    user-select: none;
+}
+
+/* --- Textarea --- */
+#editor-textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    resize: none;
+    padding: 16px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--text-normal);
+    background: var(--bg-primary);
+    outline: none;
+    tab-size: 4;
+    overflow-y: auto;
+}
+
+#editor-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* --- Preview --- */
+.editor-preview-pane {
+    border-left: 1px solid var(--border-color);
+}
+
+#editor-preview {
+    flex: 1;
+    padding: 16px 24px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+}
+
+/* --- Resizer --- */
+.editor-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: var(--border-color);
+    flex-shrink: 0;
+    transition: background 0.15s;
+    position: relative;
+    z-index: 2;
+}
+
+.editor-resizer:hover,
+.editor-resizer.active {
+    background: var(--accent-purple);
+}
+
+/* --- Resizing state --- */
+body.editor-resizing {
+    cursor: col-resize !important;
+    user-select: none !important;
+}
+
+body.editor-resizing iframe,
+body.editor-resizing .editor-preview-pane {
+    pointer-events: none;
+}
+
+/* --- Mobile: Stack vertically --- */
+@media (max-width: 768px) {
+    .editor-panes {
+        flex-direction: column;
+    }
+
+    .editor-resizer {
+        width: 100%;
+        height: 4px;
+        cursor: row-resize;
+    }
+
+    .editor-preview-pane {
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .editor-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .editor-toolbar-right {
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    .editor-filename-group input {
+        width: 120px;
+    }
+}
+
+/* --- Activity Bar Editor Button --- */
+#editor-open-btn {
+    text-decoration: none;
+    color: inherit;
+}
+
+#editor-open-btn:hover {
+    color: var(--text-normal);
+}
