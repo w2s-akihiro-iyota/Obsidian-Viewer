@@ -289,6 +289,7 @@
                 <div class="help-tabs line-bottom">
                     <button class="help-tab active" data-tab="basic">基本操作</button>
                     <button class="help-tab" data-tab="sync">同期手順</button>
+                    <button class="help-tab" data-tab="publish">公開・共有</button>
                     <button class="help-tab" data-tab="display">表示機能</button>
                 </div>
 
@@ -401,6 +402,110 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Publish & Share Panel -->
+                    <div id="help-panel-publish" class="help-panel">
+                        <section class="settings-section">
+                            <h4>記事の公開設定</h4>
+                            <p>
+                                外部（localhost以外）からアクセスされた場合、Frontmatter に
+                                <code>publish: "TRUE"</code> が設定されたファイルのみが表示されます。<br />
+                                localhost からのアクセスでは、すべてのファイルが閲覧可能です。
+                            </p>
+
+                            <h5 style="margin-top: 20px;">方法1: Obsidian Linter プラグインで自動付与する（推奨）</h5>
+                            <p>Obsidian のコミュニティプラグイン「<b>Linter</b>」を使うと、保存時に Frontmatter を自動挿入できます。</p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>Obsidian の <b>設定 > コミュニティプラグイン</b> から「Linter」をインストールして有効化する</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p>Linter の設定画面を開き、<b>YAML > Insert YAML Attributes > トグル</b> を ON にして <b>Text tO insert のテキストボックス</b> に以下を設定する</p>
+                                        <p class="help-tip" style="margin-top: 8px;">
+                                            <code>publish: "TRUE"</code>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p>ファイル保存時に <code>publish: "TRUE"</code> が Frontmatter に自動追加される</p>
+                                        <div class="help-tip">
+                                            <p>
+                                                <b>ヒント：</b><br />
+                                                特定のファイルを非公開にしたい場合は、手動で <code>publish: "FALSE"</code> に変更するか、Obsidianから変更してください。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5 style="margin-top: 24px;">方法2: 手動で Frontmatter に記述する</h5>
+                            <p>Markdownファイルの先頭に、以下のように記述します。</p>
+                            <pre style="background: var(--bg-secondary); padding: 12px 16px; border-radius: 6px; margin: 12px 0; font-size: 0.85em; border: 1px solid var(--border-color);"><code>---
+publish: "TRUE"
+---</code></pre>
+                            <p style="font-size: 0.85em; color: var(--text-muted);">
+                                <code>publish: "TRUE"</code> のないファイルは、外部からのアクセス時に非公開（403エラー）となります。
+                            </p>
+                        </section>
+
+                        <section class="settings-section" style="margin-top: 24px;">
+                            <h4>共有URLの設定</h4>
+                            <p>
+                                記事ページの「URLをコピー」機能では、デフォルトで <code>localhost:8000</code> 形式のURLが生成されます。<br />
+                                外部の人にURLを共有する場合は、<b>公開URL (Base URL)</b> を設定することでドメイン部分を置換できます。
+                            </p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>サイドバー下の <b>歯車アイコン</b> から設定画面を開く</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p><b>システム > ファイル同期</b> タブを選択する</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p>「<b>公開URL (Base URL)</b>」欄に、外部からアクセス可能なURLを入力する</p>
+                                        <p class="help-tip" style="margin-top: 8px;">
+                                            例: <code>http://{PC名}:8000</code>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">4</span>
+                                    <div>
+                                        <p>「<b>設定を保存</b>」をクリックする</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="help-tip" style="margin-top: 16px;">
+                                <p>
+                                    <b>設定後の動作：</b><br />
+                                    URLコピー時に <code>http://localhost:8000/view/記事名.md</code> が
+                                    <code>https://{PC名}:8000/view/記事名.md</code> に自動置換されます。
+                                </p>
+                            </div>
+                            <div class="help-tip">
+                                <p>
+                                    <b>注意：</b><br />
+                                    公開URLは、ポートフォワーディングやリバースプロキシなどで外部からアクセスできる状態になっている必要があります。
+                                    本設定はURLコピー時の置換のみを行い、ネットワーク設定自体は変更しません。
+                                </p>
                             </div>
                         </section>
                     </div>
