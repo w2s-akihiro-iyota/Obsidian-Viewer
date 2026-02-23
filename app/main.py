@@ -1,6 +1,11 @@
 import asyncio
-import os
-print(f"[PID:{os.getpid()}] main.py loaded", flush=True)
+import logging
+
+from app.logging_config import setup_logging
+setup_logging()
+
+logger = logging.getLogger("app.main")
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.config import STATICS_DIR
@@ -18,6 +23,7 @@ app.include_router(router)
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("Obsidian Viewer starting up")
     # Initialize cache in a thread to avoid blocking startup
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, refresh_global_caches)

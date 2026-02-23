@@ -1,0 +1,471 @@
+    <!-- Help Modal -->
+    <div id="help-modal" class="settings-modal">
+        <div class="settings-modal-container">
+            <div class="settings-header line-bottom">
+                <h3>ヘルプと使い方</h3>
+                <button id="close-help-modal" class="close-modal-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="settings-body">
+                <div class="help-tabs line-bottom">
+                    <button class="help-tab active" data-tab="about">アプリについて</button>
+                    <button class="help-tab" data-tab="basic">基本操作</button>
+                    <button class="help-tab" data-tab="sync">同期手順</button>
+                    <button class="help-tab" data-tab="publish">公開・共有</button>
+                    <button class="help-tab" data-tab="display">表示機能</button>
+                </div>
+
+                <div class="help-content-wrapper">
+                    <!-- About Panel -->
+                    <div id="help-panel-about" class="help-panel active">
+                        <div class="about-content">
+                            <div class="about-header">
+                                <img src="/static/images/logo.png" alt="Logo" class="brand-logo"
+                                    style="width: 80px; height: 80px; margin-bottom: 16px;">
+                                <h4>Obsidian Viewer</h4>
+                                <p class="version">Version 1.1.0</p>
+                            </div>
+
+                            <div class="about-description">
+                                <p>
+                                    Obsidianで作成したナレッジベースを、ブラウザで美しく閲覧・検索するためのビューアーアプリケーションです。<br />
+                                    オリジナルのMarkdown記法を維持しつつ、高速な検索と快適な閲覧体験を提供します。
+                                </p>
+                                <p><strong>主な機能:</strong></p>
+                                <ul class="about-features">
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon
+                                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                                </polygon>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>高い再現性</strong><br>
+                                            Callout、ハイライト、画像埋め込みなど Obsidian 固有の Markdown 記法をサポート
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>内部リンク & リンクプレビュー</strong><br>
+                                            <code>[[ページ名]]</code> 形式の内部リンクを解決し、ホバー時にプレビューを表示
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="6" y1="3" x2="6" y2="15"></line>
+                                                <circle cx="18" cy="6" r="3"></circle>
+                                                <circle cx="6" cy="18" r="3"></circle>
+                                                <path d="M18 9a9 9 0 0 1-9 9"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>Mermaid 図形</strong><br>
+                                            フローチャート、シーケンス図などの描画に対応
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="4" y1="9" x2="20" y2="9"></line>
+                                                <line x1="4" y1="15" x2="20" y2="15"></line>
+                                                <line x1="10" y1="3" x2="8" y2="21"></line>
+                                                <line x1="16" y1="3" x2="14" y2="21"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>KaTeX 数式レンダリング</strong><br>
+                                            LaTeX 記法による数式の表示に対応
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="11" cy="11" r="8"></circle>
+                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>全文検索</strong><br>
+                                            ファイル名・タイトルによる高速なインクリメンタル検索
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>Markdown エディタ</strong><br>
+                                            ブラウザ上で記事を作成・編集し、リアルタイムでプレビュー確認が可能
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                                <path
+                                                    d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2">
+                                                </path>
+                                                <rect x="6" y="14" width="12" height="8"></rect>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>PDF 出力</strong><br>
+                                            印刷機能を使用した高品質な PDF 書き出し
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>テーブルコピー</strong><br>
+                                            表の内容をワンクリックでクリップボードにコピー
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>テーマ & カスタマイズ</strong><br>
+                                            4 種類のアプリテーマ、コードブロックテーマ、Mermaid テーマを個別に設定
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <polyline points="23 21 23 16 18 16"></polyline>
+                                                <path d="M20.41 12.41a9 9 0 0 0-14.82 2"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>ファイル同期</strong><br>
+                                            ローカルフォルダから Markdown や画像を自動・手動で同期
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>公開設定</strong><br>
+                                            Frontmatter の <code>publish</code> フラグで記事の公開・非公開を制御
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                                                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>レスポンシブデザイン</strong><br>
+                                            PC でもスマホでも快適な閲覧体験
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            <p class="copyright">&copy; 2026 a.iyota. All rights reserved.</p>
+                        </div>
+                    </div>
+
+                    <!-- Basic Operations Panel -->
+                    <div id="help-panel-basic" class="help-panel">
+                        <section class="settings-section">
+                            <h4>基本操作</h4>
+                            <div class="help-grid">
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg> ファイル閲覧</h5>
+                                    <p>左側のサイドバーでファイルを選択して閲覧します。<br />右上のアイコンから<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg> 検索</h5>
+                                    <p>上部の検索バーにキーワードを入力して、ファイルを即座に検索できます。<br />モバイルでは虫眼鏡アイコンをタップしてください。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg> PDF書き出し</h5>
+                                    <p>記事表示時の右上の「...」メニューから、現在の記事をPDFとして保存、または印刷することができます。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon
+                                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                            </polygon>
+                                        </svg> アウトライン</h5>
+                                    <p>サイドバーの<b>Outline</b>タブに、現在の記事の見出し一覧が表示されます。<br />クリックするとその場所へスクロールします。</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Sync Instructions Panel -->
+                    <div id="help-panel-sync" class="help-panel">
+                        <section class="settings-section">
+                            <h4>ファイル同期の設定手順</h4>
+                            <p>ローカルの Obsidian フォルダを本システムと同期させるには、以下の手順を行ってください。</p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>「サイドバー」下の <b>歯車マーク</b> アイコンをクリックして設定画面を開きます。</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p><b>「システム＞ファイル同期」</b>セクションで、「<b>ファイル同期を有効にする</b>」のトグルボタンを有効します。</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p>同期したいローカルパスを入力します。</p>
+                                        <p class="help-tip" style="margin-top: 16px;">
+                                            ・<b>コンテンツの元フォルダ：</b> Markdownファイルが格納されているフォルダ<br />
+                                            ・<b>画像の元フォルダ：</b> 画像ファイルが格納されているフォルダ（任意）<br />
+                                            ・<b>公開URL：</b>他の人にページのURLを公開する際に、アクセス可能なドメイン名を含めたベースURLを設定してください（任意）
+                                        </p>
+                                        <div class="help-tip">
+                                            <p>
+                                                <b>ヒント：</b><br />
+                                                パスは、インストール時に編集した <code>docker-compose.yml</code> の
+                                                <code>ObsidianVault</code> フォルダからの相対パスで指定してください。<br />
+                                                例：<code>/0_host_pc/003_Notes</code>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">4</span>
+                                    <div>
+                                        <p>「<b>設定を保存</b>」ボタンをクリックして設定を保存する。</p>
+                                        <div class="help-tip">
+                                            <p>
+                                                <b>ヒント：</b><br />
+                                                設定を保存するだけで、同期は即時に行われません。<br />
+                                                各パスの入力チェックが行われ、問題が無ければ保存に成功します。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">5</span>
+                                    <div>
+                                        <p>「<b>今すぐ同期</b>」ボタンをクリックして、設定したパスからファイルの同期を開始する。</p>
+                                        <div class="help-tip">
+                                            <p>
+                                                <b>ヒント：</b><br />
+                                                同期は即時に行われますが、ファイルの変更を検知するには、数秒程度の待ち時間がかかることがあります。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Publish & Share Panel -->
+                    <div id="help-panel-publish" class="help-panel">
+                        <section class="settings-section">
+                            <h4>記事の公開設定</h4>
+                            <p>
+                                外部（localhost以外）からアクセスされた場合、Frontmatter に
+                                <code>publish: "TRUE"</code> が設定されたファイルのみが表示されます。<br />
+                                localhost からのアクセスでは、すべてのファイルが閲覧可能です。
+                            </p>
+
+                            <h5 style="margin-top: 20px;">方法1: Obsidian Linter プラグインで自動付与する（推奨）</h5>
+                            <p>Obsidian のコミュニティプラグイン「<b>Linter</b>」を使うと、保存時に Frontmatter を自動挿入できます。</p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>Obsidian の <b>設定 > コミュニティプラグイン</b> から「Linter」をインストールして有効化する</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p>Linter の設定画面を開き、<b>YAML > Insert YAML Attributes > トグル</b> を ON にして <b>Text tO insert のテキストボックス</b> に以下を設定する</p>
+                                        <p class="help-tip" style="margin-top: 8px;">
+                                            <code>publish: "TRUE"</code>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p>ファイル保存時に <code>publish: "TRUE"</code> が Frontmatter に自動追加される</p>
+                                        <div class="help-tip">
+                                            <p>
+                                                <b>ヒント：</b><br />
+                                                特定のファイルを非公開にしたい場合は、手動で <code>publish: "FALSE"</code> に変更するか、Obsidianから変更してください。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5 style="margin-top: 24px;">方法2: 手動で Frontmatter に記述する</h5>
+                            <p>Markdownファイルの先頭に、以下のように記述します。</p>
+                            <pre style="background: var(--bg-secondary); padding: 12px 16px; border-radius: 6px; margin: 12px 0; font-size: 0.85em; border: 1px solid var(--border-color);"><code>---
+publish: "TRUE"
+---</code></pre>
+                            <p style="font-size: 0.85em; color: var(--text-muted);">
+                                <code>publish: "TRUE"</code> のないファイルは、外部からのアクセス時に非公開（403エラー）となります。
+                            </p>
+                        </section>
+
+                        <section class="settings-section" style="margin-top: 24px;">
+                            <h4>共有URLの設定</h4>
+                            <p>
+                                記事ページの「URLをコピー」機能では、デフォルトで <code>localhost:8000</code> 形式のURLが生成されます。<br />
+                                外部の人にURLを共有する場合は、<b>公開URL (Base URL)</b> を設定することでドメイン部分を置換できます。
+                            </p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>サイドバー下の <b>歯車アイコン</b> から設定画面を開く</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p><b>システム > ファイル同期</b> タブを選択する</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p>「<b>公開URL (Base URL)</b>」欄に、外部からアクセス可能なURLを入力する</p>
+                                        <p class="help-tip" style="margin-top: 8px;">
+                                            例: <code>http://{PC名}:8000</code>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">4</span>
+                                    <div>
+                                        <p>「<b>設定を保存</b>」をクリックする</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="help-tip" style="margin-top: 16px;">
+                                <p>
+                                    <b>設定後の動作：</b><br />
+                                    URLコピー時に <code>http://localhost:8000/view/記事名.md</code> が
+                                    <code>https://{PC名}:8000/view/記事名.md</code> に自動置換されます。
+                                </p>
+                            </div>
+                            <div class="help-tip">
+                                <p>
+                                    <b>注意：</b><br />
+                                    公開URLは、ポートフォワーディングやリバースプロキシなどで外部からアクセスできる状態になっている必要があります。
+                                    本設定はURLコピー時の置換のみを行い、ネットワーク設定自体は変更しません。
+                                </p>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Features Panel -->
+                    <div id="help-panel-display" class="help-panel">
+                        <section class="settings-section">
+                            <h4>表示機能とカスタマイズ</h4>
+                            <p>設定画面では、閲覧体験を向上させるための様々なカスタマイズが可能です。</p>
+
+                            <div class="help-image-container">
+                                <img src="/static/images/samples/help-display-settings.png" alt="表示設定画面">
+                            </div>
+
+                            <ul class="help-list">
+                                <li><strong>基本設定:</strong>
+                                    <ul>
+                                        <li><strong>フォントサイズ:</strong> 本文の文字サイズを「小・中・大」から選択できます。</li>
+                                        <li><strong>読みやすい行幅:</strong> 本文の最大幅を制限し、長文でも読みやすくします（トグルで切り替え）。</li>
+                                        <li><strong>行番号を表示:</strong> コードブロック内だけでなく、本文全体に行番号を表示します。</li>
+                                    </ul>
+                                </li>
+                                <li style="margin-top: 12px;"><strong>外観テーマ:</strong>
+                                    <ul>
+                                        <li><strong>アプリのテーマ:</strong> ダーク、ライト、レター、ミッドナイトから選択できます。</li>
+                                        <li><strong>コードブロックのテーマ:</strong> プログラミング言語などのコード表示の色合いを変更できます。</li>
+                                        <li><strong>Mermaid図のテーマ:</strong> フローチャートや図表の配色を、テーマに合わせて最適化できます。</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

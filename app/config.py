@@ -14,6 +14,12 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 METADATA_CACHE_FILE = BASE_DIR / "metadata_cache.json"
 CONFIG_FILE = BASE_DIR / "app" / "server_config.yaml"
 
+# Pagination
+PER_PAGE = 12
+
+# 同期時に削除しない保護対象
+PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
+
 # Ensure directories exist
 for d in [CONTENT_DIR, STATICS_DIR, IMAGES_DIR, TEMPLATES_DIR]:
     if not d.exists():

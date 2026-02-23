@@ -1,4 +1,8 @@
-from fastapi import Request, HTTPException
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+from app.utils.messages import get_error
+
 
 def is_request_local(request: Request) -> bool:
     """
@@ -12,27 +16,25 @@ def is_request_local(request: Request) -> bool:
 
     # プロキシ経由の場合、forwarded ヘッダーをチェック
     forwarded_for = request.headers.get("X-Forwarded-For")
-    
+
     client_host = request.client.host
-    
+
     if client_host == "127.0.0.1" or client_host == "localhost":
         return True
-    
+
     # Docker環境下では、ホスト名が異なる場合があります。
     return False
 
-def check_localhost(request: Request) -> None:
+
+def localhost_guard(request: Request) -> JSONResponse | None:
     """
-    リクエストがローカルからでない場合、403 エラーをスローします。
+    localhostからのアクセスでない場合、403 JSONResponseを返す。
+    JSON APIエンドポイントでの使用を想定。
+    使用例: if error := localhost_guard(request): return error
     """
     if not is_request_local(request):
-        raise HTTPException(status_code=403, detail="Forbidden: Access allowed only from localhost")
-
-def get_client_ip(request: Request) -> str:
-    """
-    クライアントの IP アドレスを取得します（プロキシを考慮）。
-    """
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host
+        return JSONResponse(
+            {"status": "error", "message": get_error("E101")},
+            status_code=403
+        )
+    return None

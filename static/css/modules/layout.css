@@ -1,0 +1,398 @@
+/* =========================================
+   Layout: Containers, Header, Brand, Theme Toggle, Footer,
+   Scroll-to-top, Activity Bar, Toggle Buttons,
+   View Header, Breadcrumb, Tag Filter
+   ========================================= */
+
+/* Layout */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.container-wide {
+    max-width: 1400px;
+    /* Wider layout for file view */
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 1001;
+}
+
+.theme-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: 6px;
+    color: var(--text-normal);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.theme-toggle-btn:hover {
+    background-color: var(--bg-primary);
+    border-color: var(--accent-purple);
+}
+
+.theme-toggle-btn .sun-icon {
+    display: none;
+}
+
+.theme-toggle-btn .moon-icon {
+    display: block;
+}
+
+:root[data-theme="light"] .theme-toggle-btn .sun-icon {
+    display: block;
+}
+
+:root[data-theme="light"] .theme-toggle-btn .moon-icon {
+    display: none;
+}
+
+.brand {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.brand:hover {
+    opacity: 0.8;
+    text-decoration: none;
+}
+
+.brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+
+.brand-line {
+    color: var(--text-normal);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* Header Search */
+.function-search-container {
+    position: relative;
+    width: 450px !important;
+    min-width: 450px !important;
+    overflow: visible !important;
+    /* Required to show results outside header */
+}
+
+/* Generic container used elsewhere (e.g. list screen) */
+.search-container:not(.function-search-container) {
+    position: relative;
+    width: 100%;
+}
+
+#search-input {
+    width: 100%;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-normal);
+    font-family: var(--font-family);
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+}
+
+.search-results {
+    position: absolute;
+    top: calc(100% + 5px) !important;
+    left: 0 !important;
+    width: 100% !important;
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    z-index: var(--z-toast) !important;
+    /* Ensure it stays on top */
+    display: none;
+    /* Managed by JS */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    visibility: visible !important;
+}
+
+.search-result-item {
+    display: block;
+    padding: 10px 12px;
+    color: var(--text-normal);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: var(--bg-primary);
+    color: var(--accent-purple);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background-color: var(--accent-purple);
+    color: white;
+    text-decoration: none;
+}
+
+.search-result-empty {
+    padding: 8px 12px;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 40px;
+}
+
+/* Scroll to Top Button */
+.scroll-to-top {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, var(--accent-purple), #9575ff);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: var(--z-dropdown);
+}
+
+.scroll-to-top.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scroll-to-top:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(123, 97, 255, 0.4);
+}
+
+.scroll-to-top:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.scroll-to-top svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Letter theme activity bar styles */
+:root[data-theme="letter"] .activity-bar {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-color);
+}
+
+/* Midnight theme activity bar styles */
+:root[data-theme="midnight"] .activity-bar {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-color);
+}
+
+/* Activity Bar (Ribbon) */
+.activity-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--activity-bar-width);
+    height: 100vh;
+    background-color: #1e1e1e;
+    /* Darker than sidebar */
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 2050;
+    /* Above sidebar resizer */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+}
+
+.activity-top,
+.activity-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.activity-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: var(--activity-bar-width);
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    position: relative;
+    border-radius: 0;
+}
+
+.activity-btn:hover {
+    color: var(--text-normal);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.activity-btn.active {
+    color: var(--accent-purple);
+}
+
+.activity-btn.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    background-color: var(--accent-purple);
+    border-radius: 0 3px 3px 0;
+}
+
+[data-theme="light"] .activity-bar {
+    background-color: #f0f0f0;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Header adjustments */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-left: 0;
+}
+
+
+
+/* Toggle Buttons */
+.sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-normal);
+    cursor: pointer;
+    padding: 8px;
+    /* Revert to standard padding */
+    border-radius: 6px;
+    display: flex;
+    transition: background-color 0.2s, color 0.2s;
+    margin: 0;
+    /* Remove extra margin */
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .sidebar-toggle-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Desktop Toggle (inside Activity Bar) */
+.desktop-toggle {
+    display: flex;
+}
+
+/* Mobile Toggle (inside Header) */
+.mobile-toggle {
+    display: none;
+    /* Hidden on Desktop */
+}
+
+/* ===== View Header & Breadcrumb ===== */
+.view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.breadcrumb {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb a {
+    color: var(--text-muted);
+}
+
+/* ===== Tag Filter ===== */
+.tag-filter-container {
+    padding: 10px 15px 0;
+}
+
+.tag-filter-input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+}

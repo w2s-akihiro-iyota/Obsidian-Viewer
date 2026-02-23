@@ -1,0 +1,51 @@
+/* =========================================
+   Responsive: General responsive adjustments,
+   Mobile list view adjustments
+   ========================================= */
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .function-search-container {
+        display: none !important;
+    }
+
+    .mobile-search-btn {
+        display: flex;
+    }
+
+    .header-actions {
+        gap: 12px;
+    }
+
+    .mobile-only-btn {
+        display: flex !important;
+    }
+
+    .brand-text {
+        font-size: 0.9rem;
+    }
+
+    .brand-logo {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* Mobile List View Adjustments */
+@media (max-width: 600px) {
+    .file-list:not(.grid-view) .file-link {
+        flex-direction: column;
+        height: auto;
+        min-height: auto;
+    }
+
+    .file-list:not(.grid-view) .file-preview {
+        width: 100%;
+        height: 160px;
+        margin-bottom: 8px;
+    }
+
+    .file-list:not(.grid-view) .file-content {
+        width: 100%;
+    }
+}

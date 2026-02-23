@@ -1,0 +1,88 @@
+/* =========================================
+   CSS Variables & Theme Definitions
+   ========================================= */
+
+:root {
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #252526;
+    --text-normal: #dcddde;
+    --text-muted: #858585;
+    --accent-purple: #7b61ff;
+    --border-color: #333;
+    --header-height: 50px;
+    --font-family: 'Consolas', "Noto Sans JP", "BIZ UDPGothic", "Meiryo UI", 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --code-font: 'Consolas', 'Monaco', 'Courier New', monospace;
+    --sidebar-width: 280px;
+    --activity-bar-width: 50px;
+    --heading-h1: #8B4513;
+    --heading-h2: #D2691E;
+    --heading-h3: #E6B422;
+    --heading-h4: #1976D2;
+    --heading-h5: #7B1FA2;
+    --heading-h6: #33691E;
+    --z-sidebar: 100;
+    --z-header: 100;
+    --z-dropdown: 1000;
+    --z-overlay: 2000;
+    --z-modal: 3000;
+    --z-toast: 9999;
+}
+
+/* Light Theme */
+:root[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --text-normal: #2e3338;
+    --text-muted: #717171;
+    --accent-purple: #7b61ff;
+    --border-color: #e0e0e0;
+    --heading-h1: #8B4513;
+    --heading-h2: #D2691E;
+    --heading-h3: #E6B422;
+    --heading-h4: #1976D2;
+    --heading-h5: #7B1FA2;
+    --heading-h6: #33691E;
+}
+
+/* Letter Theme (Warm/Paper-like) */
+:root[data-theme="letter"] {
+    --bg-primary: #fdfbf7;
+    /* Warm Paper White */
+    --bg-secondary: #f4f1ea;
+    /* Slightly darker warm beige */
+    --text-normal: #2c2925;
+    /* Soft Black/Dark Brown */
+    --text-muted: #5d5a56;
+    /* Muted Brownish Grey */
+    --accent-purple: #d4a373;
+    /* Warm Orange/Brown Accent */
+    --border-color: #e6e2da;
+    --heading-h1: #8B4513;
+    --heading-h2: #D2691E;
+    --heading-h3: #E6B422;
+    --heading-h4: #1976D2;
+    --heading-h5: #7B1FA2;
+    --heading-h6: #33691E;
+}
+
+/* Midnight Theme (Cool Dark) */
+:root[data-theme="midnight"] {
+    --bg-primary: #1a1b26;
+    /* Deep Night Blue */
+    --bg-secondary: #16161e;
+    /* Darker Night */
+    --text-normal: #a9b1d6;
+    /* Storm Grey */
+    --text-muted: #565f89;
+    /* Muted Blue Grey */
+    --accent-purple: #7aa2f7;
+    /* Bright Blue */
+    --border-color: #292e42;
+    /* Dark Blue Border */
+    --heading-h1: #8B4513;
+    --heading-h2: #D2691E;
+    --heading-h3: #E6B422;
+    --heading-h4: #1976D2;
+    --heading-h5: #7B1FA2;
+    --heading-h6: #33691E;
+}

@@ -1,0 +1,75 @@
+    <!-- Welcome Modal (localhost only, first visit) -->
+    {% if is_localhost %}
+    <div id="welcome-modal" class="settings-modal">
+        <div class="settings-modal-container">
+            <div class="settings-header line-bottom">
+                <h3>Obsidian Viewer へようこそ</h3>
+                <button id="close-welcome-modal" class="close-modal-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="settings-body">
+                <div class="welcome-hero">
+                    <img src="/static/images/logo.png" alt="Obsidian Viewer Logo" class="welcome-logo">
+                    <p class="welcome-desc">
+                        Obsidianのナレッジベースをブラウザで快適に閲覧・検索できるビューアーです。
+                    </p>
+                </div>
+
+                <h4 class="welcome-section-title">クイックスタート</h4>
+                <div class="sync-steps">
+                    <div class="step">
+                        <span class="step-num">1</span>
+                        <div>
+                            <p><b>同期を設定する</b></p>
+                            <p class="welcome-step-desc">
+                                サイドバー下の歯車アイコンから設定を開き、Obsidian Vaultのフォルダパスを指定して同期してください。
+                            </p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <span class="step-num">2</span>
+                        <div>
+                            <p><b>ファイルを閲覧する</b></p>
+                            <p class="welcome-step-desc">
+                                同期完了後、サイドバーのファイルツリーからMarkdownファイルを選択して閲覧できます。
+                            </p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <span class="step-num">3</span>
+                        <div>
+                            <p><b>検索・カスタマイズ</b></p>
+                            <p class="welcome-step-desc">
+                                上部の検索バーでファイルを素早く検索。テーマやフォントサイズも設定から変更できます。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="welcome-hint">
+                    <p>
+                        <b>ヒント：</b>詳しい使い方は、サイドバー下の
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        ヘルプアイコンからいつでも確認できます。
+                    </p>
+                </div>
+
+                <div class="welcome-cta">
+                    <button id="welcome-start-btn" class="primary-btn">
+                        はじめる
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}

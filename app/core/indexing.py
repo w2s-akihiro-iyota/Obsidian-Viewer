@@ -2,10 +2,13 @@ from pathlib import Path
 import re
 import yaml
 import os
+import logging
 
 from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR
 from app import cache
+
+logger = logging.getLogger("app.indexing")
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     frontmatter = {}
@@ -175,4 +178,4 @@ def refresh_global_caches() -> None:
         if stem not in cache.FILE_NAME_CACHE:
             cache.FILE_NAME_CACHE[stem] = f["path"]
 
-    print(f"Global cache refreshed: {len(cache.GLOBAL_FILE_CACHE)} files indexed.", flush=True)
+    logger.info("Global cache refreshed: %d files indexed.", len(cache.GLOBAL_FILE_CACHE))

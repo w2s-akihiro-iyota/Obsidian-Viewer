@@ -1,36 +1,39 @@
 import yaml
 import shutil
 import asyncio
+import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from app.config import CONFIG_FILE, CONTENT_DIR, STATICS_DIR, IMAGES_DIR
+from app.config import CONFIG_FILE, CONTENT_DIR, STATICS_DIR, IMAGES_DIR, PROTECTED_ITEMS
 from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 
 from app.utils.messages import get_system, get_error
 
+logger = logging.getLogger("app.sync")
+
 def load_config() -> SyncConfig:
     """設定ファイルを読み込みます。存在しない場合はデフォルトを作成します。"""
     if not CONFIG_FILE.exists():
-        print(f"Config file not found at {CONFIG_FILE}. Creating default.", flush=True)
+        logger.info("Config file not found at %s. Creating default.", CONFIG_FILE)
         # 例からコピー（存在する場合）
         example_file = Path(CONFIG_FILE).parent.parent / "server_config.yaml.example"
         if example_file.exists():
             try:
                 shutil.copy2(example_file, CONFIG_FILE)
             except Exception as e:
-                print(f"Failed to copy example config: {e}", flush=True)
+                logger.error("Failed to copy example config: %s", e)
                 save_config(SyncConfig())
         else:
             save_config(SyncConfig())
-            
+
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
             return SyncConfig(**data)
     except Exception as e:
-        print(f"Failed to load config: {e}", flush=True)
+        logger.error("Failed to load config: %s", e)
         return SyncConfig()
 
 def save_config(config: SyncConfig) -> None:
@@ -39,14 +42,14 @@ def save_config(config: SyncConfig) -> None:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.safe_dump(config.model_dump(), f)
     except Exception as e:
-        print(f"Failed to save config: {e}", flush=True)
+        logger.error("Failed to save config: %s", e)
 
 def perform_sync(config: SyncConfig) -> tuple[bool, str]:
     """ファイルの同期を実行します。"""
-    print(f"Starting perform_sync. sync_enabled={config.sync_enabled}, content_src={config.content_src}", flush=True)
+    logger.info("Starting sync. sync_enabled=%s, content_src=%s", config.sync_enabled, config.content_src)
     if not config.sync_enabled:
         return False, get_system("S104")
-    
+
     if not config.content_src:
         return False, get_error("E001")
 
@@ -56,12 +59,11 @@ def perform_sync(config: SyncConfig) -> tuple[bool, str]:
         if not src_path.exists():
             return False, get_error("E002")
 
-        print(f"Cleaning destination: {CONTENT_DIR}", flush=True)
-        PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
+        logger.info("Cleaning destination: %s", CONTENT_DIR)
         if CONTENT_DIR.exists():
             for item in CONTENT_DIR.iterdir():
                 if item.name in PROTECTED_ITEMS:
-                    print(f"Skipping protected item: {item.name}", flush=True)
+                    logger.debug("Skipping protected item: %s", item.name)
                     continue
                 try:
                     if item.is_dir():
@@ -69,9 +71,9 @@ def perform_sync(config: SyncConfig) -> tuple[bool, str]:
                     else:
                         item.unlink()
                 except Exception as e:
-                    print(f"Warning: Could not delete {item}: {e}", flush=True)
-        
-        print(f"Copying files from {src_path} to {CONTENT_DIR}", flush=True)
+                    logger.warning("Could not delete %s: %s", item, e)
+
+        logger.info("Copying files from %s to %s", src_path, CONTENT_DIR)
         for item in src_path.iterdir():
             dest_item = CONTENT_DIR / item.name
             if item.is_dir():
@@ -83,7 +85,7 @@ def perform_sync(config: SyncConfig) -> tuple[bool, str]:
         if config.images_src:
             img_src_path = Path(config.images_src)
             if img_src_path.exists() and IMAGES_DIR.exists():
-                print(get_system("S105"), flush=True)
+                logger.info(get_system("S105"))
                 for item in img_src_path.iterdir():
                     dest_item = IMAGES_DIR / item.name
                     if item.is_dir():
@@ -91,23 +93,21 @@ def perform_sync(config: SyncConfig) -> tuple[bool, str]:
                     else:
                         shutil.copy2(item, dest_item)
             else:
-                print(f"Skipping image sync", flush=True)
-        
+                logger.info("Skipping image sync (path not found)")
+
         # 3. 完了処理
         JST = timezone(timedelta(hours=9))
         config.last_sync = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-        print(f"Sync successful at {config.last_sync}", flush=True)
+        logger.info("Sync successful at %s", config.last_sync)
         save_config(config)
-        
+
         # キャッシュリフレッシュのトリガー
         refresh_global_caches()
         return True, get_system("S102")
 
     except Exception as e:
         error_msg = f"{get_system('S103')}: {str(e)}"
-        print(error_msg, flush=True)
-        import traceback
-        traceback.print_exc()
+        logger.error(error_msg, exc_info=True)
         return False, error_msg
 
 background_task_running = False
@@ -118,26 +118,26 @@ async def background_sync_loop() -> None:
     if background_task_running:
         return
     background_task_running = True
-    
-    print("Background sync loop started.", flush=True)
+
+    logger.info("Background sync loop started")
     while True:
         try:
             config = load_config()
             if config.sync_enabled and config.auto_sync_enabled:
-                print("Checking for auto-sync (Triggered)...", flush=True)
+                logger.info("Auto-sync triggered")
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, perform_sync, config)
-            
+
             wait_time = (config.interval_minutes * 60) if config.auto_sync_enabled else None
-            
+
             try:
                 await asyncio.wait_for(config_updated_event.wait(), timeout=wait_time)
-                print("Config updated signal received. Restarting loop.", flush=True)
+                logger.info("Config updated signal received. Restarting loop.")
             except asyncio.TimeoutError:
                 pass
             finally:
                 config_updated_event.clear()
 
         except Exception as e:
-            print(f"Error in background sync loop: {e}", flush=True)
+            logger.error("Error in background sync loop: %s", e)
             await asyncio.sleep(60)
