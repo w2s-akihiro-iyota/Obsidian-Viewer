@@ -17,6 +17,9 @@ CONFIG_FILE = BASE_DIR / "app" / "server_config.yaml"
 # Pagination
 PER_PAGE = 12
 
+# 読了時間の算出基準（日本語: 500文字/分）
+READING_SPEED_JP = 500
+
 # 同期時に削除しない保護対象
 PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
 

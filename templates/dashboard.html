@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Obsidian Viewer{% endblock %}
+
+{% block body_class %}dashboard-page{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1 class="dashboard-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9"></rect>
+            <rect x="14" y="3" width="7" height="5"></rect>
+            <rect x="14" y="12" width="7" height="9"></rect>
+            <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        Dashboard
+    </h1>
+
+    <!-- 統計カード -->
+    <div class="dashboard-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_files }}</div>
+            <div class="stat-label">Total Notes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value stat-public">{{ public_files }}</div>
+            <div class="stat-label">Public</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value stat-private">{{ private_files }}</div>
+            <div class="stat-label">Private</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "{:,}".format(total_chars) }}</div>
+            <div class="stat-label">Total Characters</div>
+        </div>
+    </div>
+
+    <!-- 2カラムレイアウト -->
+    <div class="dashboard-columns">
+        <!-- 最近の更新 -->
+        <section class="dashboard-section">
+            <h2 class="dashboard-section-title">最近の更新</h2>
+            <ul class="dashboard-recent-list">
+                {% for f in recent_files %}
+                <li class="dashboard-recent-item">
+                    <a href="/view/{{ f.path }}" class="dashboard-recent-link">
+                        <span class="dashboard-recent-title">{{ f.title }}</span>
+                        <span class="dashboard-recent-meta">
+                            {{ f.updated }}
+                            {% if f.published %}
+                            <span class="file-status-badge">公開中</span>
+                            {% endif %}
+                        </span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- タグ分布 -->
+        <section class="dashboard-section">
+            <h2 class="dashboard-section-title">タグ分布 (Top 20)</h2>
+            <div class="dashboard-tag-bars">
+                {% for tag_name, tag_count in top_tags %}
+                <div class="tag-bar-row">
+                    <span class="tag-bar-label">#{{ tag_name }}</span>
+                    <div class="tag-bar-track">
+                        <div class="tag-bar-fill" style="width: {{ (tag_count / max_tag_count * 100)|round }}%"></div>
+                    </div>
+                    <span class="tag-bar-count">{{ tag_count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

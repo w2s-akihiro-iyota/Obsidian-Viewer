@@ -3,6 +3,14 @@
 {% block title %}{{ title }} - Obsidian Viewer{% endblock %}
 
 {% block head %}
+<!-- SEO / OGP -->
+<meta name="description" content="{{ description }}">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ description }}">
+<meta property="og:url" content="{{ og_url }}">
+<meta property="og:site_name" content="Obsidian Viewer">
+<meta property="og:type" content="article">
+
 <!-- Highlight.js for syntax highlighting -->
 <link id="highlight-theme" rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -36,6 +44,13 @@
         {% if is_published %}
         <span class="file-status-badge">公開中</span>
         {% endif %}
+        <span class="reading-time">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            約{{ reading_time }}分で読了
+        </span>
     </div>
 
     <div class="page-menu-container">
@@ -68,7 +83,54 @@
     </div>
 </div>
 
+{% if frontmatter.tags %}
+<div class="view-tags">
+    {% set tags = frontmatter.tags if frontmatter.tags is iterable and frontmatter.tags is not string else [frontmatter.tags] %}
+    {% for tag in tags %}
+    <a href="/?tag={{ tag }}" class="view-tag">#{{ tag }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
 <article class="markdown-body">
     {{ content | safe }}
 </article>
+
+{% if backlinks %}
+<section class="backlinks-section">
+    <h3 class="backlinks-heading">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 17H7A5 5 0 0 1 7 7h2"></path>
+            <path d="M15 7h2a5 5 0 1 1 0 10h-2"></path>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+        リンク元 ({{ backlinks|length }})
+    </h3>
+    <ul class="backlinks-list">
+        {% for bl in backlinks %}
+        <li><a href="/view/{{ bl.path }}" class="backlink-item">{{ bl.title }}</a></li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if related_articles %}
+<section class="related-section">
+    <h3 class="related-heading">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 3h5v5"></path>
+            <line x1="4" y1="20" x2="21" y2="3"></line>
+            <path d="M21 16v5h-5"></path>
+            <line x1="15" y1="15" x2="21" y2="21"></line>
+            <line x1="4" y1="4" x2="9" y2="9"></line>
+        </svg>
+        関連する記事
+    </h3>
+    <ul class="related-list">
+        {% for ra in related_articles %}
+        <li><a href="/view/{{ ra.path }}" class="related-item">{{ ra.title }}</a></li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
 {% endblock %}

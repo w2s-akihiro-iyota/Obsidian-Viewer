@@ -184,7 +184,8 @@ details>summary::-webkit-details-marker {
 }
 
 /* Container adjustment for sidebar */
-.container {
+.container,
+.container-wide {
     flex-grow: 1;
     padding: 20px;
     max-width: 100%;
@@ -315,7 +316,8 @@ body.resizing iframe {
         /* Ensure opaque header on mobile */
     }
 
-    .container {
+    .container,
+    .container-wide {
         width: 100%;
         padding: 16px;
     }
@@ -640,4 +642,59 @@ html.sidebar-collapsed .sidebar {
 
 [data-theme="light"] .settings-btn:hover {
     background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* =========================================
+   History List (閲覧履歴)
+   ========================================= */
+.history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.history-item {
+    margin-bottom: 2px;
+}
+
+.history-link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.history-link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-normal);
+    text-decoration: none;
+}
+
+[data-theme="light"] .history-link:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.history-title {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.history-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.9rem;
 }

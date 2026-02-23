@@ -2,6 +2,50 @@
 // search.js - Desktop search, mobile search modal, HTMX state, view toggle, accordion
 // ==============================================
 
+/**
+ * クエリ文字列をハイライトする
+ */
+function highlightMatch(text, query) {
+    if (!query) return text;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark class="search-highlight">$1</mark>');
+}
+
+/**
+ * 検索結果アイテムを生成する共通関数
+ */
+function createSearchResultItem(item, query, closeCallback) {
+    const link = document.createElement('a');
+    link.href = `/view/${item.path}`;
+    link.className = 'search-result-item';
+
+    // タイトル
+    const titleSpan = document.createElement('div');
+    titleSpan.className = 'search-result-title';
+    titleSpan.innerHTML = highlightMatch(item.title, query);
+    link.appendChild(titleSpan);
+
+    // スニペット（本文マッチの場合）
+    if (item.snippet) {
+        const snippetEl = document.createElement('div');
+        snippetEl.className = 'search-result-snippet';
+        snippetEl.innerHTML = highlightMatch(item.snippet, query);
+        link.appendChild(snippetEl);
+    }
+
+    // パス
+    const meta = document.createElement('div');
+    meta.className = 'search-result-path';
+    meta.textContent = item.path;
+    link.appendChild(meta);
+
+    if (closeCallback) {
+        link.addEventListener('click', closeCallback);
+    }
+
+    return link;
+}
+
 function initSearch() {
     // --- Desktop Search ---
     const searchInput = document.getElementById('search-input');
@@ -26,11 +70,7 @@ function initSearch() {
                             searchResults.innerHTML = '';
                             if (data.length > 0) {
                                 data.forEach(item => {
-                                    const link = document.createElement('a');
-                                    link.href = `/view/${item.path}`;
-                                    link.className = 'search-result-item';
-                                    link.textContent = item.title;
-                                    searchResults.appendChild(link);
+                                    searchResults.appendChild(createSearchResultItem(item, query));
                                 });
                             } else {
                                 const empty = document.createElement('div');
@@ -193,27 +233,9 @@ function initSearch() {
                                 modalSearchResults.innerHTML = '';
                                 if (data.length > 0) {
                                     data.forEach(item => {
-                                        const link = document.createElement('a');
-                                        link.href = `/view/${item.path}`;
-                                        link.className = 'search-result-item';
-
-                                        // Title
-                                        const titleSpan = document.createElement('div');
-                                        titleSpan.textContent = item.title;
-                                        titleSpan.style.fontWeight = 'bold';
-                                        link.appendChild(titleSpan);
-
-                                        // Path/Meta
-                                        const meta = document.createElement('div');
-                                        meta.className = 'file-meta';
-                                        meta.textContent = item.path;
-                                        meta.style.fontSize = '0.8em';
-                                        link.appendChild(meta);
-
-                                        // Close modal when result clicked
-                                        link.addEventListener('click', closeModal);
-
-                                        modalSearchResults.appendChild(link);
+                                        modalSearchResults.appendChild(
+                                            createSearchResultItem(item, query, closeModal)
+                                        );
                                     });
                                 } else {
                                     const empty = document.createElement('div');

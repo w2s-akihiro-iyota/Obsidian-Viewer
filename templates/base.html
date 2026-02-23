@@ -45,6 +45,7 @@
     <script src="/static/js/modules/sidebar.js?v=20260223" defer></script>
     <script src="/static/js/modules/search.js?v=20260223" defer></script>
     <script src="/static/js/modules/settings.js?v=20260223" defer></script>
+    <script src="/static/js/modules/history.js?v=20260223" defer></script>
     <script src="/static/js/modules/editor.js?v=20260223" defer></script>
     <script src="/static/js/modules/main.js?v=20260223" defer></script>
     {% block head %}{% endblock %}
@@ -58,11 +59,33 @@
     <div class="app-wrapper">
         <aside id="sidebar" class="sidebar {% block sidebar_class %}{% endblock %}">
             <div class="sidebar-header">
-                <span class="sidebar-header-title">Outline</span>
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" data-panel="sidebar-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Outline
+                    </button>
+                    <button class="sidebar-tab" data-panel="sidebar-history">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        History
+                    </button>
+                </div>
             </div>
             <div class="sidebar-content">
                 <div id="sidebar-outline" class="sidebar-panel active">
                     <div class="toc-empty">No outline available</div>
+                </div>
+                <div id="sidebar-history" class="sidebar-panel">
+                    <div class="history-empty">閲覧履歴はありません</div>
                 </div>
             </div>
             <!-- Sidebar Footer (Empty for now) -->

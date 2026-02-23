@@ -1,11 +1,12 @@
 from pathlib import Path
+import math
 import re
 import yaml
 import os
 import logging
 
 from datetime import datetime, timezone, timedelta
-from app.config import CONTENT_DIR
+from app.config import CONTENT_DIR, READING_SPEED_JP
 from app import cache
 
 logger = logging.getLogger("app.indexing")
@@ -87,6 +88,17 @@ def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
                 # Check Visibility
                 published = is_published(frontmatter)
 
+                # マークアップ除去したプレーンテキスト（全文検索・読了時間用）
+                body_text = re.sub(r'<[^>]+>', '', body)
+                body_text = re.sub(r'!\[.*?\]\(.*?\)', '', body_text)
+                body_text = re.sub(r'\[([^\]]*)\]\(.*?\)', r'\1', body_text)
+                body_text = re.sub(r'[#*_~`>\-\|]', '', body_text)
+                body_text = body_text.strip()
+
+                # 読了時間の算出
+                char_count = len(body_text)
+                reading_time = max(1, math.ceil(char_count / READING_SPEED_JP))
+
                 files_list.append({
                     "name": file,
                     "path": str(rel_path).replace('\\', '/'),
@@ -96,7 +108,10 @@ def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
                     "tags": tags,
                     "published": published,
                     "frontmatter": frontmatter,
-                    "preview": preview
+                    "preview": preview,
+                    "body_text": body_text,
+                    "char_count": char_count,
+                    "reading_time": reading_time
                 })
     
     # Sort by mtime descending
@@ -159,6 +174,54 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     sort_tree(tree)
     return tree
 
+def _build_backlink_cache() -> None:
+    """全ファイルの[[wikilink]]を解析し、バックリンクとフォワードリンクのキャッシュを構築"""
+    backlinks = {}   # {target_path: [{title, path}]}
+    forward = {}     # {source_path: [target_path]}
+    wikilink_re = re.compile(r'\[\[([^\]\|#]+)')
+
+    for f in cache.GLOBAL_FILE_CACHE:
+        source_path = f["path"]
+        source_title = f["title"]
+
+        # ファイルを読み込んでwikilinkを抽出
+        full_path = CONTENT_DIR / source_path
+        if not full_path.exists():
+            continue
+
+        try:
+            with open(full_path, 'r', encoding='utf-8', errors='replace') as fh:
+                content = fh.read()
+        except Exception:
+            continue
+
+        _, body = parse_frontmatter(content)
+        links = wikilink_re.findall(body)
+        resolved_targets = []
+
+        for link_name in links:
+            link_name = link_name.strip()
+            # FILE_NAME_CACHEで解決
+            target_path = cache.FILE_NAME_CACHE.get(link_name)
+            if target_path and target_path != source_path:
+                resolved_targets.append(target_path)
+                # バックリンクに追加
+                if target_path not in backlinks:
+                    backlinks[target_path] = []
+                # 重複チェック
+                if not any(bl["path"] == source_path for bl in backlinks[target_path]):
+                    backlinks[target_path].append({
+                        "title": source_title,
+                        "path": source_path
+                    })
+
+        forward[source_path] = list(set(resolved_targets))
+
+    cache.BACKLINK_CACHE = backlinks
+    cache.FORWARD_LINK_CACHE = forward
+    logger.info("Backlink cache built: %d files with backlinks.", len(backlinks))
+
+
 def refresh_global_caches() -> None:
     # Clear per-file caches on full refresh
     cache.IMAGE_PATH_CACHE = {}
@@ -177,5 +240,8 @@ def refresh_global_caches() -> None:
         # 同名ファイルが複数ある場合は最初のものを優先（Obsidianの最短パス解決に近い動作）
         if stem not in cache.FILE_NAME_CACHE:
             cache.FILE_NAME_CACHE[stem] = f["path"]
+
+    # バックリンクキャッシュの構築
+    _build_backlink_cache()
 
     logger.info("Global cache refreshed: %d files indexed.", len(cache.GLOBAL_FILE_CACHE))

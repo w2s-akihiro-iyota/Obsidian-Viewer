@@ -1,0 +1,199 @@
+/* =========================================
+   Dashboard
+   ========================================= */
+
+/* ダッシュボードページはコンテナ幅を拡大し余白を詰める */
+.dashboard-page .container-wide {
+    max-width: none;
+    padding: 12px 16px;
+}
+
+.dashboard-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-normal);
+    margin-bottom: 16px;
+}
+
+/* Stat Cards Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.stat-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent-purple);
+    line-height: 1.2;
+    margin-bottom: 8px;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-public {
+    color: #2ecc71;
+}
+
+.stat-private {
+    color: var(--text-muted);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* Two Column Layout */
+.dashboard-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.dashboard-section {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.dashboard-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-normal);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Recent Files List */
+.dashboard-recent-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dashboard-recent-item {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-recent-item:last-child {
+    border-bottom: none;
+}
+
+.dashboard-recent-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 8px;
+    color: var(--text-normal);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.dashboard-recent-link:hover {
+    background-color: rgba(123, 97, 255, 0.08);
+    text-decoration: none;
+}
+
+.dashboard-recent-title {
+    font-size: 0.9rem;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 12px;
+}
+
+.dashboard-recent-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Tag Distribution Bars */
+.dashboard-tag-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tag-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tag-bar-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.tag-bar-track {
+    flex: 1;
+    height: 8px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.tag-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-purple), #9575ff);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    min-width: 4px;
+}
+
+.tag-bar-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    width: 30px;
+    text-align: right;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-columns {
+        grid-template-columns: 1fr;
+    }
+}

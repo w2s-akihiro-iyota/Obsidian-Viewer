@@ -38,7 +38,10 @@
     .table-copy-container,
     .copy-button,
     .scroll-to-top,
-    .page-menu-dropdown {
+    .page-menu-dropdown,
+    .view-tags,
+    .backlinks-section,
+    .related-section {
         display: none !important;
     }
 

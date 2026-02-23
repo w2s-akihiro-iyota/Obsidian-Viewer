@@ -271,6 +271,9 @@
     background-color: transparent;
     color: var(--text-normal);
     padding: 20px 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 /* Custom Headings */
@@ -351,6 +354,8 @@
     border-radius: 3px;
     font-family: var(--code-font);
     font-size: 85%;
+    overflow-wrap: break-word;
+    word-break: break-all;
 }
 
 .markdown-body hr {
@@ -430,6 +435,8 @@
     /* Force inheritance */
     white-space: pre;
     /* Ensure no wrapping */
+    word-break: normal;
+    overflow-wrap: normal;
     border: none;
     display: block;
     overflow-x: auto;
@@ -1337,4 +1344,168 @@ details[open] .accordion-icon {
     border-color: var(--accent-purple);
     color: var(--accent-purple);
     font-weight: 600;
+}
+
+/* ページビュー内タグ */
+.view-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.view-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    background-color: rgba(123, 97, 255, 0.12);
+    border: 1px solid rgba(123, 97, 255, 0.3);
+    border-radius: 14px;
+    color: var(--accent-purple);
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.view-tag:hover {
+    background-color: rgba(123, 97, 255, 0.25);
+    border-color: var(--accent-purple);
+    text-decoration: none;
+}
+
+/* 読了時間 (view.html breadcrumb) */
+.reading-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* 読了時間 (index.html file-meta) */
+.reading-time-badge {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* バックリンクセクション */
+.backlinks-section {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.backlinks-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.backlinks-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.backlink-item {
+    display: inline-block;
+    padding: 6px 14px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--accent-purple);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.backlink-item:hover {
+    border-color: var(--accent-purple);
+    background-color: rgba(123, 97, 255, 0.1);
+    text-decoration: none;
+}
+
+/* 全文検索結果 */
+.search-result-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+}
+
+.search-result-snippet {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-bottom: 2px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.search-result-path {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.search-highlight {
+    background-color: rgba(255, 255, 0, 0.35);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+/* 関連記事セクション */
+.related-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.related-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.related-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.related-item {
+    display: inline-block;
+    padding: 6px 14px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-normal);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.related-item:hover {
+    border-color: var(--accent-purple);
+    background-color: rgba(123, 97, 255, 0.1);
+    color: var(--accent-purple);
+    text-decoration: none;
 }

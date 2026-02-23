@@ -2,6 +2,15 @@
 
 {% block title %}Files - Obsidian Viewer{% endblock %}
 
+{% block head %}
+<!-- SEO / OGP -->
+<meta name="description" content="Obsidian Viewer - Markdownノートをブラウザで閲覧">
+<meta property="og:title" content="Files - Obsidian Viewer">
+<meta property="og:description" content="Obsidian Viewer - Markdownノートをブラウザで閲覧">
+<meta property="og:url" content="{{ og_url }}">
+<meta property="og:site_name" content="Obsidian Viewer">
+<meta property="og:type" content="website">
+{% endblock %}
 
 {% block sidebar_class %}{% endblock %}
 
@@ -155,7 +164,7 @@
                                     </div>
                                     {% endif %}
                                     <div class="file-meta">
-
+                                        <span class="reading-time-badge">約{{ file.reading_time }}分</span>
                                         <div class="file-updated">modified: {{ file.updated }}</div>
                                     </div>
                                 </div>

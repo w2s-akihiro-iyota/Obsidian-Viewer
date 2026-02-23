@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Graph View - Obsidian Viewer{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+{% endblock %}
+
+{% block body_class %}graph-page{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+
+{% block content %}
+<div class="graph-header">
+    <h1 class="graph-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <circle cx="18" cy="6" r="3"></circle>
+            <line x1="8.59" y1="7.41" x2="15.42" y2="14.59"></line>
+            <line x1="15.41" y1="7.41" x2="8.59" y2="14.59"></line>
+        </svg>
+        Graph View
+    </h1>
+</div>
+<div id="graph-canvas"></div>
+<script src="/static/js/modules/graph.js?v=20260223"></script>
+{% endblock %}
