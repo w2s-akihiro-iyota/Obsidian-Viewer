@@ -4,3 +4,4 @@ GLOBAL_FILE_TREE_CACHE = []
 GLOBAL_FILE_TREE_CACHE_PUBLIC = []
 IMAGE_PATH_CACHE = {}      # {filename: url}
 MARKDOWN_CACHE = {}        # {file_path: {html, title, mtime}}
+FILE_NAME_CACHE = {}       # {stem: path} e.g. {"Redis 環境構築手順": "infra/Redis 環境構築手順.md"}

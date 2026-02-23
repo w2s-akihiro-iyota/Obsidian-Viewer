@@ -166,4 +166,13 @@ def refresh_global_caches() -> None:
     # Refresh tree views (Admin: all, Public: published only)
     cache.GLOBAL_FILE_TREE_CACHE = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=False)
     cache.GLOBAL_FILE_TREE_CACHE_PUBLIC = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=True)
+
+    # ファイル名(stem) → パスの逆引きマッピングを構築
+    cache.FILE_NAME_CACHE = {}
+    for f in cache.GLOBAL_FILE_CACHE:
+        stem = Path(f["name"]).stem
+        # 同名ファイルが複数ある場合は最初のものを優先（Obsidianの最短パス解決に近い動作）
+        if stem not in cache.FILE_NAME_CACHE:
+            cache.FILE_NAME_CACHE[stem] = f["path"]
+
     print(f"Global cache refreshed: {len(cache.GLOBAL_FILE_CACHE)} files indexed.", flush=True)

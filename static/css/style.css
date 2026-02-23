@@ -2776,6 +2776,22 @@ html.sidebar-collapsed .sidebar {
         0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+/* Obsidian Internal Link Styling */
+.internal-link {
+    color: var(--accent-purple);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+.internal-link:hover {
+    border-bottom-color: var(--accent-purple);
+}
+.internal-link-broken {
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--text-muted);
+    cursor: default;
+}
+
 /* Search Container (New Wrapper) */
 .search-container {
     border: 1px solid var(--border-color);

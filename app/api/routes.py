@@ -26,11 +26,11 @@ async def preview_file(request: Request, path: str):
     # Safety check
     if ".." in path or path.startswith("/"):
         raise HTTPException(status_code=400, detail="Invalid path")
-    
+
     full_path = CONTENT_DIR / path
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    
+
     with open(full_path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -40,14 +40,18 @@ async def preview_file(request: Request, path: str):
         frontmatter, _ = parse_frontmatter(content)
         if not is_published(frontmatter):
             raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
-    
+
+    # frontmatterからタイトルを取得
+    frontmatter, body = parse_frontmatter(content)
+    title = frontmatter.get("title") or Path(path).stem
+
     # Pre-process admonitions
-    content = process_admonition_blocks(content)
+    body = process_admonition_blocks(body)
     # Process Obsidian images
-    content = process_obsidian_images(content)
-    
-    html = md.render(content)
-    return HTMLResponse(content=html)
+    body = process_obsidian_images(body)
+
+    html = md.render(body)
+    return JSONResponse(content={"title": title, "content": html})
 
 @router.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "", visibility: str = "all"):
@@ -383,9 +387,19 @@ async def editor_save(request: Request):
     file_path = CONTENT_DIR / filename
     is_overwrite = file_path.exists()
 
-    # ファイル書き込み
+    # ファイル書き込み（アプリ内コンテンツ）
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
+
+    # ホスト側Vaultにも書き込み（同期設定がある場合）
+    config = load_config()
+    if config.content_src:
+        host_path = Path(config.content_src) / filename
+        try:
+            with open(host_path, "w", encoding="utf-8") as f:
+                f.write(content)
+        except Exception as e:
+            print(f"Warning: ホスト側Vaultへの書き込みに失敗: {e}", flush=True)
 
     # キャッシュ更新
     refresh_global_caches()

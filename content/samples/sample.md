@@ -95,12 +95,12 @@ title: A. Yes
 ## CardLink Test
 
 ```cardlink
-url: https://github.com/obsidianmd/obsidian-releases
-title: "Obsidian - A powerful knowledge base on local Markdown files"
-description: "Obsidian is a powerful and extensible knowledge base that works on top of your local folder of plain text files."
+url: https://github.com/w2s-akihiro-iyota/Obsidian-Viewer
+title: "GitHub - w2s-akihiro-iyota/Obsidian-Viewer: ObsidianのmdファイルをレンダリングするWebアプリケーション"
+description: "ObsidianのmdファイルをレンダリングするWebアプリケーション. Contribute to w2s-akihiro-iyota/Obsidian-Viewer development by creating an account on GitHub."
 host: github.com
 favicon: https://github.githubassets.com/favicons/favicon.svg
-image: https://github.githubassets.com/images/modules/site/social-cards/github-social.png
+image: https://opengraph.githubassets.com/1e60dcb426194d5bce96975d40ef6e0f0bb0e058582ff8ea6bc1176fd6cefc4e/w2s-akihiro-iyota/Obsidian-Viewer
 ```
 
 ## Image

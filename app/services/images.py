@@ -54,10 +54,20 @@ def process_obsidian_images(content: str) -> str:
                         style = f'width="{w}" height="{h}"'
                     else:
                         style = f'width="{size_val}"'
-                
+
                 return f'<img src="{image_url}" alt="{filename}" {style} class="obsidian-image">'
-        
-        return full_match # fallback
+            return full_match
+
+        # 内部リンク処理: [[ファイル名]] or [[ファイル名|表示名]]
+        display_name = size if size else filename
+        # .md拡張子付きの場合はstemで検索
+        lookup_name = filename[:-3] if filename.endswith('.md') else filename
+
+        target_path = cache.FILE_NAME_CACHE.get(lookup_name)
+        if target_path:
+            return f'<a href="/view/{target_path}" class="internal-link">{display_name}</a>'
+        else:
+            return f'<span class="internal-link-broken">{display_name}</span>'
 
     # Matches ![[image.png|300]] or ![[image|300]] or [[image.png]]
     # Group 1: Path/Filename, Group 2: Size/Alias
