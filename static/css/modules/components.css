@@ -564,6 +564,14 @@ pre.line-numbers .line-number-rows {
     color: #d32f2f;
 }
 
+.toast-warning {
+    border-left: 4px solid #f9a825;
+}
+
+.toast-warning svg {
+    color: #f9a825;
+}
+
 /* =========================================
    Sync Button Spinner
    ========================================= */

@@ -91,17 +91,29 @@ async def editor_save(request: Request):
         f.write(content)
 
     # ホスト側Vaultにも書き込み（同期設定がある場合）
+    host_saved = False
+    host_error = None
     config = load_config()
     if config.content_src:
         host_path = Path(config.content_src) / filename
         try:
+            host_path.parent.mkdir(parents=True, exist_ok=True)
             with open(host_path, "w", encoding="utf-8") as f:
                 f.write(content)
+            host_saved = True
+            logger.info("ホスト側Vaultに保存: %s", host_path)
         except Exception as e:
+            host_error = str(e)
             logger.warning("ホスト側Vaultへの書き込みに失敗: %s", e)
 
     # キャッシュ更新
     refresh_global_caches()
 
     message = get_system("S202") if is_overwrite else get_system("S201")
-    return {"status": "success", "message": message, "filename": filename}
+    return {
+        "status": "success",
+        "message": message,
+        "filename": filename,
+        "host_saved": host_saved,
+        "host_error": host_error,
+    }

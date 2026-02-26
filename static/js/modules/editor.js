@@ -141,6 +141,9 @@ function initEditor() {
                 const data = await res.json();
                 if (res.ok) {
                     showToast(data.message || 'ファイルを保存しました', 'success');
+                    if (data.host_saved === false && data.host_error) {
+                        showToast('Vault保存失敗: ' + data.host_error, 'warning');
+                    }
                 } else {
                     showToast(data.message || '保存に失敗しました', 'error');
                 }
