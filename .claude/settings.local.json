@@ -17,7 +17,13 @@
       "WebSearch",
       "Bash(echo All Python files compiled successfully:*)",
       "Bash(cd /d/SANDBOX/Antigravity/Obsidian-Viewer && docker-compose logs --tail=30 2>&1)",
-      "Bash(curl -s http://localhost:8000/api/search?q=Docker | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d[0]['path']\\)\" 2>/dev/null)"
+      "Bash(curl -s http://localhost:8000/api/search?q=Docker | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d[0]['path']\\)\" 2>/dev/null)",
+      "WebFetch(domain:dev-tricks.com)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:cdnjs.cloudflare.com)",
+      "WebFetch(domain:draculatheme.com)",
+      "WebFetch(domain:www.cdnpkg.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

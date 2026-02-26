@@ -337,7 +337,7 @@ function initSettings() {
 
         // Code Theme
         if (settings.codeTheme) {
-            const codeThemes = ['github-dark', 'github', 'monokai', 'dracula'];
+            const codeThemes = ['github-dark', 'github', 'dracula', 'nord', 'tokyo-night-dark', 'atom-one-dark'];
             codeThemes.forEach(t => document.body.classList.remove(`code-theme-${t}`));
             document.body.classList.add(`code-theme-${settings.codeTheme}`);
 
@@ -459,7 +459,7 @@ function initSettings() {
             const val = e.target.value;
             localStorage.setItem('codeTheme', val);
             // Remove old
-            const codeThemes = ['github-dark', 'github', 'monokai', 'dracula'];
+            const codeThemes = ['github-dark', 'github', 'dracula', 'nord', 'tokyo-night-dark', 'atom-one-dark'];
             codeThemes.forEach(t => document.body.classList.remove(`code-theme-${t}`));
             document.body.classList.add(`code-theme-${val}`);
 

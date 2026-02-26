@@ -182,8 +182,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const themeMap = {
             'github-dark': 'github-dark.min.css',
             'github': 'github.min.css',
-            'monokai': 'monokai.min.css',
-            'dracula': 'dracula.min.css'
+            'dracula': 'dracula.min.css',
+            'nord': 'nord.min.css',
+            'tokyo-night-dark': 'tokyo-night-dark.min.css',
+            'atom-one-dark': 'atom-one-dark.min.css'
         };
 
         const themeFile = themeMap[themeName] || 'github-dark.min.css';
