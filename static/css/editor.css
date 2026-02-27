@@ -97,6 +97,12 @@ body.page-editor footer {
     white-space: nowrap;
 }
 
+#editor-save-btn .btn-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* --- Editor Panes --- */
 .editor-panes {
     display: flex;

@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.api import templates
 
 logger = logging.getLogger("app.editor")
+from app import cache
 from app.config import CONTENT_DIR
 from app.core.indexing import refresh_global_caches
 from app.services.content import render_markdown
@@ -84,7 +85,19 @@ async def editor_save(request: Request):
         return JSONResponse({"status": "error", "message": get_error("E203")}, status_code=400)
 
     file_path = CONTENT_DIR / filename
-    is_overwrite = file_path.exists()
+    stem = Path(filename).stem
+
+    # 既存ファイルの上書き禁止（サブディレクトリ含む再帰チェック）
+    # アプリ側: FILE_NAME_CACHEは全ディレクトリのstem→pathマップ
+    if stem in cache.FILE_NAME_CACHE:
+        return JSONResponse({"status": "error", "message": get_error("E204")}, status_code=409)
+
+    # ホスト側Vault: rglobで再帰的に同名ファイルを探索
+    config = load_config()
+    if config.content_src:
+        host_src = Path(config.content_src)
+        if host_src.exists() and any(host_src.rglob(filename)):
+            return JSONResponse({"status": "error", "message": get_error("E204")}, status_code=409)
 
     # ファイル書き込み（アプリ内コンテンツ）
     with open(file_path, "w", encoding="utf-8") as f:
@@ -93,9 +106,8 @@ async def editor_save(request: Request):
     # ホスト側Vaultにも書き込み（同期設定がある場合）
     host_saved = False
     host_error = None
-    config = load_config()
-    if config.content_src:
-        host_path = Path(config.content_src) / filename
+    host_path = Path(config.content_src) / filename if config.content_src else None
+    if host_path:
         try:
             host_path.parent.mkdir(parents=True, exist_ok=True)
             with open(host_path, "w", encoding="utf-8") as f:
@@ -109,10 +121,9 @@ async def editor_save(request: Request):
     # キャッシュ更新
     refresh_global_caches()
 
-    message = get_system("S202") if is_overwrite else get_system("S201")
     return {
         "status": "success",
-        "message": message,
+        "message": get_system("S201"),
         "filename": filename,
         "host_saved": host_saved,
         "host_error": host_error,

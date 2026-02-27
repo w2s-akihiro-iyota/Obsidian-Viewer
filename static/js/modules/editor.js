@@ -132,6 +132,10 @@ function initEditor() {
             return;
         }
 
+        // ローディング開始
+        saveBtn.classList.add('loading');
+        saveBtn.disabled = true;
+
         fetch('/api/editor/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -151,6 +155,10 @@ function initEditor() {
             .catch(err => {
                 console.error('Save error:', err);
                 showToast('保存に失敗しました', 'error');
+            })
+            .finally(() => {
+                saveBtn.classList.remove('loading');
+                saveBtn.disabled = false;
             });
     }
 
