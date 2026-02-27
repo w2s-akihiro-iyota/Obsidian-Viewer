@@ -15,8 +15,10 @@
                 <div class="help-tabs line-bottom">
                     <button class="help-tab active" data-tab="about">アプリについて</button>
                     <button class="help-tab" data-tab="basic">基本操作</button>
+                    {% if is_localhost %}
                     <button class="help-tab" data-tab="sync">同期手順</button>
                     <button class="help-tab" data-tab="publish">公開・共有</button>
+                    {% endif %}
                     <button class="help-tab" data-tab="display">表示機能</button>
                 </div>
 
@@ -267,6 +269,7 @@
                         </section>
                     </div>
 
+                    {% if is_localhost %}
                     <!-- Sync Instructions Panel -->
                     <div id="help-panel-sync" class="help-panel">
                         <section class="settings-section">
@@ -436,6 +439,7 @@ publish: "TRUE"
                             </div>
                         </section>
                     </div>
+                    {% endif %}
 
                     <!-- Features Panel -->
                     <div id="help-panel-display" class="help-panel">
