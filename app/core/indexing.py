@@ -244,4 +244,10 @@ def refresh_global_caches() -> None:
     # バックリンクキャッシュの構築
     _build_backlink_cache()
 
+    # TF-IDF検索インデックスの構築
+    from app.core.search import SearchIndex
+    idx = SearchIndex()
+    idx.build(cache.GLOBAL_FILE_CACHE)
+    cache.SEARCH_INDEX = idx
+
     logger.info("Global cache refreshed: %d files indexed.", len(cache.GLOBAL_FILE_CACHE))

@@ -170,16 +170,68 @@ function initSidebar() {
     let hideTimeout = null;
     let activeLink = null;
     let previewRequestId = 0;
+    let showTimeout = null;
+
+    // --- ドラッグリサイズ（document レベル、1回だけ登録） ---
+    let previewResizing = false;
+    let resizeStartX, resizeStartY, resizeStartW, resizeStartH;
+
+    document.addEventListener('mousemove', (e) => {
+        if (!previewResizing || !previewTooltip) return;
+        e.preventDefault();
+        const newW = Math.max(280, Math.min(700, resizeStartW + (e.clientX - resizeStartX)));
+        const newH = Math.max(200, Math.min(600, resizeStartH + (e.clientY - resizeStartY)));
+        previewTooltip.style.width = newW + 'px';
+        previewTooltip.style.maxHeight = newH + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!previewResizing || !previewTooltip) return;
+        previewResizing = false;
+        previewTooltip.classList.remove('resizing');
+        document.body.classList.remove('resizing');
+
+        const w = previewTooltip.offsetWidth;
+        const h = parseInt(previewTooltip.style.maxHeight) || previewTooltip.offsetHeight;
+
+        // CSS変数とlocalStorageに保存
+        document.documentElement.style.setProperty('--preview-width', w + 'px');
+        document.documentElement.style.setProperty('--preview-max-height', h + 'px');
+        localStorage.setItem('previewWidth', String(w));
+        localStorage.setItem('previewHeight', String(h));
+
+        // 設定スライダーがあれば同期
+        const wr = document.getElementById('setting-preview-width');
+        const hr = document.getElementById('setting-preview-height');
+        const wl = document.getElementById('preview-width-value');
+        const hl = document.getElementById('preview-height-value');
+        if (wr) { wr.value = w; }
+        if (hr) { hr.value = h; }
+        if (wl) { wl.textContent = w + 'px'; }
+        if (hl) { hl.textContent = h + 'px'; }
+    });
 
     function createPreviewTooltip() {
         if (previewTooltip) return previewTooltip;
 
         const tooltip = document.createElement('div');
         tooltip.className = 'preview-tooltip';
-        tooltip.innerHTML = '<div class="preview-loading">読み込み中...</div>';
+
+        // 内部コンテンツラッパー
+        const inner = document.createElement('div');
+        inner.className = 'preview-tooltip-inner';
+        inner.innerHTML = '<div class="preview-loading">読み込み中...</div>';
+        tooltip.appendChild(inner);
+
+        // リサイズハンドル（innerとは別なのでinnerHTML更新で消えない）
+        const handle = document.createElement('div');
+        handle.className = 'preview-resize-handle';
+        handle.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M10 2L2 10M10 6L6 10M10 10L10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+        tooltip.appendChild(handle);
+
         document.body.appendChild(tooltip);
 
-        // Keep tooltip alive when hovering over it
+        // ホバーでツールチップを維持
         tooltip.addEventListener('mouseenter', () => {
             if (hideTimeout) {
                 clearTimeout(hideTimeout);
@@ -188,7 +240,21 @@ function initSidebar() {
         });
 
         tooltip.addEventListener('mouseleave', () => {
+            if (previewResizing) return;
             hidePreview();
+        });
+
+        // リサイズハンドルのmousedown
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            previewResizing = true;
+            tooltip.classList.add('resizing');
+            document.body.classList.add('resizing');
+            resizeStartX = e.clientX;
+            resizeStartY = e.clientY;
+            resizeStartW = tooltip.offsetWidth;
+            resizeStartH = tooltip.offsetHeight;
         });
 
         return tooltip;
@@ -201,39 +267,54 @@ function initSidebar() {
             clearTimeout(hideTimeout);
             hideTimeout = null;
         }
+        if (showTimeout) {
+            clearTimeout(showTimeout);
+            showTimeout = null;
+        }
 
         activeLink = link;
-        previewTooltip = createPreviewTooltip();
-        previewTooltip.dataset.activePath = path;
 
-        // Show immediately and position
-        previewTooltip.classList.add('active');
-        updateTooltipPosition(link);
+        // 表示まで500msの遅延
+        showTimeout = setTimeout(() => {
+            showTimeout = null;
+            if (activeLink !== link) return;
 
-        if (previewCache.has(path)) {
-            renderPreviewContent(previewCache.get(path), link, requestId);
-        } else {
-            previewTooltip.innerHTML = '<div class="preview-loading">読み込み中...</div>';
-            fetch(`/api/preview?path=${encodeURIComponent(path)}`)
-                .then(res => {
-                    if (!res.ok) throw new Error('Failed to load');
-                    return res.json();
-                })
-                .then(data => {
-                    if (requestId !== previewRequestId) return;
-                    previewCache.set(path, data);
-                    renderPreviewContent(data, link, requestId);
-                })
-                .catch(err => {
-                    if (requestId !== previewRequestId) return;
-                    previewTooltip.innerHTML = '<div class="preview-error">プレビューを表示できませんでした</div>';
-                });
-        }
+            previewTooltip = createPreviewTooltip();
+            previewTooltip.dataset.activePath = path;
+            previewTooltip.classList.add('active');
+            updateTooltipPosition(link);
+
+            if (previewCache.has(path)) {
+                renderPreviewContent(previewCache.get(path), link, requestId);
+            } else {
+                const inner = previewTooltip.querySelector('.preview-tooltip-inner');
+                if (inner) inner.innerHTML = '<div class="preview-loading">読み込み中...</div>';
+                fetch(`/api/preview?path=${encodeURIComponent(path)}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error('Failed to load');
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (requestId !== previewRequestId) return;
+                        previewCache.set(path, data);
+                        renderPreviewContent(data, link, requestId);
+                    })
+                    .catch(err => {
+                        if (requestId !== previewRequestId) return;
+                        if (previewTooltip) {
+                            const inner = previewTooltip.querySelector('.preview-tooltip-inner');
+                            if (inner) inner.innerHTML = '<div class="preview-error">プレビューを表示できませんでした</div>';
+                        }
+                    });
+            }
+        }, 500);
     }
 
     function renderPreviewContent(data, link, requestId) {
         if (!previewTooltip || requestId !== previewRequestId) return;
-        previewTooltip.innerHTML = `
+        const inner = previewTooltip.querySelector('.preview-tooltip-inner');
+        if (!inner) return;
+        inner.innerHTML = `
             <div class="preview-header">
                 <span class="preview-title">${data.title}</span>
             </div>
@@ -268,10 +349,16 @@ function initSidebar() {
         previewTooltip.style.left = `${left + window.scrollX}px`;
     }
 
-    function hidePreview(delay = 300) {
+    function hidePreview(delay = 800) {
+        if (previewResizing) return;
+        if (showTimeout) {
+            clearTimeout(showTimeout);
+            showTimeout = null;
+        }
         if (hideTimeout) clearTimeout(hideTimeout);
 
         hideTimeout = setTimeout(() => {
+            if (previewResizing) return;
             if (previewTooltip) {
                 previewTooltip.remove();
                 previewTooltip = null;
@@ -282,6 +369,7 @@ function initSidebar() {
 
     // Use a single delegated listener for stability
     document.addEventListener('mouseover', (e) => {
+        if (previewResizing) return;
         const link = e.target.closest('a');
 
         // Internal link check: Only trigger within markdown content or existing tooltips

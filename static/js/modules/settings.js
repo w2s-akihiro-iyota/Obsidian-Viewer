@@ -259,6 +259,10 @@ function initSettings() {
     const codeThemeSelect = document.getElementById('setting-code-theme');
     const themeModeSelect = document.getElementById('setting-theme-select');
     const mermaidThemeSelect = document.getElementById('setting-mermaid-theme');
+    const previewWidthRange = document.getElementById('setting-preview-width');
+    const previewHeightRange = document.getElementById('setting-preview-height');
+    const previewWidthLabel = document.getElementById('preview-width-value');
+    const previewHeightLabel = document.getElementById('preview-height-value');
     const rebuildIndexBtn = document.getElementById('rebuild-index-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
 
@@ -282,6 +286,8 @@ function initSettings() {
         const savedCodeTheme = localStorage.getItem('codeTheme') || defaults.codeTheme;
         const currentTheme = localStorage.getItem('theme') || 'dark';
         const savedMermaidTheme = localStorage.getItem('mermaidTheme') || defaults.mermaidTheme;
+        const savedPreviewWidth = localStorage.getItem('previewWidth') || '400';
+        const savedPreviewHeight = localStorage.getItem('previewHeight') || '300';
 
         // Apply to inputs
         if (fontSizeSelect) fontSizeSelect.value = savedFontSize;
@@ -290,6 +296,14 @@ function initSettings() {
         if (codeThemeSelect) codeThemeSelect.value = savedCodeTheme;
         if (themeModeSelect) themeModeSelect.value = currentTheme;
         if (mermaidThemeSelect) mermaidThemeSelect.value = savedMermaidTheme;
+        if (previewWidthRange) {
+            previewWidthRange.value = savedPreviewWidth;
+            if (previewWidthLabel) previewWidthLabel.textContent = savedPreviewWidth + 'px';
+        }
+        if (previewHeightRange) {
+            previewHeightRange.value = savedPreviewHeight;
+            if (previewHeightLabel) previewHeightLabel.textContent = savedPreviewHeight + 'px';
+        }
 
         // Apply to App
         applySettings({
@@ -350,6 +364,12 @@ function initSettings() {
         if (settings.theme) {
             document.documentElement.setAttribute('data-theme', settings.theme);
         }
+
+        // Preview Tooltip Size
+        const pw = localStorage.getItem('previewWidth') || '400';
+        const ph = localStorage.getItem('previewHeight') || '300';
+        document.documentElement.style.setProperty('--preview-width', pw + 'px');
+        document.documentElement.style.setProperty('--preview-max-height', ph + 'px');
     };
 
     // Event Listeners (Moved inside initial check)
@@ -500,6 +520,24 @@ function initSettings() {
                     window.updateMermaidConfig();
                 }
             }
+        });
+    }
+
+    if (previewWidthRange) {
+        previewWidthRange.addEventListener('input', (e) => {
+            const val = e.target.value;
+            localStorage.setItem('previewWidth', val);
+            if (previewWidthLabel) previewWidthLabel.textContent = val + 'px';
+            document.documentElement.style.setProperty('--preview-width', val + 'px');
+        });
+    }
+
+    if (previewHeightRange) {
+        previewHeightRange.addEventListener('input', (e) => {
+            const val = e.target.value;
+            localStorage.setItem('previewHeight', val);
+            if (previewHeightLabel) previewHeightLabel.textContent = val + 'px';
+            document.documentElement.style.setProperty('--preview-max-height', val + 'px');
         });
     }
 

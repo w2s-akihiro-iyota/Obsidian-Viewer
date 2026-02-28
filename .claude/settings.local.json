@@ -23,7 +23,11 @@
       "WebFetch(domain:cdnjs.cloudflare.com)",
       "WebFetch(domain:draculatheme.com)",
       "WebFetch(domain:www.cdnpkg.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python:*)",
+      "Bash(docker exec:*)",
+      "Bash(sleep 5 && docker-compose -f /d/SANDBOX/Antigravity/Obsidian-Viewer/docker-compose.yml logs --tail=5 2>&1)",
+      "Bash(sleep 4 && docker-compose -f /d/SANDBOX/Antigravity/Obsidian-Viewer/docker-compose.yml logs --tail=5 2>&1)"
     ]
   }
 }

@@ -335,9 +335,9 @@ body.resizing iframe {
 /* Link Preview Tooltip */
 .preview-tooltip {
     position: absolute;
-    width: 400px;
+    width: var(--preview-width, 400px);
     max-width: 90vw;
-    max-height: 300px;
+    max-height: var(--preview-max-height, 300px);
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -356,6 +356,14 @@ body.resizing iframe {
     pointer-events: auto;
 }
 
+.preview-tooltip-inner {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
 .preview-header {
     padding: 10px 16px;
     background-color: rgba(0, 0, 0, 0.2);
@@ -363,6 +371,7 @@ body.resizing iframe {
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--text-normal);
+    flex-shrink: 0;
 }
 
 .preview-content {
@@ -371,6 +380,8 @@ body.resizing iframe {
     font-size: 0.85rem;
     line-height: 1.5;
     color: var(--text-normal);
+    flex: 1;
+    min-height: 0;
 }
 
 .preview-content :first-child {

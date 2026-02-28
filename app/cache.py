@@ -7,3 +7,4 @@ MARKDOWN_CACHE = {}        # {file_path: {html, title, mtime}}
 FILE_NAME_CACHE = {}       # {stem: path} e.g. {"Redis 環境構築手順": "infra/Redis 環境構築手順.md"}
 BACKLINK_CACHE = {}        # {target_path: [{title, path}]} 被リンクマップ
 FORWARD_LINK_CACHE = {}    # {source_path: [target_path]} リンク先マップ
+SEARCH_INDEX = None        # SearchIndex instance (TF-IDF全文検索)

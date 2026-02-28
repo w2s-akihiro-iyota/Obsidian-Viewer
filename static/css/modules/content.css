@@ -1214,6 +1214,17 @@ details[open] .accordion-icon {
 .internal-link:hover {
     border-bottom-color: var(--accent-purple);
 }
+.internal-link-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    vertical-align: -2px;
+    margin-right: 3px;
+    opacity: 0.55;
+}
+.internal-link:hover .internal-link-icon {
+    opacity: 1;
+}
 .internal-link-broken {
     color: var(--text-muted);
     text-decoration: none;
@@ -1508,4 +1519,214 @@ details[open] .accordion-icon {
     background-color: rgba(123, 97, 255, 0.1);
     color: var(--accent-purple);
     text-decoration: none;
+}
+
+/* =========================================
+   Dataview クエリ表示
+   ========================================= */
+.dataview-container {
+    margin: 1.5em 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--bg-secondary);
+}
+
+.dataview-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    background-color: var(--bg-secondary);
+}
+
+.dataview-table thead {
+    background-color: var(--accent-purple) !important;
+}
+
+.dataview-table thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: white !important;
+    background-color: var(--accent-purple) !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.dataview-table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+}
+
+.dataview-table tbody tr:hover {
+    background-color: rgba(123, 97, 255, 0.08);
+}
+
+.dataview-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.dataview-table td {
+    padding: 8px 14px;
+    color: var(--text-normal);
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+/* Dataview LIST表示（箇条書き） */
+.dataview-list {
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+}
+
+.dataview-list li {
+    padding: 0;
+}
+
+.dataview-list-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    color: var(--accent-purple);
+    text-decoration: none;
+    font-size: 0.88rem;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+}
+
+.dataview-list-link:hover {
+    background-color: rgba(123, 97, 255, 0.08);
+    text-decoration: none;
+}
+
+.dataview-note-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.dataview-list-link:hover .dataview-note-icon {
+    color: var(--accent-purple);
+    opacity: 1;
+}
+
+.dataview-list-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dataview-link {
+    color: var(--accent-purple);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.dataview-link:hover {
+    text-decoration: underline;
+}
+
+.dataview-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: rgba(123, 97, 255, 0.12);
+    border: 1px solid rgba(123, 97, 255, 0.25);
+    border-radius: 10px;
+    color: var(--accent-purple);
+    font-size: 0.78rem;
+    margin: 1px 2px;
+}
+
+.dataview-badge-true {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: rgba(46, 204, 113, 0.15);
+    border: 1px solid rgba(46, 204, 113, 0.3);
+    border-radius: 10px;
+    color: #2ecc71;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.dataview-badge-false {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: rgba(231, 76, 60, 0.12);
+    border: 1px solid rgba(231, 76, 60, 0.25);
+    border-radius: 10px;
+    color: #e74c3c;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.dataview-null {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.dataview-error {
+    margin: 1.5em 0;
+    padding: 12px 16px;
+    background-color: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-left: 4px solid #e74c3c;
+    border-radius: 6px;
+    color: #e74c3c;
+    font-size: 0.85rem;
+}
+
+.dataview-footer {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    text-align: right;
+}
+
+/* Letter テーマオーバーライド */
+:root[data-theme="letter"] .dataview-table thead,
+:root[data-theme="letter"] .dataview-table thead th {
+    background-color: #c59363 !important;
+}
+
+:root[data-theme="letter"] .dataview-tag {
+    background-color: rgba(212, 163, 115, 0.15);
+    border-color: rgba(212, 163, 115, 0.3);
+    color: #a07850;
+}
+
+:root[data-theme="letter"] .dataview-link,
+:root[data-theme="letter"] .dataview-list-link {
+    color: #a07850;
+}
+
+:root[data-theme="letter"] .dataview-list-link:hover {
+    background-color: rgba(212, 163, 115, 0.1);
+}
+
+/* Midnight テーマオーバーライド */
+:root[data-theme="midnight"] .dataview-table thead,
+:root[data-theme="midnight"] .dataview-table thead th {
+    background-color: rgba(122, 162, 247, 0.3) !important;
+    color: #c0caf5 !important;
+}
+
+:root[data-theme="midnight"] .dataview-tag {
+    background-color: rgba(122, 162, 247, 0.15);
+    border-color: rgba(122, 162, 247, 0.3);
+    color: #7aa2f7;
+}
+
+:root[data-theme="midnight"] .dataview-link,
+:root[data-theme="midnight"] .dataview-list-link {
+    color: #7aa2f7;
+}
+
+:root[data-theme="midnight"] .dataview-list-link:hover {
+    background-color: rgba(122, 162, 247, 0.08);
 }

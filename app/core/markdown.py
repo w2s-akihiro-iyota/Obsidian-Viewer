@@ -44,19 +44,20 @@ default_fence_renderer = md.renderer.rules.get("fence", markdown_it.renderer.Ren
 
 def render_cardlink(tokens, idx, options, env):
     token = tokens[idx]
-    if token.info.strip() == "cardlink":
+    info = token.info.strip()
+    if info == "cardlink":
         lines = token.content.strip().split('\n')
         data = {}
         for line in lines:
             if ':' in line:
                 k, v = line.split(':', 1)
                 data[k.strip()] = v.strip()
-        
+
         title = data.get('title', 'No Title')
         url = data.get('url', '#')
         desc = data.get('description', '')
         image = data.get('image', '')
-        
+
         img_html = f'<div class="link-card-image" style="background-image: url({image})"></div>' if image else ''
         return f"""
         <a href="{url}" class="link-card" target="_blank" rel="noopener noreferrer">
@@ -68,6 +69,9 @@ def render_cardlink(tokens, idx, options, env):
             {img_html}
         </a>
         """
+    if info == "dataview":
+        from app.core.dataview import process_dataview
+        return process_dataview(token.content)
     # Important: Fallback to default for other code blocks
     return default_fence_renderer(tokens, idx, options, env)
 

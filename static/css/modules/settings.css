@@ -712,8 +712,8 @@ input:checked+.slider:before {
 .preview-tooltip {
     position: absolute;
     z-index: 1000;
-    width: 520px;
-    max-height: 400px;
+    width: var(--preview-width, 400px);
+    max-height: var(--preview-max-height, 300px);
     overflow-y: auto;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -917,8 +917,8 @@ input:checked+.slider:before {
 .preview-tooltip {
     position: absolute;
     z-index: 1000;
-    width: 520px;
-    max-height: 400px;
+    width: var(--preview-width, 400px);
+    max-height: var(--preview-max-height, 300px);
     overflow-y: auto;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -1411,4 +1411,80 @@ input:checked+.slider:before {
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.5;
+}
+
+/* Range Slider for Settings */
+.setting-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 160px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-color);
+    outline: none;
+    cursor: pointer;
+}
+
+.setting-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-purple);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+}
+
+.setting-range::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 4px rgba(123, 97, 255, 0.2);
+}
+
+.setting-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-purple);
+    border: none;
+    cursor: pointer;
+}
+
+.setting-value-label {
+    font-size: 0.8rem;
+    color: var(--accent-purple);
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+/* Preview Tooltip Resize Handle */
+.preview-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    opacity: 0.3;
+    transition: opacity 0.2s, color 0.2s;
+    border-radius: 0 0 8px 0;
+}
+
+.preview-resize-handle:hover {
+    opacity: 1;
+    color: var(--accent-purple);
+}
+
+.preview-tooltip.resizing .preview-resize-handle {
+    opacity: 1;
+    color: var(--accent-purple);
+}
+
+.preview-tooltip.resizing {
+    user-select: none;
+    transition: none;
 }

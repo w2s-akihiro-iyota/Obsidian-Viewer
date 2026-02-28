@@ -59,6 +59,7 @@ def process_obsidian_images(content: str) -> str:
             return full_match
 
         # 内部リンク処理: [[ファイル名]] or [[ファイル名|表示名]]
+        # プレースホルダとして簡易HTMLを挿入（アイコンはポストプロセスで付与）
         display_name = size if size else filename
         # .md拡張子付きの場合はstemで検索
         lookup_name = filename[:-3] if filename.endswith('.md') else filename

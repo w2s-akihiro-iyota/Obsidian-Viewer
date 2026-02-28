@@ -2,6 +2,7 @@
 # Standard library
 import math
 import re
+import time
 from pathlib import Path
 
 # Third party
@@ -222,12 +223,8 @@ async def api_get_messages():
     return get_all_messages()
 
 
-@router.get("/api/search")
-async def api_search(request: Request, q: str = ""):
-    if not q:
-        return []
-
-    is_localhost = is_request_local(request)
+def _legacy_search(q: str, is_localhost: bool) -> list[dict]:
+    """旧方式の線形スキャン検索（ベンチマーク比較用に抽出）"""
     q_lower = q.lower()
     results = []
 
@@ -244,7 +241,6 @@ async def api_search(request: Request, q: str = ""):
             match_type = "path"
         elif q_lower in f.get('body_text', '').lower():
             match_type = "body"
-            # スニペット生成: マッチ箇所前後50文字
             body = f.get('body_text', '')
             idx = body.lower().find(q_lower)
             if idx >= 0:
@@ -260,4 +256,84 @@ async def api_search(request: Request, q: str = ""):
                 "snippet": snippet
             })
 
-    return results[:20]  # limit 20
+    return results[:20]
+
+
+@router.get("/api/search")
+async def api_search(request: Request, q: str = ""):
+    if not q:
+        return []
+
+    is_localhost = is_request_local(request)
+
+    # TF-IDFインデックスが構築済みなら新方式を使用
+    if cache.SEARCH_INDEX is not None:
+        return cache.SEARCH_INDEX.search(q, is_localhost, cache.GLOBAL_FILE_CACHE)
+
+    # フォールバック: 旧方式
+    return _legacy_search(q, is_localhost)
+
+
+@router.get("/api/search/benchmark")
+async def api_search_benchmark(request: Request):
+    """旧方式と新方式の検索パフォーマンスを比較（localhost限定）"""
+    if not is_request_local(request):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if cache.SEARCH_INDEX is None:
+        return {"error": "検索インデックスが未構築です"}
+
+    test_queries = [
+        "python",
+        "docker compose",
+        "環境構築",
+        "API",
+        "設定",
+        "データベース",
+        "test",
+        "Linux コマンド",
+        "セキュリティ",
+        "error handling",
+    ]
+
+    results = []
+    for q in test_queries:
+        # 旧方式
+        t0 = time.perf_counter()
+        old_results = _legacy_search(q, is_localhost=True)
+        old_time = (time.perf_counter() - t0) * 1000  # ms
+
+        # 新方式
+        t0 = time.perf_counter()
+        new_results = cache.SEARCH_INDEX.search(q, True, cache.GLOBAL_FILE_CACHE)
+        new_time = (time.perf_counter() - t0) * 1000  # ms
+
+        results.append({
+            "query": q,
+            "legacy": {
+                "time_ms": round(old_time, 3),
+                "count": len(old_results),
+                "top3": [r["title"] for r in old_results[:3]],
+            },
+            "tfidf": {
+                "time_ms": round(new_time, 3),
+                "count": len(new_results),
+                "top3": [r["title"] for r in new_results[:3]],
+            },
+        })
+
+    # 集計
+    legacy_avg = sum(r["legacy"]["time_ms"] for r in results) / len(results)
+    tfidf_avg = sum(r["tfidf"]["time_ms"] for r in results) / len(results)
+    speedup = legacy_avg / tfidf_avg if tfidf_avg > 0 else float("inf")
+
+    return {
+        "benchmark": results,
+        "summary": {
+            "legacy_avg_ms": round(legacy_avg, 3),
+            "tfidf_avg_ms": round(tfidf_avg, 3),
+            "speedup_ratio": round(speedup, 2),
+            "doc_count": cache.SEARCH_INDEX.doc_count,
+            "vocab_size": len(cache.SEARCH_INDEX.inverted_index),
+        }
+    }
