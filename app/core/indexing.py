@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR, READING_SPEED_JP
 from app import cache
+from app.utils.slug import slugify_path
 
 logger = logging.getLogger("app.indexing")
 
@@ -212,7 +213,8 @@ def _build_backlink_cache() -> None:
                 if not any(bl["path"] == source_path for bl in backlinks[target_path]):
                     backlinks[target_path].append({
                         "title": source_title,
-                        "path": source_path
+                        "path": source_path,
+                        "slug": cache.PATH_TO_SLUG.get(source_path, source_path)
                     })
 
         forward[source_path] = list(set(resolved_targets))
@@ -240,6 +242,33 @@ def refresh_global_caches() -> None:
         # 同名ファイルが複数ある場合は最初のものを優先（Obsidianの最短パス解決に近い動作）
         if stem not in cache.FILE_NAME_CACHE:
             cache.FILE_NAME_CACHE[stem] = f["path"]
+
+    # スラッグマッピングの構築
+    slug_to_path = {}
+    path_to_slug = {}
+    for f in cache.GLOBAL_FILE_CACHE:
+        base_slug = slugify_path(f["path"])
+        slug = base_slug
+        counter = 2
+        while slug in slug_to_path:
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        slug_to_path[slug] = f["path"]
+        path_to_slug[f["path"]] = slug
+        f["slug"] = slug
+
+    cache.SLUG_TO_PATH = slug_to_path
+    cache.PATH_TO_SLUG = path_to_slug
+
+    # ファイルツリーにもスラッグを付与
+    def _apply_slug_to_tree(nodes):
+        for node in nodes:
+            if node["type"] == "file":
+                node["slug"] = path_to_slug.get(node.get("path", ""), "")
+            elif node["type"] == "directory":
+                _apply_slug_to_tree(node.get("children", []))
+    _apply_slug_to_tree(cache.GLOBAL_FILE_TREE_CACHE)
+    _apply_slug_to_tree(cache.GLOBAL_FILE_TREE_CACHE_PUBLIC)
 
     # バックリンクキャッシュの構築
     _build_backlink_cache()

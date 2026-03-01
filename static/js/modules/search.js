@@ -16,7 +16,7 @@ function highlightMatch(text, query) {
  */
 function createSearchResultItem(item, query, closeCallback) {
     const link = document.createElement('a');
-    link.href = `/view/${item.path}`;
+    link.href = `/view/${item.slug}`;
     link.className = 'search-result-item';
 
     // タイトル

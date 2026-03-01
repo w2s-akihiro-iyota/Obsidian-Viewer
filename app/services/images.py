@@ -66,7 +66,8 @@ def process_obsidian_images(content: str) -> str:
 
         target_path = cache.FILE_NAME_CACHE.get(lookup_name)
         if target_path:
-            return f'<a href="/view/{target_path}" class="internal-link">{display_name}</a>'
+            slug = cache.PATH_TO_SLUG.get(target_path, target_path)
+            return f'<a href="/view/{slug}" class="internal-link">{display_name}</a>'
         else:
             return f'<span class="internal-link-broken">{display_name}</span>'
 

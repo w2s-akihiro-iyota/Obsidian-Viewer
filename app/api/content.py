@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Third party
 from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 # Local
 from app import cache
@@ -42,6 +42,7 @@ def _get_related_articles(file_path: str, tags: list, is_localhost: bool, limit:
             scored.append({
                 "title": f["title"],
                 "path": f["path"],
+                "slug": cache.PATH_TO_SLUG.get(f["path"], f["path"]),
                 "score": common
             })
 
@@ -54,6 +55,11 @@ async def preview_file(request: Request, path: str):
     # Safety check
     if ".." in path or path.startswith("/"):
         raise HTTPException(status_code=400, detail="Invalid path")
+
+    # スラッグからの解決を試みる
+    resolved = cache.SLUG_TO_PATH.get(path)
+    if resolved:
+        path = resolved
 
     full_path = CONTENT_DIR / path
     if not full_path.exists():
@@ -131,6 +137,20 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
 
 @router.get("/view/{file_path:path}", response_class=HTMLResponse)
 async def read_item(request: Request, file_path: str):
+    # スラッグからの解決を試みる
+    actual_path = cache.SLUG_TO_PATH.get(file_path)
+    if actual_path is None:
+        # レガシーパス（実ファイルパス）でのアクセス → スラッグURLへ301リダイレクト
+        full_path = CONTENT_DIR / file_path
+        if full_path.exists() and full_path.is_file():
+            slug = cache.PATH_TO_SLUG.get(file_path)
+            if slug:
+                return RedirectResponse(url=f"/view/{slug}", status_code=301)
+            actual_path = file_path
+        else:
+            raise HTTPException(status_code=404, detail="File not found")
+    file_path = actual_path
+
     full_path = CONTENT_DIR / file_path
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -232,11 +252,14 @@ async def read_item(request: Request, file_path: str):
         tags = [tags]
     related_articles = _get_related_articles(file_path, tags, is_localhost)
 
+    slug = cache.PATH_TO_SLUG.get(file_path, file_path)
+
     return templates.TemplateResponse("view.html", {
         "request": request,
         "title": title,
         "content": html,
         "file_path": file_path,
+        "slug": slug,
         "filename": Path(file_path).name,
         "frontmatter": frontmatter,
         "is_published": is_pub,
@@ -285,6 +308,7 @@ def _legacy_search(q: str, is_localhost: bool) -> list[dict]:
             results.append({
                 "title": f['title'],
                 "path": f['path'],
+                "slug": cache.PATH_TO_SLUG.get(f['path'], f['path']),
                 "match_type": match_type,
                 "snippet": snippet
             })

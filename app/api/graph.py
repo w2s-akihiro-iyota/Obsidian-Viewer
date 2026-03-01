@@ -33,7 +33,8 @@ async def api_graph(request: Request):
         nodes.append({
             "id": f["path"],
             "title": f["title"],
-            "tags": f.get("tags", [])
+            "tags": f.get("tags", []),
+            "slug": cache.PATH_TO_SLUG.get(f["path"], f["path"])
         })
         node_paths.add(f["path"])
 

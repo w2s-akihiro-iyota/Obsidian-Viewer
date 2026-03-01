@@ -322,8 +322,8 @@ def render_table(query: DataviewQuery, results: list[dict]) -> str:
     rows = ""
     for f in results:
         title = escape(f.get("title", ""))
-        path = escape(f.get("path", ""))
-        link = f'<a href="/view/{path}" class="dataview-link">{title}</a>'
+        slug = escape(cache.PATH_TO_SLUG.get(f.get("path", ""), f.get("path", "")))
+        link = f'<a href="/view/{slug}" class="dataview-link">{title}</a>'
         row_cells = f'<td>{link}</td>'
 
         for field in fields:
@@ -349,10 +349,10 @@ def render_list(query: DataviewQuery, results: list[dict]) -> str:
     items = ""
     for f in results:
         title = escape(f.get("title", ""))
-        path = escape(f.get("path", ""))
+        slug = escape(cache.PATH_TO_SLUG.get(f.get("path", ""), f.get("path", "")))
         items += (
             f'<li>'
-            f'<a href="/view/{path}" class="dataview-list-link">'
+            f'<a href="/view/{slug}" class="dataview-list-link">'
             f'{_NOTE_ICON}'
             f'<span class="dataview-list-title">{title}</span>'
             f'</a>'

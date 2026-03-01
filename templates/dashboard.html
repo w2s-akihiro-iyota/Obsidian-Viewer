@@ -45,7 +45,7 @@
             <ul class="dashboard-recent-list">
                 {% for f in recent_files %}
                 <li class="dashboard-recent-item">
-                    <a href="/view/{{ f.path }}" class="dashboard-recent-link">
+                    <a href="/view/{{ f.slug }}" class="dashboard-recent-link">
                         <span class="dashboard-recent-title">{{ f.title }}</span>
                         <span class="dashboard-recent-meta">
                             {{ f.updated }}

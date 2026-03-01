@@ -5,3 +5,4 @@ markdown-it-py[plugins]
 mdit-py-plugins
 python-multipart
 PyYAML
+pykakasi

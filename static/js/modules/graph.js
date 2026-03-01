@@ -131,7 +131,7 @@
 
             // ノードクリックで遷移
             node.on('click', (event, d) => {
-                window.location.href = `/view/${d.id}`;
+                window.location.href = `/view/${d.slug}`;
             });
 
             // シミュレーションtick

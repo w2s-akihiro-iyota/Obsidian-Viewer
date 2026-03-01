@@ -4,6 +4,8 @@ import re
 import logging
 import unicodedata
 
+from app import cache as app_cache
+
 logger = logging.getLogger("app.search")
 
 # CJK文字範囲の判定
@@ -253,6 +255,7 @@ class SearchIndex:
             results.append({
                 "title": f["title"],
                 "path": f["path"],
+                "slug": app_cache.PATH_TO_SLUG.get(f["path"], f["path"]),
                 "snippet": snippet,
                 "score": round(score, 4),
             })
