@@ -15,6 +15,7 @@ from app.api import templates
 from app.config import CONTENT_DIR, PER_PAGE
 from app.core.indexing import parse_frontmatter, is_published
 from app.services.content import render_markdown
+from app.services.images import find_image_in_static
 from app.utils.helpers import is_request_local
 from app.utils.messages import get_all_messages
 
@@ -175,17 +176,48 @@ async def read_item(request: Request, file_path: str):
 
     # OGP用のdescription生成
     description = frontmatter.get("description", "")
-    if not description:
-        # body先頭からプレーンテキスト150文字を抽出
+    raw_body = ""
+    og_image_from_fm = frontmatter.get("image") or frontmatter.get("thumbnail")
+    if not description or not og_image_from_fm:
         with open(full_path, "r", encoding="utf-8") as f:
             raw_content = f.read()
         _, raw_body = parse_frontmatter(raw_content)
+
+    if not description:
+        # body先頭からプレーンテキスト150文字を抽出
         plain = re.sub(r'<[^>]+>', '', raw_body)
         plain = re.sub(r'[#*_~`>\-\|\[\]!()]', '', plain)
         plain = plain.replace('\n', ' ').strip()[:150]
         description = plain
 
     og_url = str(request.url)
+    base_url = str(request.base_url).rstrip('/')
+
+    # OGP画像の抽出
+    og_image = og_image_from_fm
+    if not og_image and raw_body:
+        # Obsidianの画像記法 ![[image.png]] または ![[image.png|300]] を探す
+        obs_match = re.search(r'!\[\[([^|\]]+?)(?:\|[^\]]*)?\]\]', raw_body)
+        if obs_match:
+            resolved = find_image_in_static(obs_match.group(1).strip())
+            if resolved:
+                og_image = resolved
+        if not og_image:
+            # Markdownの画像構文 ![alt](url) を探す
+            img_match = re.search(r'!\[.*?\]\((.*?)\)', raw_body)
+            if img_match:
+                og_image = img_match.group(1)
+            else:
+                # HTMLのimgタグ構文 <img src="url"> を探す
+                img_html_match = re.search(r'<img[^>]+src=["\'](.*?)["\']', raw_body)
+                if img_html_match:
+                    og_image = img_html_match.group(1)
+
+    # og_imageが相対パス(local)の場合は絶対URLに変換
+    if og_image and not og_image.startswith(('http://', 'https://')):
+        if not og_image.startswith('/'):
+            og_image = '/' + og_image
+        og_image = base_url + og_image
 
     # バックリンク取得
     backlinks = cache.BACKLINK_CACHE.get(file_path, [])
@@ -212,6 +244,7 @@ async def read_item(request: Request, file_path: str):
         "reading_time": reading_time,
         "description": description,
         "og_url": og_url,
+        "og_image": og_image,
         "backlinks": backlinks,
         "related_articles": related_articles
     })

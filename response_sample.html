@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>機能デモ &amp; サンプル - Obsidian Viewer</title>
+    <title>デモドキュメント - Obsidian Viewer</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
     <link rel="stylesheet" href="/static/css/style.css?v=20260221-editor">
     <link
@@ -50,17 +50,17 @@
     <script src="/static/js/modules/main.js?v=20260223" defer></script>
     
 <!-- SEO / OGP -->
-<meta name="description" content="Obsidian Viewer 機能デモ  このページでは、Obsidian Viewer で利用可能な主要な機能とレンダリングのサンプルを確認できます。   1. コールアウト Admonitions   INFO タイトル付き  これは情報（Info）のコールアウトです。Obsidian と互換">
-<meta property="og:title" content="機能デモ &amp; サンプル">
-<meta property="og:description" content="Obsidian Viewer 機能デモ  このページでは、Obsidian Viewer で利用可能な主要な機能とレンダリングのサンプルを確認できます。   1. コールアウト Admonitions   INFO タイトル付き  これは情報（Info）のコールアウトです。Obsidian と互換">
-<meta property="og:url" content="http://localhost:8000/view/demo.md">
+<meta name="description" content="H1 Heading Centered, Brown   H2 Heading Underline, Orange   H3 Heading Yellow, Underline   H4 Heading Underline, Blue   H5 Heading Purple   H6 Heading">
+<meta property="og:title" content="デモドキュメント">
+<meta property="og:description" content="H1 Heading Centered, Brown   H2 Heading Underline, Orange   H3 Heading Yellow, Underline   H4 Heading Underline, Blue   H5 Heading Purple   H6 Heading">
+<meta property="og:url" content="http://localhost:8000/view/samples/sample.md">
 <meta property="og:site_name" content="Obsidian Viewer">
 <meta property="og:type" content="article">
 
 <meta name="twitter:card" content="summary">
 
-<meta name="twitter:title" content="機能デモ &amp; サンプル">
-<meta name="twitter:description" content="Obsidian Viewer 機能デモ  このページでは、Obsidian Viewer で利用可能な主要な機能とレンダリングのサンプルを確認できます。   1. コールアウト Admonitions   INFO タイトル付き  これは情報（Info）のコールアウトです。Obsidian と互換">
+<meta name="twitter:title" content="デモドキュメント">
+<meta name="twitter:description" content="H1 Heading Centered, Brown   H2 Heading Underline, Orange   H3 Heading Yellow, Underline   H4 Heading Underline, Blue   H5 Heading Purple   H6 Heading">
 
 <!-- Highlight.js for syntax highlighting -->
 <link id="highlight-theme" rel="stylesheet"
@@ -256,9 +256,7 @@
             
 <div class="view-header">
     <div class="breadcrumb">
-        <a href="/">Home</a> / <span>demo.md</span>
-        
-        <span class="file-status-badge">公開中</span>
+        <a href="/">Home</a> / <span>sample.md</span>
         
         <span class="reading-time">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -266,7 +264,7 @@
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
-            約2分で読了
+            約4分で読了
         </span>
     </div>
 
@@ -306,56 +304,126 @@
     
     <a href="/?tag=demo" class="view-tag">#demo</a>
     
-    <a href="/?tag=help" class="view-tag">#help</a>
-    
-    <a href="/?tag=features" class="view-tag">#features</a>
-    
 </div>
 
 
 <article class="markdown-body">
-    <h1>Obsidian Viewer 機能デモ</h1>
-<p>このページでは、Obsidian Viewer で利用可能な主要な機能とレンダリングのサンプルを確認できます。</p>
-<h2>1. コールアウト (Admonitions)</h2>
-<div class="callout callout-info">
-<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>タイトル付き</div><div class="callout-content"><p>これは情報（Info）のコールアウトです。Obsidian と互換性のある構文を使用しています。</p>
+    <h1>H1 Heading (Centered, Brown)</h1>
+<h2>H2 Heading (Underline, Orange)</h2>
+<h3>H3 Heading (Yellow, Underline)</h3>
+<h4>H4 Heading (Underline, Blue)</h4>
+<h5>H5 Heading (Purple)</h5>
+<h6>H6 Heading (Dark Green Uppercase)</h6>
+<h3>Another H2 Section</h3>
+<h3>Another H3</h3>
+<h2>Syntax Highlighting</h2>
+<pre><code class="language-python">def hello_world():
+    print(&quot;Hello, World!&quot;)
+    return 42
+</code></pre>
+<h2>Math</h2>
+<p>Inline math: <span class="math inline">E = mc^2</span></p>
+<p>Block math:</p>
+<div class="math block">
+\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
+</div>
+<h2>Tables</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Math</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>TOC</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h2>Lists</h2>
+<ul>
+<li>Item 1</li>
+<li>Item 2
+<ul>
+<li>Nested item</li>
+<li>Another nested item</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li>First</li>
+<li>Second</li>
+<li>Third</li>
+</ol>
+<h2>Task List</h2>
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Completed task</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Pending task
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Nested task
+<ul class="contains-task-list">
+<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Nested Completed task</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Another pending task</li>
+</ul>
+<h2>Mermaid</h2>
+<pre><code class="language-mermaid">graph TD
+    A[Start] --&gt; B[Process]
+    B --&gt; C[End]
+</code></pre>
+<h2>Callouts</h2>
+<div class="callout callout-note">
+<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></div>Note</div><div class="callout-content"><p>This is a note callout</p>
 </div></div>
-<div class="callout callout-important">
-<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lightbulb"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1.5 1.5-3 1.5-5 0-4-3.5-7-8-7s-8 3-8 7c0 2 .5 3.5 1.5 5 .8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></div>Important</div><div class="callout-content"><p>重要な注意事項はこちらです。タイトルのないコールアウトも可能です。</p>
+<div class="callout callout-tip">
+<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-flame"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>Tip</div><div class="callout-content"><p>This is a tip</p>
 </div></div>
 <div class="callout callout-warning">
-<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>注意</div><div class="callout-content"><p>注意が必要な内容を示す場合に使用します。</p>
+<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>Warning</div><div class="callout-content"><p></p>
+<div class="callout callout-tip">
+<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-flame"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>Tip</div><div class="callout-content"><p>This is a Nested tip<br />
+This is a warning</p>
 </div></div>
-<h2>2. リンクカード (CardLink)</h2>
-<p>外部サイトや内部リンクをカード形式で表示します。</p>
-<p><span class="internal-link-broken">Obsidian 公式サイト</span><br />
-<span class="internal-link-broken">GitHub</span></p>
-<h2>3. 数式 (KaTeX)</h2>
-<p>行内数式: <span class="math inline">E = mc^2</span></p>
-<p>ブロック数式:<br />
-$<span class="math inline">\int_{a}^{b} f(x) \,dx = F(b) - F(a)</span>$</p>
-<h2>4. ダイアグラム (Mermaid)</h2>
-<pre><code class="language-mermaid">graph TD
-    A[開始] --&gt; B{設定確認}
-    B -- OK --&gt; C[同期実行]
-    B -- NG --&gt; D[設定画面へ]
-    C --&gt; E[完了]
-</code></pre>
-<h2>5. タスクリスト</h2>
-<ul class="contains-task-list">
-<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> サーバーのセットアップ</li>
-<li class="task-list-item"><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> ファイル同期の設定</li>
-<li class="task-list-item"><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 公開設定の確認</li>
+</div></div>
+<div class="callout callout-question">
+<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-help-circle"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></div>Q. Is This a Question?</div><div class="callout-content"><p></p>
+<div class="callout callout-success">
+<div class="callout-title"><div class="callout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-square"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>A. Yes</div><div class="callout-content"><p></p>
+</div></div>
+</div></div>
+<h2>CardLink Test</h2>
+
+        <a href="https://github.com/w2s-akihiro-iyota/Obsidian-Viewer" class="link-card" target="_blank" rel="noopener noreferrer">
+            <div class="link-card-content">
+                <div class="link-card-title">"GitHub - w2s-akihiro-iyota/Obsidian-Viewer: ObsidianのmdファイルをレンダリングするWebアプリケーション"</div>
+                <div class="link-card-description">"ObsidianのmdファイルをレンダリングするWebアプリケーション. Contribute to w2s-akihiro-iyota/Obsidian-Viewer development by creating an account on GitHub."</div>
+                <div class="link-card-meta">https://github.com/w2s-akihiro-iyota/Obsidian-Viewer</div>
+            </div>
+            <div class="link-card-image" style="background-image: url(https://opengraph.githubassets.com/1e60dcb426194d5bce96975d40ef6e0f0bb0e058582ff8ea6bc1176fd6cefc4e/w2s-akihiro-iyota/Obsidian-Viewer)"></div>
+        </a>
+        <h2>Image</h2>
+<img src="/static/images/samples/sample-image.png" alt="sample-image.png" width="500" class="obsidian-image">
+<img src="/static/images/samples/sample-image.png" alt="sample-image.png" width="300" class="obsidian-image">
+<img src="/static/images/samples/sample-image.png" alt="sample-image.png" width="100" class="obsidian-image">
+<h2>リンクテスト</h2>
+<p>以下のリンクにマウスを乗せてみてください（PC）。</p>
+<ul>
+<li><a href="theme_test.md">theme_testへのリンク</a></li>
+<li><a href="sample.md">自分自身のリンク</a></li>
 </ul>
-<h2>6. コードブロック</h2>
-<pre><code class="language-python">def hello_world():
-    print(&quot;Hello, Obsidian Viewer!&quot;)
-</code></pre>
-<h2>7. 画像 (Obsidian 形式)</h2>
-<img src="/static/images/logo.png" alt="logo.png" width="100" class="obsidian-image">
-*(画像が static/images にある場合に表示されます)*
-<hr />
-<p>最終更新: 2026-02-16</p>
 
 </article>
 
@@ -376,7 +444,7 @@ $<span class="math inline">\int_{a}^{b} f(x) \,dx = F(b) - F(a)</span>$</p>
     </h3>
     <ul class="related-list">
         
-        <li><a href="/view/samples/sample.md" class="related-item">デモドキュメント</a></li>
+        <li><a href="/view/demo.md" class="related-item">機能デモ &amp; サンプル</a></li>
         
     </ul>
 </section>

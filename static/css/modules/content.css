@@ -381,7 +381,53 @@
     font-size: 0.9rem;
     /* Explicit size if needed, but let's stick to inherit mostly */
     position: relative;
-    /* Ensure it's positioned for line numbers */
+    /* Ensure it's positioned for line numbers and copy button */
+}
+
+/* Copy button for code blocks */
+.copy-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+    z-index: 10;
+}
+
+:root[data-theme="light"] .copy-button {
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.markdown-body pre:hover .copy-button {
+    opacity: 1;
+}
+
+.copy-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+:root[data-theme="light"] .copy-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: black;
+}
+
+.copy-button.copied {
+    background-color: var(--accent-purple);
+    color: white;
+    border-color: var(--accent-purple);
 }
 
 /* Line Numbers Styling */
@@ -448,6 +494,76 @@
     box-sizing: content-box;
     background-color: #fff;
     /* In case of transparent PNGs on dark bg */
+    cursor: zoom-in;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.markdown-body img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* リンク内の画像はLightboxの対象外にする場合があるため、ポインタを変更しないなどの調整が必要ならここで行う */
+.markdown-body a img {
+    cursor: pointer;
+}
+
+/* Lightbox styles */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.lightbox-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.lightbox-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+}
+
+.lightbox-overlay.active .lightbox-image {
+    transform: scale(1);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    z-index: 10000;
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .markdown-body blockquote {

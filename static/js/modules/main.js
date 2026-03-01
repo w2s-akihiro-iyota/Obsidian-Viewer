@@ -134,22 +134,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // --- Lightbox Functionality ---
+    const lightboxOverlay = document.getElementById('lightbox-overlay');
+    const lightboxImage = document.getElementById('lightbox-image');
+    const lightboxClose = document.querySelector('.lightbox-close');
+
+    if (lightboxOverlay && lightboxImage && lightboxClose) {
+        const closeLightbox = () => {
+            lightboxOverlay.classList.remove('active');
+            lightboxOverlay.setAttribute('aria-hidden', 'true');
+            // Remove src after transition to prevent layout jumps
+            setTimeout(() => {
+                lightboxImage.src = '';
+            }, 300);
+        };
+
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightboxOverlay.addEventListener('click', (e) => {
+            if (e.target === lightboxOverlay) {
+                closeLightbox();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && lightboxOverlay.classList.contains('active')) {
+                closeLightbox();
+            }
+        });
+
+        // Attach click event to all article images (except those inside links)
+        document.querySelectorAll('.markdown-body img').forEach(img => {
+            // Skip images that are inside links
+            if (img.closest('a')) return;
+
+            img.addEventListener('click', () => {
+                lightboxImage.src = img.src;
+                lightboxImage.alt = img.alt || '拡大画像';
+                lightboxOverlay.classList.add('active');
+                lightboxOverlay.setAttribute('aria-hidden', 'false');
+            });
+        });
+    }
+
     // --- Add copy button to code blocks ---
     document.querySelectorAll('pre code').forEach((codeBlock) => {
         const pre = codeBlock.parentNode;
+
+        // Skip if pre already has a copy button (e.g. from table-copy or similar)
+        if (pre.querySelector('.copy-button')) return;
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'copy-button';
-        button.textContent = 'Copy';
+        button.title = 'コードをコピー';
+        
+        const iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+        const checkSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        
+        button.innerHTML = `${iconSvg} Copy`;
 
         pre.appendChild(button);
 
         button.addEventListener('click', () => {
             copyToClipboard(codeBlock.textContent).then(() => {
-                button.textContent = 'Copied!';
+                button.innerHTML = `${checkSvg} Copied!`;
+                button.classList.add('copied');
+                showToast("コードをコピーしました", "success");
                 setTimeout(() => {
-                    button.textContent = 'Copy';
+                    button.innerHTML = `${iconSvg} Copy`;
+                    button.classList.remove('copied');
                 }, COPY_FEEDBACK_DURATION);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                showToast("コピーに失敗しました", "error");
             });
         });
     });
