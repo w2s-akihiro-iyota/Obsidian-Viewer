@@ -120,7 +120,7 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
 
     is_localhost = is_request_local(request)
 
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse(request=request, name="index.html", context={
         "request": request,
         "files": paginated_files,
         "total_items": total,
@@ -254,7 +254,7 @@ async def read_item(request: Request, file_path: str):
 
     slug = cache.PATH_TO_SLUG.get(file_path, file_path)
 
-    return templates.TemplateResponse("view.html", {
+    return templates.TemplateResponse(request=request, name="view.html", context={
         "request": request,
         "title": title,
         "content": html,

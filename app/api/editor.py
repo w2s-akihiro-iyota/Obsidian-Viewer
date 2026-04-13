@@ -28,7 +28,7 @@ async def editor_page(request: Request):
     if not is_request_local(request):
         raise HTTPException(status_code=403, detail=get_error("E101"))
 
-    return templates.TemplateResponse("editor.html", {
+    return templates.TemplateResponse(request=request, name="editor.html", context={
         "request": request,
         "is_localhost": True
     })

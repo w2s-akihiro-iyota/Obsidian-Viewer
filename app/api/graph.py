@@ -13,7 +13,7 @@ router = APIRouter()
 async def graph_page(request: Request):
     """グラフビューページを表示"""
     is_localhost = is_request_local(request)
-    return templates.TemplateResponse("graph.html", {
+    return templates.TemplateResponse(request=request, name="graph.html", context={
         "request": request,
         "is_localhost": is_localhost
     })

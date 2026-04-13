@@ -1846,3 +1846,17 @@ details[open] .accordion-icon {
 :root[data-theme="midnight"] .dataview-list-link:hover {
     background-color: rgba(122, 162, 247, 0.08);
 }
+
+/* 引用内のテーブルのレイアウト崩れ・ヘッダー角丸の突き抜け調整 */
+.markdown-body table thead th:first-child {
+    border-top-left-radius: 8px;
+}
+.markdown-body table thead th:last-child {
+    border-top-right-radius: 8px;
+}
+.markdown-body blockquote table {
+    margin: 16px 0 !important;
+    width: 100% !important;
+    overflow-x: auto;
+    display: block;
+}

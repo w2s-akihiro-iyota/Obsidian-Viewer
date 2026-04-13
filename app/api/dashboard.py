@@ -36,7 +36,7 @@ async def dashboard_page(request: Request):
     # 最近更新されたファイル (top 10)
     recent_files = files[:10]
 
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "request": request,
         "is_localhost": True,
         "total_files": total_files,
