@@ -187,6 +187,93 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Activity Heatmap */
+.heatmap-section {
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.heatmap-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 0;
+    min-width: max-content;
+}
+
+.heatmap-months {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-rows: repeat(7, 1fr);
+    grid-auto-flow: column;
+    gap: 4px;
+}
+
+.heatmap-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: transform 0.1s, box-shadow 0.1s;
+    cursor: pointer;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    z-index: 10;
+    position: relative;
+}
+
+/* Color levels for Emerald Green (Light Mode Default) */
+.level-0 { background-color: rgba(235, 237, 240, 0.2); }
+.level-1 { background-color: #9be9a8; border-color: #9be9a8; }
+.level-2 { background-color: #40c463; border-color: #40c463; }
+.level-3 { background-color: #30a14e; border-color: #30a14e; }
+.level-4 { background-color: #216e39; border-color: #216e39; }
+
+/* Dark Mode Overrides (if body uses dark mode class or media query) */
+@media (prefers-color-scheme: dark) {
+    .level-0 { background-color: rgba(255, 255, 255, 0.05); }
+    .level-1 { background-color: #0e4429; border-color: #0e4429; }
+    .level-2 { background-color: #006d32; border-color: #006d32; }
+    .level-3 { background-color: #26a641; border-color: #26a641; }
+    .level-4 { background-color: #39d353; border-color: #39d353; }
+}
+
+html[data-theme="dark"] .level-0 { background-color: rgba(255, 255, 255, 0.05); }
+html[data-theme="dark"] .level-1 { background-color: #0e4429; border-color: #0e4429; }
+html[data-theme="dark"] .level-2 { background-color: #006d32; border-color: #006d32; }
+html[data-theme="dark"] .level-3 { background-color: #26a641; border-color: #26a641; }
+html[data-theme="dark"] .level-4 { background-color: #39d353; border-color: #39d353; }
+
+.heatmap-legend-container {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.heatmap-legend span {
+    margin: 0 6px;
+    font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .dashboard-grid {

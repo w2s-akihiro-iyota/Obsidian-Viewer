@@ -37,6 +37,35 @@
         </div>
     </div>
 
+    <!-- Activity Heatmap -->
+    <section class="dashboard-section heatmap-section">
+        <h2 class="dashboard-section-title">Activity</h2>
+        <div class="heatmap-wrapper">
+            <div class="heatmap-months">
+                {% for label in month_labels %}
+                <span>{{ label }}</span>
+                {% endfor %}
+            </div>
+            <div class="heatmap-grid">
+                {% for item in heatmap_data %}
+                <div class="heatmap-cell level-{{ item.level }}" 
+                     title="{{ item.date }}: {{ item.count }} chars"></div>
+                {% endfor %}
+            </div>
+            <div class="heatmap-legend-container">
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="heatmap-cell level-0"></div>
+                    <div class="heatmap-cell level-1"></div>
+                    <div class="heatmap-cell level-2"></div>
+                    <div class="heatmap-cell level-3"></div>
+                    <div class="heatmap-cell level-4"></div>
+                    <span>More</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 2カラムレイアウト -->
     <div class="dashboard-columns">
         <!-- 最近の更新 -->
