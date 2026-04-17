@@ -44,6 +44,46 @@ def save_config(config: SyncConfig) -> None:
     except Exception as e:
         logger.error("Failed to save config: %s", e)
 
+def sync_directory(src_dir: Path, dest_dir: Path, last_sync_timestamp: float | None, is_content: bool = False) -> int:
+    """ディレクトリを同期し、同期されたファイル数を返します。"""
+    sync_count = 0
+    if not last_sync_timestamp:
+        if is_content:
+            logger.info("Cleaning destination: %s", dest_dir)
+            if dest_dir.exists():
+                for item in dest_dir.iterdir():
+                    if item.name in PROTECTED_ITEMS:
+                        logger.debug("Skipping protected item: %s", item.name)
+                        continue
+                    try:
+                        if item.is_dir():
+                            shutil.rmtree(item)
+                        else:
+                            item.unlink()
+                    except Exception as e:
+                        logger.warning("Could not delete %s: %s", item, e)
+
+        logger.info("Copying files from %s to %s", src_dir, dest_dir)
+        for item in src_dir.iterdir():
+            dest_item = dest_dir / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest_item, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, dest_item)
+        
+        sync_count = sum(1 for f in src_dir.rglob('*') if f.is_file())
+    else:
+        logger.info("Differentially copying files from %s to %s", src_dir, dest_dir)
+        for item in src_dir.rglob('*'):
+            if item.is_file():
+                if item.stat().st_mtime > last_sync_timestamp:
+                    rel_path = item.relative_to(src_dir)
+                    dest_file = dest_dir / rel_path
+                    dest_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item, dest_file)
+                    sync_count += 1
+    return sync_count
+
 def perform_sync(config: SyncConfig) -> tuple[bool, str]:
     """ファイルの同期を実行します。"""
     logger.info("Starting sync. sync_enabled=%s, content_src=%s", config.sync_enabled, config.content_src)
@@ -54,56 +94,44 @@ def perform_sync(config: SyncConfig) -> tuple[bool, str]:
         return False, get_error("E001")
 
     try:
+        JST = timezone(timedelta(hours=9))
+        
+        # 最終同期日時のパース
+        last_sync_timestamp = None
+        if config.last_sync:
+            try:
+                last_sync_dt = datetime.strptime(config.last_sync, "%Y-%m-%d %H:%M:%S").replace(tzinfo=JST)
+                last_sync_timestamp = last_sync_dt.timestamp()
+            except ValueError:
+                logger.warning("Invalid last_sync format: %s. Performing full sync.", config.last_sync)
+
         # 1. コンテンツの同期
         src_path = Path(config.content_src)
         if not src_path.exists():
             return False, get_error("E002")
 
-        logger.info("Cleaning destination: %s", CONTENT_DIR)
-        if CONTENT_DIR.exists():
-            for item in CONTENT_DIR.iterdir():
-                if item.name in PROTECTED_ITEMS:
-                    logger.debug("Skipping protected item: %s", item.name)
-                    continue
-                try:
-                    if item.is_dir():
-                        shutil.rmtree(item)
-                    else:
-                        item.unlink()
-                except Exception as e:
-                    logger.warning("Could not delete %s: %s", item, e)
-
-        logger.info("Copying files from %s to %s", src_path, CONTENT_DIR)
-        for item in src_path.iterdir():
-            dest_item = CONTENT_DIR / item.name
-            if item.is_dir():
-                shutil.copytree(item, dest_item, dirs_exist_ok=True)
-            else:
-                shutil.copy2(item, dest_item)
+        note_count = sync_directory(src_path, CONTENT_DIR, last_sync_timestamp, is_content=True)
 
         # 2. 画像の同期（オプション）
+        image_count = 0
         if config.images_src:
             img_src_path = Path(config.images_src)
             if img_src_path.exists() and IMAGES_DIR.exists():
                 logger.info(get_system("S105"))
-                for item in img_src_path.iterdir():
-                    dest_item = IMAGES_DIR / item.name
-                    if item.is_dir():
-                        shutil.copytree(item, dest_item, dirs_exist_ok=True)
-                    else:
-                        shutil.copy2(item, dest_item)
+                image_count = sync_directory(img_src_path, IMAGES_DIR, last_sync_timestamp, is_content=False)
             else:
                 logger.info("Skipping image sync (path not found)")
 
         # 3. 完了処理
-        JST = timezone(timedelta(hours=9))
         config.last_sync = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
         logger.info("Sync successful at %s", config.last_sync)
         save_config(config)
 
         # キャッシュリフレッシュのトリガー
         refresh_global_caches()
-        return True, get_system("S102")
+        
+        success_msg = f"ノート{note_count}件、画像ファイル{image_count}件を同期しました。"
+        return True, success_msg
 
     except Exception as e:
         error_msg = f"{get_system('S103')}: {str(e)}"

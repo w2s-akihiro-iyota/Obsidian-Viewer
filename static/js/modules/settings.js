@@ -890,6 +890,9 @@ function initSyncSettings() {
                         // チュートリアル完了時のみお祝いアニメーションを表示
                         localStorage.setItem('showCelebration', 'true');
                     }
+                    if (data.message) {
+                        sessionStorage.setItem('syncCompletedMessage', data.message);
+                    }
                     window.location.href = '/';
                 } else {
                     throw new Error(data.message || "Sync failed");

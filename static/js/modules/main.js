@@ -265,4 +265,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem('showCelebration');
         setTimeout(() => showCelebration(), 300);
     }
+
+    // --- Sync completion message check ---
+    const syncMsg = sessionStorage.getItem('syncCompletedMessage');
+    if (syncMsg) {
+        sessionStorage.removeItem('syncCompletedMessage');
+        setTimeout(() => showToast(syncMsg, "success"), 400);
+    }
 });
