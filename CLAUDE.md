@@ -16,26 +16,39 @@ Docker上で動作し、FastAPI + Jinja2 + HTMX で構成される。
 
 ```
 app/
-├── api/routes.py          # 全APIエンドポイント・ビューハンドラ
+├── api/                   # APIルーター/ビューハンドラ
+│   ├── content.py         # Markdown記事表示・目次・ファイル操作API
+│   ├── dashboard.py       # ダッシュボード用API
+│   ├── editor.py          # ブラウザ上の簡易エディタ向けAPI
+│   ├── graph.py           # グラフビューAPI
+│   ├── routes.py          # トップレベル・その他ルーティング
+│   └── sync.py            # ファイル同期・設定管理API
 ├── core/
+│   ├── dataview.py        # Obsidian Dataviewライクなクエリ処理
+│   ├── indexing.py        # ファイルインデックス作成・ツリー構築
 │   ├── markdown.py        # Markdownレンダリング・カスタムプラグイン
-│   └── indexing.py        # ファイルインデックス・ツリー構築・キャッシュ
-├── models/sync.py         # Pydanticモデル
+│   └── search.py          # 全文検索ロジック
+├── models/sync.py         # Request/Response用Pydanticモデル
 ├── services/
-│   ├── sync.py            # ファイル同期・バックグラウンドタスク
-│   └── images.py          # Obsidian画像リンク処理
+│   ├── sync.py            # 物理ファイル同期・バックグラウンドタスク処理
+│   └── images.py          # 画像・メディアファイルの解決
 ├── utils/
-│   ├── helpers.py         # リクエスト検証・localhost判定
-│   └── messages.py        # メッセージ/i18n (YAML読み込み)
-├── cache.py               # グローバルインメモリキャッシュ定義
-├── config.py              # パス定数・ディレクトリ設定
-├── events.py              # 非同期イベントシグナル
-├── main.py                # FastAPIアプリ初期化
-└── messages.yaml          # システムメッセージ定義 (日本語)
+│   ├── helpers.py         # localhost判定等のユーティリティ
+│   └── messages.py        # i18nメッセージリーダー
+├── cache.py               # インメモリキャッシュのインスタンス管理
+├── config.py              # アプリケーションのパス・定数設定
+├── events.py              # バックグラウンド処理用のイベント管理
+├── logging_config.py      # 標準ロガーのフォーマット等設定
+├── main.py                # FastAPIアプリの初期化ポイント
+├── server_config.yaml     # ランタイム動的設定
+└── messages.yaml          # システム・エラーメッセージ定義
 
-templates/                 # Jinja2テンプレート (base.html, index.html, view.html)
-static/css/style.css       # メインスタイルシート (4テーマ: dark, light, letter, midnight)
-static/js/script.js        # フロントエンドロジック
+templates/                 # Jinja2ベーステンプレート群
+static/
+├── css/style.css          # メインCSS (変数を多用したテーマ管理)
+└── js/
+    ├── script.js          # メインローダー
+    └── modules/           # 各機能のES6 Vanilla JSモジュール郡
 ```
 
 ## Coding Conventions
@@ -53,6 +66,7 @@ static/js/script.js        # フロントエンドロジック
 ### Frontend (JavaScript/CSS)
 - フレームワーク不使用、Vanilla JS で記述
 - 動的更新には HTMX を使用 (SPAフレームワークは使わない)
+- JSコードは ES6 モジュール(`static/js/modules/`) に機能ごとに分割して管理
 - テーマは CSS Custom Properties (`--variable`) で切り替え
 - 状態管理は `localStorage` (テーマ、サイドバー状態、サイドバー幅)
 - アイコンは Lucide SVG を使用
