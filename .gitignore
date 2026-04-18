@@ -29,3 +29,4 @@ docker-compose.yml
 
 # Environment Specific Configs
 server_config.yaml
+.claude/settings.local.json
