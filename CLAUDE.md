@@ -33,13 +33,14 @@ app/
 │   ├── sync.py            # 物理ファイル同期・バックグラウンドタスク処理
 │   └── images.py          # 画像・メディアファイルの解決
 ├── utils/
-│   ├── helpers.py         # localhost判定等のユーティリティ
+│   ├── helpers.py         # 管理者判定・CSRF判定等のユーティリティ
 │   └── messages.py        # i18nメッセージリーダー
 ├── cache.py               # インメモリキャッシュのインスタンス管理
 ├── config.py              # アプリケーションのパス・定数設定
 ├── events.py              # バックグラウンド処理用のイベント管理
 ├── logging_config.py      # 標準ロガーのフォーマット等設定
-├── main.py                # FastAPIアプリの初期化ポイント
+├── main.py                # FastAPIアプリの初期化ポイント（CSRF ミドルウェア）
+├── server.py              # 公開用・管理用の 2 ポートを 1 プロセスで起動する
 ├── server_config.yaml     # ランタイム動的設定
 └── messages.yaml          # システム・エラーメッセージ定義
 
@@ -77,9 +78,12 @@ static/
 - HTMX属性 (`hx-get`, `hx-target` 等) で動的コンテンツを実現
 
 ## Security Rules
-- 管理エンドポイント (`/api/sync/*`, `/api/reindex`, `/api/dirs`) はlocalhost限定
-- `is_request_local()` でリクエスト元を検証し、外部アクセスは403で拒否
-- 非localhostからは `publish: true` のファイルのみ表示
+- 公開用ポート（8000）と管理用ポート（コンテナ内 8001 / ホストの `127.0.0.1:8002`）を 1 プロセスで待ち受ける（`app/server.py`）
+- 管理者判定は `is_admin_request()`：管理用ポートに届き、かつ Host が localhost 系のときだけ管理者。Host ヘッダだけで判定しない（偽装できるため）
+- 管理エンドポイント (`/api/sync/*`, `/api/reindex`, `/api/dirs`, `/api/editor/*`, `/dashboard`) は `admin_guard()` / `is_admin_request()` で守り、それ以外は403
+- 書き込み系メソッド（POST 等）は、Origin（無ければ Referer）が自サイトと違えば403（CSRF対策。`app/main.py` のミドルウェア）
+- 公開用ポートからは `publish: true` のファイルのみ表示。タグ一覧・Dataview・検索・グラフ・バックリンクも公開ノートだけを対象にする
+- `MARKDOWN_CACHE` のキーは `(path, published_only)`。閲覧者の種類で Dataview の結果が変わるため、共有しない
 - パストラバーサル防止: `..` や `/` で始まるパスを拒否
 - ファイル読み込みは必ず `CONTENT_DIR` 配下に制限
 
@@ -121,7 +125,7 @@ docker-compose logs -f           # ログ確認
 - `tests/` と `debug/` に手動検証スクリプトあり
 
 ## Common Pitfalls
-- Uvicornのワーカー数は1に固定すること (ログ重複防止)
+- Uvicornのワーカー数は1に固定すること (ログ重複防止)。起動は `python -m app.server`（2ポートを1プロセスで待ち受け）
 - 同期処理で `content/samples/` と `static/images/samples/` は削除しないこと
 - タイムゾーンはJST (`UTC+9`) で統一すること
 - `messages.yaml` の新規メッセージ追加時は既存のIDパターンに従うこと

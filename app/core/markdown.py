@@ -71,7 +71,8 @@ def render_cardlink(tokens, idx, options, env):
         """
     if info == "dataview":
         from app.core.dataview import process_dataview
-        return process_dataview(token.content)
+        # 閲覧者の権限に合わせて対象ノートを絞る（render_markdown が env に入れる）
+        return process_dataview(token.content, published_only=(env or {}).get("published_only", True))
     # Important: Fallback to default for other code blocks
     return default_fence_renderer(tokens, idx, options, env)
 

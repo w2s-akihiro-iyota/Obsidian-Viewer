@@ -16,7 +16,7 @@ from app.config import CONTENT_DIR
 from app.core.indexing import refresh_global_caches
 from app.services.content import render_markdown
 from app.services.sync import load_config
-from app.utils.helpers import is_request_local, localhost_guard
+from app.utils.helpers import is_admin_request, admin_guard
 from app.utils.messages import get_error, get_system
 
 router = APIRouter()
@@ -25,7 +25,7 @@ router = APIRouter()
 @router.get("/editor", response_class=HTMLResponse)
 async def editor_page(request: Request):
     """エディタページを表示する（localhost限定）"""
-    if not is_request_local(request):
+    if not is_admin_request(request):
         raise HTTPException(status_code=403, detail=get_error("E101"))
 
     return templates.TemplateResponse(request=request, name="editor.html", context={
@@ -37,7 +37,7 @@ async def editor_page(request: Request):
 @router.post("/api/editor/preview")
 async def editor_preview(request: Request):
     """Markdownプレビューを返す（localhost限定）"""
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
 
     data = await request.json()
     content = data.get("content", "")
@@ -46,7 +46,7 @@ async def editor_preview(request: Request):
         return HTMLResponse(content="<p style='color:var(--text-muted);'>プレビューするコンテンツがありません</p>")
 
     try:
-        html = render_markdown(content)
+        html = render_markdown(content, published_only=False)
     except Exception as e:
         logger.error("Preview render error: %s", e)
         html = f"<p style='color:#ff6b6b;'>レンダリングエラー: {e}</p>"
@@ -57,7 +57,7 @@ async def editor_preview(request: Request):
 @router.post("/api/editor/save")
 async def editor_save(request: Request):
     """Markdownファイルを保存する（localhost限定）"""
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
 
     data = await request.json()
     filename = data.get("filename", "").strip()

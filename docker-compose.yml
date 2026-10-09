@@ -5,7 +5,11 @@ services:
     build: .
     container_name: obsidian-viewer-app
     ports:
+      # 公開用：外部からも閲覧できる（publish: true のノートだけを表示）
       - "8000:8000"
+      # 管理用：このPCからだけ開ける（全ノートの閲覧・設定・同期・エディタ）
+      # 左側（ホスト側のポート）は空いている番号に変えてよい。右側の 8001 は変えない
+      - "127.0.0.1:8002:8001"
     volumes:
       - ./content:/app/content
       - ./static:/app/static

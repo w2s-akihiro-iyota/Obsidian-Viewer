@@ -14,6 +14,14 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 METADATA_CACHE_FILE = BASE_DIR / "metadata_cache.json"
 CONFIG_FILE = BASE_DIR / "app" / "server_config.yaml"
 
+# 待ち受けポート（コンテナ内）
+# 管理用ポートはホストの 127.0.0.1 にだけ公開する前提（docker-compose.yml の ports を参照）
+PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8000"))
+ADMIN_PORT = int(os.environ.get("ADMIN_PORT", "8001"))
+
+# 管理用ポートで受け付ける Host 名（DNS リバインディング対策）
+ADMIN_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
 # Pagination
 PER_PAGE = 12
 

@@ -341,9 +341,9 @@
                         <section class="settings-section">
                             <h4>記事の公開設定</h4>
                             <p>
-                                外部（localhost以外）からアクセスされた場合、Frontmatter に
+                                公開用ポート（<code>8000</code>）からアクセスされた場合、Frontmatter に
                                 <code>publish: "TRUE"</code> が設定されたファイルのみが表示されます。<br />
-                                localhost からのアクセスでは、すべてのファイルが閲覧可能です。
+                                管理用URL（<code>http://localhost:8002</code>）からのアクセスでは、すべてのファイルが閲覧可能です。
                             </p>
 
                             <h5 style="margin-top: 20px;">方法1: Obsidian Linter プラグインで自動付与する（推奨）</h5>
@@ -391,7 +391,7 @@ publish: "TRUE"
                         <section class="settings-section" style="margin-top: 24px;">
                             <h4>共有URLの設定</h4>
                             <p>
-                                記事ページの「URLをコピー」機能では、デフォルトで <code>localhost:8000</code> 形式のURLが生成されます。<br />
+                                記事ページの「URLをコピー」機能では、デフォルトで今開いているURL（<code>localhost:8002</code> など）が生成されます。<br />
                                 外部の人にURLを共有する場合は、<b>公開URL (Base URL)</b> を設定することでドメイン部分を置換できます。
                             </p>
                             <div class="sync-steps">
@@ -426,7 +426,7 @@ publish: "TRUE"
                             <div class="help-tip" style="margin-top: 16px;">
                                 <p>
                                     <b>設定後の動作：</b><br />
-                                    URLコピー時に <code>http://localhost:8000/view/記事名.md</code> が
+                                    URLコピー時に <code>http://localhost:8002/view/記事名.md</code> が
                                     <code>https://{PC名}:8000/view/記事名.md</code> に自動置換されます。
                                 </p>
                             </div>
