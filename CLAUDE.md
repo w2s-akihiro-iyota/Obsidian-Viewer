@@ -115,7 +115,7 @@ docker-compose logs -f           # ログ確認
 - ホストPC Vault: `/0_host_pc:ro` (読み取り専用マウント)
 
 ### Files NOT Tracked in Git
-- `docker-compose.yml` - ホスト固有のVaultパスを含む
+- `docker-compose.override.yml` - ホスト固有のVaultパスを書く（`docker-compose.yml` は共通設定として Git 管理する。個人のパスを書かない）
 - `app/server_config.yaml` - ランタイム設定
 - `content/*` - Markdownコンテンツ (samples/除く)
 - `static/images/*` - 画像ファイル (samples/除く)

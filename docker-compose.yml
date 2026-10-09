@@ -18,6 +18,7 @@ services:
       # 外部のObsidian保管庫などをアプリ内から参照したい場合は、ここに追加マウントを記述します。
       # 例 (Windows): - D:\Documents\Obsidian:/0_host_pc:ro
       # 設定したら、ブラウザ上で /0_host_pc を参照してください。
+      # 自分のPCだけの設定は docker-compose.override.yml（Git 管理外）に書くと、コミットに混ざりません。
       #- {ObsidianのVaultパス}:/0_host_pc:ro
     environment:
       - IS_LOCALHOST=false

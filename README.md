@@ -44,17 +44,23 @@ cd パス/to/Obsidian-Viewer
 
 ### 3. Obsidian保管庫 (Vault) の連携設定
 
-`docker-compose.yml` をテキストエディタで開き、Obsidianの保管庫パスをマウント設定に追加します。
+プロジェクトのフォルダに `docker-compose.override.yml` を作り、Obsidianの保管庫パスをマウント設定に書きます。
+このファイルは Git の管理外です。`docker-compose up` のときに `docker-compose.yml` へ自動で上乗せされます。
+`docker-compose.yml` を直接書き換えないことで、自分のPCのパスがコミットに混ざりません。
 
 ```yaml
-# docker-compose.yml の 17行目付近
-- {ObsidianのVaultパス}:/0_host_pc:ro
+# docker-compose.override.yml
+services:
+  viewer:
+    volumes:
+      - {ObsidianのVaultパス}:/0_host_pc:ro
 ```
 
 **例 (Windowsの場合):**
 ```yaml
-- D:\Documents\Obsidian:/0_host_pc:ro
+      - D:\Documents\Obsidian:/0_host_pc:ro
 ```
+※ブラウザのエディタから Vault へ保存する場合は、`:ro`（読み取り専用）を外してください。
 ※パスにスペースが含まれる場合は `"` で囲んでください。
 ※設定後、アプリ内から `/0_host_pc` を通じてファイルを参照・同期できるようになります。
 
