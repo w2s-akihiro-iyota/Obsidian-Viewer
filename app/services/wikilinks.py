@@ -12,7 +12,7 @@ from app.core.markdown import heading_anchor
 from app.services.images import find_image_in_static, image_html, is_image_name
 
 _WIKILINK_RE = re.compile(r'(!?)\[\[([^\]|]+)(?:\|([^\]]+))?\]\]')
-_FENCE_RE = re.compile(r'^\s*(`{3,}|~{3,})')
+_FENCE_RE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
 _INLINE_CODE_RE = re.compile(r'`[^`\n]+`')
 _HEADING_LINE_RE = re.compile(r'^(#{1,6})\s+(.+?)\s*#*\s*$')
 
@@ -51,16 +51,38 @@ class EmbedContext:
         return html
 
 
+class _FenceTracker:
+    """
+    コードブロック（``` / ~~~）の中かどうかを 1 行ずつ追う
+
+    閉じる行は、開いた記号と同じ種類・同じ長さ以上で、後ろに何も書いていない行だけ（CommonMark と同じ）。
+    ```ad-success のように後ろに文字がある行は閉じる行にしない。Admonition の入れ子で数え方がずれないため。
+    """
+
+    def __init__(self):
+        self._open: tuple[str, int] | None = None   # (記号, 長さ)
+
+    def in_code(self, line: str) -> bool:
+        """この行がコードブロックの区切りか中身なら True"""
+        m = _FENCE_RE.match(line)
+        if self._open is None:
+            if m:
+                self._open = (m.group(1)[0], len(m.group(1)))
+                return True
+            return False
+        if m and m.group(1)[0] == self._open[0] and len(m.group(1)) >= self._open[1] and not m.group(2).strip():
+            self._open = None
+        return True
+
+
 def _extract_section(body: str, heading: str) -> str | None:
     """見出しから、同じか上位の見出しの手前までを取り出す。見つからなければ None"""
     target = heading_anchor(heading)
     lines = body.split('\n')
-    start, level, in_fence = None, 0, False
+    start, level = None, 0
+    fence = _FenceTracker()
     for i, line in enumerate(lines):
-        if _FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if in_fence:
+        if fence.in_code(line):
             continue
         m = _HEADING_LINE_RE.match(line)
         if not m:
@@ -168,12 +190,10 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
         parts.append(_WIKILINK_RE.sub(replace, line[pos:]))
         return ''.join(parts)
 
-    out, in_fence = [], False
+    out, fence = [], _FenceTracker()
     for line in content.split('\n'):
-        if _FENCE_RE.match(line.lstrip('> ')):
-            in_fence = not in_fence
-            out.append(line)
-        elif in_fence or '[[' not in line:
+        # コールアウト（> [!note]）の中のコードブロックも同じように扱う
+        if fence.in_code(line.lstrip('> ')) or '[[' not in line:
             out.append(line)
         else:
             out.append(replace_outside_inline_code(line))

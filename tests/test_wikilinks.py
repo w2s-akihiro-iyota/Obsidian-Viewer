@@ -214,3 +214,20 @@ def test_バックリンクもパス指定と見出しつきリンクを数え�
     files = [{"path": "参照元.md", "title": "参照元"}]
     _, forward = _build_link_maps(files, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
     assert set(forward["参照元.md"]) == {"会議/定例.md", "段1.md"}
+
+
+def test_Admonitionの入れ子があっても後ろの見出しの節を埋め込める(vault):
+    # ```ad-question の中に ```ad-success があり、閉じる ``` は 1 つだけ（sample.md と同じ形）
+    _add_note(vault, "入れ子", (
+        "## 前\n```ad-question\ntitle: Q\n```ad-success\ntitle: S\n```\n\n"
+        "```python\nprint(1)\n```\n## 目当て\n目当ての本文\n## 後\n後の本文\n"
+    ))
+    html = render("![[入れ子#目当て]]")
+    assert "目当ての本文" in html and "後の本文" not in html
+    assert "見出しが見つかりません" not in html
+
+
+def test_後ろに文字がある区切り行ではコードブロックを閉じない(vault):
+    # ```text の中の ```python は中身。閉じるのは何も書いていない ``` だけ
+    html = render("```text\n```python\n[[定例]]\n```\n[[定例]]")
+    assert html.count('href="/view/会議/定例"') == 1
