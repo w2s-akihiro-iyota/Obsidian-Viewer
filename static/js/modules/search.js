@@ -398,7 +398,17 @@ function initSearch() {
         });
 
         // マウスで指した候補を選択中にする（Enter で開く対象をそろえる）
+        // ブラウザは表示が変わると、マウスが止まっていても同じ座標で mousemove を送ってくる。
+        // それに反応すると矢印キーで選んだ候補がマウスの下へ戻ってしまうので、実際に動いたときだけ選ぶ
+        // 位置はページ全体で追う（候補が出た直後の最初の mousemove も、動いたかどうかを判定できるように）
+        let lastPointer = null;
+        document.addEventListener('mousemove', (e) => {
+            lastPointer = { x: e.clientX, y: e.clientY };
+        });
+        // 候補一覧の mousemove は document より先に届くので、lastPointer は1つ前の位置になる
         modalSearchResults.addEventListener('mousemove', (e) => {
+            const moved = !lastPointer || lastPointer.x !== e.clientX || lastPointer.y !== e.clientY;
+            if (!moved) return;
             const item = e.target.closest('.search-result-item');
             if (!item) return;
             const index = getItems().indexOf(item);
