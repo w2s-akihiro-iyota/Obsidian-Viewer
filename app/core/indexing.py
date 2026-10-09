@@ -4,6 +4,7 @@ import re
 import yaml
 import os
 import logging
+import threading
 
 from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR, READING_SPEED_JP
@@ -175,13 +176,26 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     sort_tree(tree)
     return tree
 
-def _build_backlink_cache() -> None:
-    """全ファイルの[[wikilink]]を解析し、バックリンクとフォワードリンクのキャッシュを構築"""
+def resolve_note_path(name: str, file_name_map: dict, path_to_slug: dict) -> str | None:
+    """
+    [[name]] の name からノートの相対パスを引く（描画側とバックリンク作成側で共通のルール）
+
+    ファイル名（拡張子なし）で引き、無ければパス指定（[[フォルダ/ノート]]）として引く。末尾の .md は無視する。
+    """
+    lookup = name[:-3] if name.endswith(".md") else name
+    path = file_name_map.get(lookup)
+    if path is None and f"{lookup}.md" in path_to_slug:
+        path = f"{lookup}.md"
+    return path
+
+
+def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict) -> tuple[dict, dict]:
+    """全ファイルの[[wikilink]]を解析し、(バックリンク, フォワードリンク) のマップを作る"""
     backlinks = {}   # {target_path: [{title, path}]}
     forward = {}     # {source_path: [target_path]}
     wikilink_re = re.compile(r'\[\[([^\]\|#]+)')
 
-    for f in cache.GLOBAL_FILE_CACHE:
+    for f in files:
         source_path = f["path"]
         source_title = f["title"]
 
@@ -201,9 +215,7 @@ def _build_backlink_cache() -> None:
         resolved_targets = []
 
         for link_name in links:
-            link_name = link_name.strip()
-            # FILE_NAME_CACHEで解決
-            target_path = cache.FILE_NAME_CACHE.get(link_name)
+            target_path = resolve_note_path(link_name.strip(), file_name_map, path_to_slug)
             if target_path and target_path != source_path:
                 resolved_targets.append(target_path)
                 # バックリンクに追加
@@ -214,39 +226,49 @@ def _build_backlink_cache() -> None:
                     backlinks[target_path].append({
                         "title": source_title,
                         "path": source_path,
-                        "slug": cache.PATH_TO_SLUG.get(source_path, source_path)
+                        "slug": path_to_slug.get(source_path, source_path)
                     })
 
         forward[source_path] = list(set(resolved_targets))
 
-    cache.BACKLINK_CACHE = backlinks
-    cache.FORWARD_LINK_CACHE = forward
     logger.info("Backlink cache built: %d files with backlinks.", len(backlinks))
+    return backlinks, forward
+
+
+# キャッシュの作り直しは同時に 1 本だけ（同期・保存・再インデックスが別スレッドから呼ぶため）
+_refresh_lock = threading.Lock()
 
 
 def refresh_global_caches() -> None:
-    # Clear per-file caches on full refresh
-    cache.IMAGE_PATH_CACHE = {}
-    cache.MARKDOWN_CACHE = {}
-    
+    """
+    全キャッシュを作り直す
+
+    新しい内容はすべてローカル変数で組み立て、最後にまとめて差し替える。
+    作り直しの途中で、ほかのリクエストが中途半端な状態（一覧は新しく、スラッグは古い等）を見ないようにするため。
+    """
+    with _refresh_lock:
+        _refresh_global_caches()
+
+
+def _refresh_global_caches() -> None:
     # Refresh all files metadata
-    cache.GLOBAL_FILE_CACHE = get_all_files(CONTENT_DIR, CONTENT_DIR)
+    files = get_all_files(CONTENT_DIR, CONTENT_DIR)
     # Refresh tree views (Admin: all, Public: published only)
-    cache.GLOBAL_FILE_TREE_CACHE = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=False)
-    cache.GLOBAL_FILE_TREE_CACHE_PUBLIC = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=True)
+    tree = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=False)
+    tree_public = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=True)
 
     # ファイル名(stem) → パスの逆引きマッピングを構築
-    cache.FILE_NAME_CACHE = {}
-    for f in cache.GLOBAL_FILE_CACHE:
+    file_name_map = {}
+    for f in files:
         stem = Path(f["name"]).stem
         # 同名ファイルが複数ある場合は最初のものを優先（Obsidianの最短パス解決に近い動作）
-        if stem not in cache.FILE_NAME_CACHE:
-            cache.FILE_NAME_CACHE[stem] = f["path"]
+        if stem not in file_name_map:
+            file_name_map[stem] = f["path"]
 
     # スラッグマッピングの構築
     slug_to_path = {}
     path_to_slug = {}
-    for f in cache.GLOBAL_FILE_CACHE:
+    for f in files:
         base_slug = slugify_path(f["path"])
         slug = base_slug
         counter = 2
@@ -257,9 +279,6 @@ def refresh_global_caches() -> None:
         path_to_slug[f["path"]] = slug
         f["slug"] = slug
 
-    cache.SLUG_TO_PATH = slug_to_path
-    cache.PATH_TO_SLUG = path_to_slug
-
     # ファイルツリーにもスラッグを付与
     def _apply_slug_to_tree(nodes):
         for node in nodes:
@@ -267,16 +286,28 @@ def refresh_global_caches() -> None:
                 node["slug"] = path_to_slug.get(node.get("path", ""), "")
             elif node["type"] == "directory":
                 _apply_slug_to_tree(node.get("children", []))
-    _apply_slug_to_tree(cache.GLOBAL_FILE_TREE_CACHE)
-    _apply_slug_to_tree(cache.GLOBAL_FILE_TREE_CACHE_PUBLIC)
+    _apply_slug_to_tree(tree)
+    _apply_slug_to_tree(tree_public)
 
     # バックリンクキャッシュの構築
-    _build_backlink_cache()
+    backlinks, forward = _build_link_maps(files, file_name_map, path_to_slug)
 
     # TF-IDF検索インデックスの構築
     from app.core.search import SearchIndex
     idx = SearchIndex()
-    idx.build(cache.GLOBAL_FILE_CACHE)
+    idx.build(files)
+
+    # ここで一気に差し替える
+    cache.IMAGE_PATH_CACHE = {}
+    cache.MARKDOWN_CACHE = {}
+    cache.GLOBAL_FILE_CACHE = files
+    cache.GLOBAL_FILE_TREE_CACHE = tree
+    cache.GLOBAL_FILE_TREE_CACHE_PUBLIC = tree_public
+    cache.FILE_NAME_CACHE = file_name_map
+    cache.SLUG_TO_PATH = slug_to_path
+    cache.PATH_TO_SLUG = path_to_slug
+    cache.BACKLINK_CACHE = backlinks
+    cache.FORWARD_LINK_CACHE = forward
     cache.SEARCH_INDEX = idx
 
-    logger.info("Global cache refreshed: %d files indexed.", len(cache.GLOBAL_FILE_CACHE))
+    logger.info("Global cache refreshed: %d files indexed.", len(files))

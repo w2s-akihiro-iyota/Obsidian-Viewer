@@ -153,6 +153,46 @@ try:
 except ValueError:
     md.core.ruler.push("obsidian_callouts", obsidian_callouts)
 
+
+# 見出しのアンカー（id）に使えない・URL で意味を持つ文字
+_ANCHOR_DROP_RE = re.compile(r'[#?&%/\\"\'<>`^|\[\]{}()!*_~=:;,.]')
+_WIKILINK_TEXT_RE = re.compile(r'!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]')
+_MDLINK_TEXT_RE = re.compile(r'!?\[([^\]]*)\]\([^)]*\)')
+
+
+def heading_anchor(text: str) -> str:
+    """
+    見出しの文字列から、ページ内リンク用の id を作る
+
+    [[ノート#見出し]] のリンク側と、見出し側の両方でこの関数を使い、同じ id になるようにする。
+    Markdown の装飾記号は落とし、空白は - にそろえる。英字は小文字にする。
+    見出しに含まれるリンクは、表示される文字だけを使う（[[ノート|別名]] → 別名、[文字](URL) → 文字）。
+    """
+    text = _WIKILINK_TEXT_RE.sub(lambda m: m.group(2) or m.group(1), text)
+    text = _MDLINK_TEXT_RE.sub(r"\1", text)
+    text = _ANCHOR_DROP_RE.sub("", text.strip())
+    return re.sub(r"\s+", "-", text).strip("-").lower()
+
+
+def heading_ids(state):
+    """見出しに id を付ける（[[ノート#見出し]] で飛べるようにする）。同じ見出しは -1, -2 で区別する"""
+    used = {}
+    tokens = state.tokens
+    for i, token in enumerate(tokens):
+        if token.type != "heading_open" or token.attrGet("id"):
+            continue
+        inline = tokens[i + 1] if i + 1 < len(tokens) else None
+        if inline is None or inline.type != "inline":
+            continue
+        text = "".join(c.content for c in (inline.children or []) if c.type in ("text", "code_inline"))
+        base = heading_anchor(text) or "section"
+        count = used.get(base, 0)
+        used[base] = count + 1
+        token.attrSet("id", base if count == 0 else f"{base}-{count}")
+
+
+md.core.ruler.push("heading_ids", heading_ids)
+
 def process_admonition_blocks(content: str) -> str:
     lines = content.split('\n')
     output = []

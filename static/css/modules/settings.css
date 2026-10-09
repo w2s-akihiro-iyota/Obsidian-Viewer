@@ -501,6 +501,52 @@
     cursor: not-allowed;
 }
 
+/* 削除の保留（ファイル同期タブ） */
+.pending-deletions {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid #f9a825;
+    border-left: 4px solid #f9a825;
+    border-radius: 6px;
+    background-color: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pending-deletions[hidden] {
+    display: none;
+}
+
+.pending-deletions-title {
+    font-weight: 600;
+}
+
+.pending-deletions-reason,
+.pending-deletions-note {
+    margin: 0;
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.pending-deletions-details summary {
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.pending-deletions-details ul {
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 8px 0 0;
+    padding-left: 20px;
+    font-size: 0.8em;
+    font-family: var(--code-font);
+}
+
+.pending-deletions .danger-btn {
+    align-self: flex-start;
+}
+
 .danger-btn {
     display: inline-flex;
     align-items: center;

@@ -175,16 +175,13 @@ async def editor_save(request: Request):
     config = load_config()
     if config.content_src:
         host_src = Path(config.content_src)
-        if host_src.exists() and any(host_src.rglob(filename)):
+        # Vault 全体を探すため時間がかかる。別スレッドで行う
+        if host_src.exists() and await run_in_threadpool(lambda: any(host_src.rglob(filename))):
             return JSONResponse({"status": "error", "message": get_error("E204")}, status_code=409)
 
-    # ファイル書き込み（アプリ内コンテンツ）
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-    # ホスト側Vaultにも書き込み（同期設定がある場合）
+    # 同期設定がある場合は Vault を先に書く。Vault に無いノートは次の同期で消えるため、
+    # Vault に書けなかったらビューア側にも書かずにエラーにする
     host_saved = False
-    host_error = None
     host_path = Path(config.content_src) / filename if config.content_src else None
     if host_path:
         try:
@@ -194,16 +191,19 @@ async def editor_save(request: Request):
             host_saved = True
             logger.info("ホスト側Vaultに保存: %s", host_path)
         except Exception as e:
-            host_error = str(e)
             logger.warning("ホスト側Vaultへの書き込みに失敗: %s", e)
+            return JSONResponse({"status": "error", "message": get_error("E209")}, status_code=500)
 
-    # キャッシュ更新
-    refresh_global_caches()
+    # ファイル書き込み（アプリ内コンテンツ）
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    # キャッシュ更新（重いので別スレッドで）
+    await run_in_threadpool(refresh_global_caches)
 
     return {
         "status": "success",
         "message": get_system("S201"),
         "filename": filename,
         "host_saved": host_saved,
-        "host_error": host_error,
     }

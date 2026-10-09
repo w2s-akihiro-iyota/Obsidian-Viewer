@@ -271,6 +271,22 @@
                                     <p id="last-sync-time"
                                         style="margin-top: 8px; font-size: 0.8em; color: var(--text-muted);"></p>
                                 </div>
+                                <!-- 削除の保留（同期元が空・削除が多すぎるとき）。確認して実行する -->
+                                <div id="pending-deletions" class="pending-deletions" hidden>
+                                    <div class="pending-deletions-title">削除を保留しています（<span id="pending-deletions-count">0</span>件）</div>
+                                    <p id="pending-deletions-reason" class="pending-deletions-reason"></p>
+                                    <p class="pending-deletions-note">
+                                        Vault 側に無いファイルです。同期元のフォルダが正しく見えていることを確認してから削除してください。
+                                        同期元に戻ったファイルは削除しません。
+                                    </p>
+                                    <details class="pending-deletions-details">
+                                        <summary>保留中のファイルを見る</summary>
+                                        <ul id="pending-deletions-list"></ul>
+                                    </details>
+                                    <button id="confirm-deletions-btn" class="danger-btn">
+                                        <span class="btn-text">確認して削除する</span>
+                                    </button>
+                                </div>
                             </section>
                         </div>
                     </div>

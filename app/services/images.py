@@ -1,16 +1,29 @@
+"""画像・メディアファイルの解決"""
 import os
 import re
+from html import escape
 from pathlib import Path
 from app.config import STATICS_DIR
 from app import cache
 
+IMAGE_EXTS = ('png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp')
+
+# ![[画像|300]] / ![[画像|300x200]] のサイズ指定
+_IMAGE_SIZE_RE = re.compile(r'^\s*(\d+)(?:\s*x\s*(\d+))?\s*$')
+
+
+def is_image_name(name: str) -> bool:
+    """拡張子から画像ファイル名かを判定する"""
+    return '.' in name and name.rsplit('.', 1)[-1].lower() in IMAGE_EXTS
+
+
 def find_image_in_static(filename: str) -> str | None:
     if filename in cache.IMAGE_PATH_CACHE:
         return cache.IMAGE_PATH_CACHE[filename]
-    
+
     # Check if filename has extension
-    has_ext = '.' in filename and filename.split('.')[-1].lower() in ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp']
-    
+    has_ext = is_image_name(filename)
+
     for root, dirs, files in os.walk(STATICS_DIR):
         # Precise match
         if filename in files:
@@ -20,7 +33,7 @@ def find_image_in_static(filename: str) -> str | None:
             url = f"/static/{rel_path_str}"
             cache.IMAGE_PATH_CACHE[filename] = url
             return url
-        
+
         # Ambiguous match (if no extension provided in link)
         if not has_ext:
             for f in files:
@@ -31,56 +44,14 @@ def find_image_in_static(filename: str) -> str | None:
                     url = f"/static/{rel_path_str}"
                     cache.IMAGE_PATH_CACHE[filename] = url
                     return url
-                    
+
     return None
 
-def process_obsidian_images(content: str, published_only: bool = True) -> str:
-    """
-    Obsidian 記法の画像（![[...]]）と内部リンク（[[...]]）を HTML に置き換える
 
-    published_only=True のときは、非公開ノートへのリンクをリンク切れと同じ表示にする。
-    リンク先のパス（slug）から、非公開ノートの存在やフォルダ構成が外部に見えないようにするため。
-    """
-    published_paths = {f["path"] for f in cache.GLOBAL_FILE_CACHE if f.get("published")} if published_only else None
-
-    def replace_image(match):
-        full_match = match.group(0)
-        filename = match.group(1).strip()
-        size = match.group(2) # |300 or |300x200
-        
-        # Check if it's an image link ![[...]] or just internal link [[...]]
-        is_image_link = full_match.startswith('!')
-        
-        if is_image_link:
-            image_url = find_image_in_static(filename)
-            if image_url:
-                style = ""
-                if size:
-                    size_val = size # size already has | stripped by regex group
-                    if 'x' in size_val:
-                        w, h = size_val.split('x', 1)
-                        style = f'width="{w}" height="{h}"'
-                    else:
-                        style = f'width="{size_val}"'
-
-                return f'<img src="{image_url}" alt="{filename}" {style} class="obsidian-image">'
-            return full_match
-
-        # 内部リンク処理: [[ファイル名]] or [[ファイル名|表示名]]
-        # プレースホルダとして簡易HTMLを挿入（アイコンはポストプロセスで付与）
-        display_name = size if size else filename
-        # .md拡張子付きの場合はstemで検索
-        lookup_name = filename[:-3] if filename.endswith('.md') else filename
-
-        target_path = cache.FILE_NAME_CACHE.get(lookup_name)
-        if target_path and published_paths is not None and target_path not in published_paths:
-            target_path = None
-        if target_path:
-            slug = cache.PATH_TO_SLUG.get(target_path, target_path)
-            return f'<a href="/view/{slug}" class="internal-link">{display_name}</a>'
-        else:
-            return f'<span class="internal-link-broken">{display_name}</span>'
-
-    # Matches ![[image.png|300]] or ![[image|300]] or [[image.png]]
-    # Group 1: Path/Filename, Group 2: Size/Alias
-    return re.sub(r'!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]', replace_image, content, flags=re.IGNORECASE)
+def image_html(url: str, name: str, size: str | None) -> str:
+    """![[画像|サイズ]] の img タグ。サイズは数字（幅）か「幅x高さ」だけを受け付ける"""
+    attrs = ""
+    m = _IMAGE_SIZE_RE.match(size or "")
+    if m:
+        attrs = f'width="{m.group(1)}"' + (f' height="{m.group(2)}"' if m.group(2) else "")
+    return f'<img src="{escape(url)}" alt="{escape(name)}" {attrs} class="obsidian-image">'

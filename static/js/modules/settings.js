@@ -635,6 +635,59 @@ function initSyncSettings() {
         })
         .catch(err => console.error("Failed to load sync config", err));
 
+    // --- 削除の保留（同期元が空・削除が多すぎるとき） ---
+    const pendingBox = document.getElementById('pending-deletions');
+    const confirmDeletionsBtn = document.getElementById('confirm-deletions-btn');
+
+    function loadPendingDeletions() {
+        if (!pendingBox) return Promise.resolve();
+        return fetch('/api/sync/pending-deletions')
+            .then(res => res.json())
+            .then(data => {
+                const pending = data.pending || [];
+                const total = pending.reduce((sum, p) => sum + p.count, 0);
+                pendingBox.hidden = total === 0;
+                if (total === 0) return;
+
+                document.getElementById('pending-deletions-count').textContent = total;
+                document.getElementById('pending-deletions-reason').textContent =
+                    pending.map(p => `${p.label}: ${p.reason}（${p.detected_at}）`).join(' / ');
+                const list = document.getElementById('pending-deletions-list');
+                list.innerHTML = '';
+                pending.forEach(p => p.files.forEach(f => {
+                    const li = document.createElement('li');
+                    li.textContent = `[${p.label}] ${f}`;
+                    list.appendChild(li);
+                }));
+            })
+            .catch(err => console.error("Failed to load pending deletions", err));
+    }
+    loadPendingDeletions();
+
+    if (confirmDeletionsBtn) {
+        confirmDeletionsBtn.addEventListener('click', () => {
+            const total = document.getElementById('pending-deletions-count').textContent;
+            if (!confirm(`保留中の ${total} 件を削除します。\n同期元のフォルダが正しく見えていることを確認しましたか？`)) return;
+
+            confirmDeletionsBtn.disabled = true;
+            fetch('/api/sync/confirm-deletions', { method: 'POST' })
+                .then(async res => {
+                    const data = await res.json();
+                    if (res.ok) {
+                        showToast(data.message, 'success');
+                    } else {
+                        showToast(data.message || '削除に失敗しました', res.status === 409 ? 'warning' : 'error');
+                    }
+                    return loadPendingDeletions();
+                })
+                .catch(err => {
+                    console.error(err);
+                    showToast('削除に失敗しました', 'error');
+                })
+                .finally(() => { confirmDeletionsBtn.disabled = false; });
+        });
+    }
+
     // Toggle Visibility (Accordion)
     function toggleInputs(enabled) {
         wrapper.style.display = enabled ? 'block' : 'none';
@@ -884,6 +937,17 @@ function initSyncSettings() {
         fetch('/api/sync', { method: 'POST' })
             .then(async res => {
                 const data = await res.json();
+                if (res.status === 409) {
+                    // ほかの同期が実行中
+                    showToast(data.message, 'warning');
+                    return;
+                }
+                if (res.ok && data.pending_deletions > 0) {
+                    // 削除を保留した。トップへ移らず、この画面で内容を確認できるようにする
+                    showToast(data.message, 'warning');
+                    loadPendingDeletions();
+                    return;
+                }
                 if (res.ok) {
                     if (tutorialMode && tutorialStep === 3) {
                         endTutorial();
