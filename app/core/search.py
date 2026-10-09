@@ -3,6 +3,8 @@ import math
 import re
 import logging
 import unicodedata
+from dataclasses import dataclass, field
+from typing import Callable
 
 from app import cache as app_cache
 
@@ -75,6 +77,46 @@ def tokenize(text: str) -> list[str]:
 def tokenize_query(query: str) -> list[str]:
     """クエリ用トークン化（tokenizeと同じロジック）"""
     return tokenize(query)
+
+
+# tag:会議 / path:テスト仕様 / path:"スペース 入り"
+_FILTER_RE = re.compile(r'(?<!\S)(tag|path):(?:"([^"]*)"|(\S+))', re.IGNORECASE)
+
+
+@dataclass
+class SearchQuery:
+    """検索語と絞り込み条件（tag: / path:）に分けたクエリ"""
+    text: str
+    tags: list[str] = field(default_factory=list)
+    paths: list[str] = field(default_factory=list)
+
+    @property
+    def has_filters(self) -> bool:
+        return bool(self.tags or self.paths)
+
+    def matches(self, f: dict) -> bool:
+        """ノートが絞り込み条件をすべて満たすか（tag は階層タグの親でも一致、path は部分一致）"""
+        note_tags = [str(t).lower() for t in (f.get("tags") or [])]
+        for tag in self.tags:
+            if not any(t == tag or t.startswith(tag + "/") for t in note_tags):
+                return False
+        note_path = f.get("path", "").lower()
+        return all(p in note_path for p in self.paths)
+
+
+def parse_search_query(q: str) -> SearchQuery:
+    """クエリ文字列から tag: / path: を取り出し、残りを検索語にする"""
+    tags, paths = [], []
+    for m in _FILTER_RE.finditer(q):
+        value = (m.group(2) if m.group(2) is not None else m.group(3)).strip().lower()
+        if not value:
+            continue
+        if m.group(1).lower() == "tag":
+            tags.append(value.lstrip("#"))
+        else:
+            paths.append(value)
+    text = " ".join(_FILTER_RE.sub(" ", q).split())
+    return SearchQuery(text=text, tags=tags, paths=paths)
 
 
 class SearchIndex:
@@ -202,8 +244,8 @@ class SearchIndex:
         return prefix + body_text[start:end] + suffix
 
     def search(self, query: str, is_localhost: bool, file_cache: list[dict],
-               limit: int = 20) -> list[dict]:
-        """TF-IDFスコア付き検索を実行"""
+               limit: int = 20, accept: Callable[[dict], bool] | None = None) -> list[dict]:
+        """TF-IDFスコア付き検索を実行（accept を渡すと、それを満たすノートだけを対象にする）"""
         query_tokens = tokenize_query(query)
         if not query_tokens:
             return []
@@ -232,6 +274,8 @@ class SearchIndex:
         scored_results = []
         for path in candidate_paths:
             if published_set is not None and path not in published_set:
+                continue
+            if accept is not None and (path not in file_lookup or not accept(file_lookup[path])):
                 continue
 
             score = self._score_document(path, query_tokens)

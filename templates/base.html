@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261010">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261012">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -43,11 +43,12 @@
     <script src="/static/js/modules/table-copy.js?v=20260223" defer></script>
     <script src="/static/js/modules/mermaid.js?v=20260223" defer></script>
     <script src="/static/js/modules/sidebar.js?v=20261010" defer></script>
-    <script src="/static/js/modules/search.js?v=20260223" defer></script>
+    <script src="/static/js/modules/file-tree.js?v=20261012" defer></script>
+    <script src="/static/js/modules/search.js?v=20261012" defer></script>
     <script src="/static/js/modules/settings.js?v=20261010" defer></script>
-    <script src="/static/js/modules/history.js?v=20260223" defer></script>
+    <script src="/static/js/modules/history.js?v=20261011" defer></script>
     <script src="/static/js/modules/editor.js?v=20261010" defer></script>
-    <script src="/static/js/modules/main.js?v=20260417" defer></script>
+    <script src="/static/js/modules/main.js?v=20261011" defer></script>
     {% block head %}{% endblock %}
 </head>
 
@@ -60,7 +61,13 @@
         <aside id="sidebar" class="sidebar {% block sidebar_class %}{% endblock %}">
             <div class="sidebar-header">
                 <div class="sidebar-tabs">
-                    <button class="sidebar-tab active" data-panel="sidebar-outline">
+                    <button class="sidebar-tab active" data-panel="sidebar-files" title="Files">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span class="sidebar-tab-label">Files</span>
+                    </button>
+                    <button class="sidebar-tab" data-panel="sidebar-outline" title="Outline">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="8" y1="6" x2="21" y2="6"></line>
                             <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -69,19 +76,27 @@
                             <line x1="3" y1="12" x2="3.01" y2="12"></line>
                             <line x1="3" y1="18" x2="3.01" y2="18"></line>
                         </svg>
-                        Outline
+                        <span class="sidebar-tab-label">Outline</span>
                     </button>
-                    <button class="sidebar-tab" data-panel="sidebar-history">
+                    <button class="sidebar-tab" data-panel="sidebar-history" title="History">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        History
+                        <span class="sidebar-tab-label">History</span>
                     </button>
                 </div>
             </div>
             <div class="sidebar-content">
-                <div id="sidebar-outline" class="sidebar-panel active">
+                <div id="sidebar-files" class="sidebar-panel active">
+                    <div class="file-tree-filter-bar">
+                        <input type="text" id="file-tree-filter" class="file-tree-filter" placeholder="ファイル名で絞り込み…" autocomplete="off">
+                    </div>
+                    <div id="file-tree" class="file-tree">
+                        <div class="tree-empty">読み込み中…</div>
+                    </div>
+                </div>
+                <div id="sidebar-outline" class="sidebar-panel">
                     <div class="toc-empty">No outline available</div>
                 </div>
                 <div id="sidebar-history" class="sidebar-panel">

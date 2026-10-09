@@ -25,6 +25,9 @@ ADMIN_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
 # Pagination
 PER_PAGE = 12
 
+# 検索（/api/search）で返す最大件数
+SEARCH_LIMIT = 20
+
 # 読了時間の算出基準（日本語: 500文字/分）
 READING_SPEED_JP = 500
 

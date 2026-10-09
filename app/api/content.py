@@ -4,6 +4,7 @@ import math
 import re
 import time
 from pathlib import Path
+from typing import Callable
 
 # Third party
 from fastapi import APIRouter, Request, HTTPException
@@ -12,8 +13,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 # Local
 from app import cache
 from app.api import templates
-from app.config import CONTENT_DIR, PER_PAGE
+from app.config import CONTENT_DIR, PER_PAGE, SEARCH_LIMIT
 from app.core.indexing import parse_frontmatter, is_published
+from app.core.search import parse_search_query
 from app.services.content import render_markdown
 from app.services.images import find_image_in_static
 from app.utils.helpers import is_admin_request
@@ -295,13 +297,15 @@ async def api_get_messages():
     return get_all_messages()
 
 
-def _legacy_search(q: str, is_localhost: bool) -> list[dict]:
+def _legacy_search(q: str, is_localhost: bool, accept: Callable[[dict], bool] | None = None) -> list[dict]:
     """旧方式の線形スキャン検索（ベンチマーク比較用に抽出）"""
     q_lower = q.lower()
     results = []
 
     for f in cache.GLOBAL_FILE_CACHE:
         if not is_localhost and not f.get('published'):
+            continue
+        if accept is not None and not accept(f):
             continue
 
         match_type = None
@@ -329,22 +333,46 @@ def _legacy_search(q: str, is_localhost: bool) -> list[dict]:
                 "snippet": snippet
             })
 
-    return results[:20]
+    return results[:SEARCH_LIMIT]
 
 
 @router.get("/api/search")
 async def api_search(request: Request, q: str = ""):
-    if not q:
+    query = parse_search_query(q)
+    if not query.text and not query.has_filters:
         return []
 
     is_localhost = is_admin_request(request)
+    accept = query.matches if query.has_filters else None
+
+    # 絞り込みだけ（tag:会議 など）のときは、条件に合うノートを新しい順に返す
+    if not query.text:
+        return [
+            {
+                "title": f["title"],
+                "path": f["path"],
+                "slug": cache.PATH_TO_SLUG.get(f["path"], f["path"]),
+                "snippet": "",
+            }
+            for f in cache.GLOBAL_FILE_CACHE
+            if (is_localhost or f.get("published")) and query.matches(f)
+        ][:SEARCH_LIMIT]
 
     # TF-IDFインデックスが構築済みなら新方式を使用
     if cache.SEARCH_INDEX is not None:
-        return cache.SEARCH_INDEX.search(q, is_localhost, cache.GLOBAL_FILE_CACHE)
+        return cache.SEARCH_INDEX.search(query.text, is_localhost, cache.GLOBAL_FILE_CACHE,
+                                         limit=SEARCH_LIMIT, accept=accept)
 
     # フォールバック: 旧方式
-    return _legacy_search(q, is_localhost)
+    return _legacy_search(query.text, is_localhost, accept)
+
+
+@router.get("/api/tree")
+async def api_tree(request: Request):
+    """サイドバーのファイルツリー（外部からは公開ノートだけの木）"""
+    if is_admin_request(request):
+        return cache.GLOBAL_FILE_TREE_CACHE
+    return cache.GLOBAL_FILE_TREE_CACHE_PUBLIC
 
 
 @router.get("/api/search/benchmark")

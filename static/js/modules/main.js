@@ -256,6 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Initialize modules ---
     initSearch();
     initSidebar();
+    initFileTree();
     initHistory();
     initSettingsModule();
     initEditor();

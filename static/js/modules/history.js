@@ -4,6 +4,7 @@
 
 const HISTORY_KEY = 'viewHistory';
 const HISTORY_MAX = 30;
+const SIDEBAR_TAB_KEY = 'sidebarTab';
 
 function initHistory() {
     // viewページ閲覧時に履歴を記録
@@ -120,20 +121,28 @@ function formatRelativeTime(timestamp) {
  */
 function initSidebarTabs() {
     const tabs = document.querySelectorAll('.sidebar-tab[data-panel]');
+
+    const selectTab = (tab) => {
+        // タブのactive切替
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // パネルのactive切替
+        document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById(tab.dataset.panel);
+        if (panel) panel.classList.add('active');
+    };
+
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            const panelId = tab.dataset.panel;
-
-            // タブのactive切替
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-
-            // パネルのactive切替
-            document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
-            const panel = document.getElementById(panelId);
-            if (panel) panel.classList.add('active');
+            selectTab(tab);
+            localStorage.setItem(SIDEBAR_TAB_KEY, tab.dataset.panel);
         });
     });
+
+    // 前回選んでいたタブを開く
+    const savedTab = document.querySelector(`.sidebar-tab[data-panel="${localStorage.getItem(SIDEBAR_TAB_KEY)}"]`);
+    if (savedTab) selectTab(savedTab);
 
     // Activity barの履歴ボタン
     const historyBtn = document.getElementById('activity-history-btn');
