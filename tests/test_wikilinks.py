@@ -10,9 +10,11 @@ import pytest
 
 from app import cache
 from app.core.markdown import heading_anchor
+from app.core import indexing
 from app.core.indexing import _build_link_maps, resolve_note_path
 from app.services import images, wikilinks
 from app.services.content import render_markdown
+from app.services.publish_check import check_publish
 
 
 @pytest.fixture
@@ -208,7 +210,6 @@ def test_リンクの解決はファイル名かパス指定():
 
 
 def test_バックリンクもパス指定と見出しつきリンクを数える(vault, monkeypatch):
-    from app.core import indexing
     monkeypatch.setattr(indexing, "CONTENT_DIR", vault)
     (vault / "参照元.md").write_text("[[会議/定例]] と [[段1#見出し]]", encoding="utf-8")
     files = [{"path": "参照元.md", "title": "参照元"}]
@@ -231,3 +232,86 @@ def test_後ろに文字がある区切り行ではコードブロックを閉�
     # ```text の中の ```python は中身。閉じるのは何も書いていない ``` だけ
     html = render("```text\n```python\n[[定例]]\n```\n[[定例]]")
     assert html.count('href="/view/会議/定例"') == 1
+
+
+# ---------- Q-10: リンク走査の共通化（描画とバックリンクで同じ判定） ----------
+
+def test_走査はリンクの種類と名前と見出しと別名を返す():
+    links = list(wikilinks.iter_wikilinks("[[会議/定例#議題|今日]] と ![[a.png|300]] と [[#決定事項]]"))
+    assert [(link.is_embed, link.name, link.heading, link.alias) for link in links] == [
+        (False, "会議/定例", "議題", "今日"),
+        (True, "a.png", "", "300"),
+        (False, "", "決定事項", None),
+    ]
+
+
+def test_走査はコードブロックとインラインコードとコールアウト内のコードを飛ばす():
+    src = (
+        "```\n[[コード1]]\n```\n"
+        "`[[コード2]]` の後ろの [[本物1]]\n"
+        "> [!note]\n> ```\n> [[コード3]]\n> ```\n"
+        "> [[本物2]]\n"
+    )
+    assert [link.name for link in wikilinks.iter_wikilinks(src)] == ["本物1", "本物2"]
+
+
+def test_コードの中のリンクはバックリンクにもフォワードリンクにも入らない(vault, monkeypatch):
+    monkeypatch.setattr(indexing, "CONTENT_DIR", vault)
+    (vault / "参照元.md").write_text(
+        "```\n[[公開メモ]]\n```\n`[[段1]]`\n> ```\n> ![[段2]]\n> ```\n[[会議/定例]]\n", encoding="utf-8")
+    files = [{"path": "参照元.md", "title": "参照元"}]
+    backlinks, forward = _build_link_maps(files, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
+    assert forward["参照元.md"] == ["会議/定例.md"]
+    assert set(backlinks) == {"会議/定例.md"}
+
+
+def test_バックリンクは埋め込みも数え自己リンクと重複を除く(vault, monkeypatch):
+    monkeypatch.setattr(indexing, "CONTENT_DIR", vault)
+    (vault / "参照元.md").write_text("![[公開メモ]] [[公開メモ|別名]] [[参照元]]", encoding="utf-8")
+    names = dict(cache.FILE_NAME_CACHE, 参照元="参照元.md")
+    slugs = dict(cache.PATH_TO_SLUG, **{"参照元.md": "参照元"})
+    files = [{"path": "参照元.md", "title": "参照元"}]
+    backlinks, forward = _build_link_maps(files, names, slugs)
+    assert forward["参照元.md"] == ["公開メモ.md"]
+    assert backlinks["公開メモ.md"] == [{"title": "参照元", "path": "参照元.md", "slug": "参照元"}]
+    assert "参照元.md" not in backlinks
+
+
+# ---------- リンクの振り分け（classify_link）と走査の境界 ----------
+
+def _published_paths():
+    return {f["path"] for f in cache.GLOBAL_FILE_CACHE if f.get("published")}
+
+
+@pytest.fixture
+def only_a_png(monkeypatch):
+    """static に a.png だけがある状態"""
+    monkeypatch.setattr(wikilinks, "find_image_in_static", lambda name: "/static/images/a.png" if name == "a.png" else None)
+
+
+@pytest.mark.parametrize("src, kind, rendered, field, listed", [
+    # 名前も見出しも空。描画は中身の無いリンク切れ（画面には何も出ない）なので、公開チェックでも挙げない
+    ("[[#]]", "MISSING_NOTE", '<span class="internal-link-broken"></span>', None, None),
+    # 別名つきの画像。| の後ろは表示サイズ
+    ("![[a.png|300]]", "IMAGE", '<img src="/static/images/a.png" alt="a.png" width="300"', None, None),
+    ("![[無い.png|300]]", "MISSING_IMAGE", '<span class="internal-link-broken">無い.png</span>', "missing_images", "無い.png"),
+    # 見出しつきの画像名はノートの節の埋め込みとして扱われ、そのノートが無いのでリンク切れ
+    ("![[a.png#x]]", "MISSING_NOTE", '<span class="internal-link-broken">a.png &gt; x</span>', "missing_links", "a.png"),
+])
+def test_境界のリンクも描画と公開チェックで同じに振り分ける(vault, only_a_png, src, kind, rendered, field, listed):
+    link = next(wikilinks.iter_wikilinks(src))
+    assert wikilinks.classify_link(link, _published_paths()).kind is wikilinks.LinkKind[kind]
+    assert rendered in render(src, published_only=True)
+    result = check_publish("x.md", src, True)
+    if field:
+        assert getattr(result, field) == (listed,) and result.issue_count == 1
+    else:
+        assert result.issue_count == 0
+
+
+def test_閉じないコードブロックの後ろのリンクは数えない(vault):
+    src = "[[公開メモ]]\n```\n[[秘密]]\n[[無いノート]]\n"
+    assert [link.name for link in wikilinks.iter_wikilinks(src)] == ["公開メモ"]
+    html = render(src, published_only=True)
+    assert "internal-link-broken" not in html and html.count('class="internal-link"') == 1
+    assert check_publish("x.md", src, True).issue_count == 0

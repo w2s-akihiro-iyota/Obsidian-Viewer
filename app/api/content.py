@@ -3,21 +3,25 @@
 import math
 import re
 import time
+from datetime import datetime
+from html import unescape
 from pathlib import Path
 from typing import Callable
+from urllib.parse import quote
 
 # Third party
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 # Local
 from app import cache
 from app.api import templates
-from app.config import CONTENT_DIR, PER_PAGE, SEARCH_LIMIT
+from app.config import CONTENT_DIR, JST, PER_PAGE, SEARCH_LIMIT
 from app.core.indexing import parse_frontmatter, is_published
 from app.core.search import parse_search_query
 from app.services.content import render_markdown
 from app.services.images import find_image_in_static
+from app.services.publish_check import check_publish
 from app.utils.helpers import is_admin_request
 from app.utils.messages import get_all_messages
 
@@ -35,8 +39,36 @@ def _mtimes(paths: set[str]) -> dict[str, float | None]:
     return result
 
 
-def _get_related_articles(file_path: str, tags: list, is_localhost: bool, limit: int = 5) -> list[dict]:
-    """タグの共通度に基づいて関連記事を取得"""
+_LEADING_H1_RE = re.compile(r'\s*<h1(?P<attrs>[^>]*)>(?P<inner>.*?)</h1>', re.DOTALL)
+
+
+def _mark_duplicate_title(html: str, title: str) -> str:
+    """
+    本文の最初のブロックが h1 で、文字がヘッダーのタイトルと同じなら、本文側の h1 に class を付けて見えなくする
+
+    id は残す（目次から飛べるように）。対象はページ本文の先頭だけで、埋め込みの中の h1 は見ない
+    （埋め込みは先頭が <div class="markdown-embed"> になるので当たらない）。
+    """
+    m = _LEADING_H1_RE.match(html)
+    if not m or 'class=' in m.group('attrs'):
+        return html
+    text = unescape(re.sub(r'<[^>]+>', '', m.group('inner'))).strip()
+    if text != str(title).strip():
+        return html
+    return html[:m.start('attrs')] + ' class="view-title-duplicate"' + html[m.start('attrs'):]
+
+
+def _breadcrumbs(file_path: str) -> list[dict]:
+    """パンくずのフォルダ部分。フォルダ名と、そのフォルダまでのパスで一覧を絞り込む URL（/?q=フォルダ/）"""
+    folders = Path(file_path).parent.parts
+    return [
+        {"name": name, "href": "/?q=" + quote("/".join(folders[:i + 1]) + "/", safe="")}
+        for i, name in enumerate(folders)
+    ]
+
+
+def _get_related_articles(file_path: str, tags: list, published_only: bool, limit: int = 5) -> list[dict]:
+    """タグの共通度に基づいて関連記事を取得（published_only なら公開ノートだけ）"""
     if not tags:
         return []
 
@@ -46,7 +78,7 @@ def _get_related_articles(file_path: str, tags: list, is_localhost: bool, limit:
     for f in cache.GLOBAL_FILE_CACHE:
         if f["path"] == file_path:
             continue
-        if not is_localhost and not f.get("published"):
+        if published_only and not f.get("published"):
             continue
 
         other_tags = set(f.get("tags") or [])
@@ -151,7 +183,13 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
 
 
 @router.get("/view/{file_path:path}", response_class=HTMLResponse)
-async def read_item(request: Request, file_path: str):
+async def read_item(request: Request, file_path: str, view_as: str = Query("", alias="as")):
+    """
+    記事ページ
+
+    管理者は ?as=public で「外部の人の表示」（外部向けと同じ本文と、公開チェックの結果）を見られる。
+    外部の人が ?as=public を付けても何も変わらない。
+    """
     # スラッグからの解決を試みる
     actual_path = cache.SLUG_TO_PATH.get(file_path)
     if actual_path is None:
@@ -172,10 +210,14 @@ async def read_item(request: Request, file_path: str):
 
     mtime = full_path.stat().st_mtime
     is_localhost = is_admin_request(request)
+    # 管理者が外部の人の表示を確かめているとき
+    public_view = is_localhost and view_as == "public"
+    # 本文・バックリンク・関連記事を公開ノートだけに絞るか（外部の人と、管理者の外部表示）
+    published_only = (not is_localhost) or public_view
 
     # Check cache
     # 外部向けは Dataview の結果が変わるため、閲覧者の種類ごとに別のキャッシュにする
-    cache_key = (str(file_path), not is_localhost)
+    cache_key = (str(file_path), published_only)
     entry = cache.MARKDOWN_CACHE.get(cache_key)
     # 自分の更新日時に加えて、埋め込んだノートの更新日時も変わっていなければキャッシュを使う
     if entry and entry['mtime'] == mtime and _mtimes(set(entry.get('deps', {}))) == entry.get('deps', {}):
@@ -190,7 +232,7 @@ async def read_item(request: Request, file_path: str):
         title = frontmatter.get('title') or Path(file_path).stem
 
         deps: set[str] = set()
-        html = render_markdown(body, published_only=not is_localhost, deps=deps, source_path=file_path)
+        html = render_markdown(body, published_only=published_only, deps=deps, source_path=file_path)
         # Update cache
         cache.MARKDOWN_CACHE[cache_key] = {
             'html': html,
@@ -202,8 +244,15 @@ async def read_item(request: Request, file_path: str):
 
     is_pub = is_published(frontmatter)
 
+    # 403 は外部の人だけ。管理者の外部表示では、403 になることを画面で知らせる
     if not is_localhost and not is_pub:
         raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
+
+    # 公開チェックは管理者にだけ行う（外部の人には計算もしない）
+    publish_check = None
+    if is_localhost:
+        _, note_body = parse_frontmatter(full_path.read_text(encoding="utf-8"))
+        publish_check = check_publish(file_path, note_body, is_pub)
 
     # キャッシュから読了時間を取得
     reading_time = 1
@@ -259,8 +308,8 @@ async def read_item(request: Request, file_path: str):
 
     # バックリンク取得
     backlinks = cache.BACKLINK_CACHE.get(file_path, [])
-    # 非localhostの場合、公開ファイルのみに絞る
-    if not is_localhost:
+    # 外部の人（と管理者の外部表示）には、公開ファイルのみに絞る
+    if published_only:
         published_paths = {f["path"] for f in cache.GLOBAL_FILE_CACHE if f.get("published")}
         backlinks = [bl for bl in backlinks if bl["path"] in published_paths]
 
@@ -268,20 +317,25 @@ async def read_item(request: Request, file_path: str):
     tags = frontmatter.get("tags") or []
     if isinstance(tags, str):
         tags = [tags]
-    related_articles = _get_related_articles(file_path, tags, is_localhost)
+    related_articles = _get_related_articles(file_path, tags, published_only)
 
     slug = cache.PATH_TO_SLUG.get(file_path, file_path)
 
     return templates.TemplateResponse(request=request, name="view.html", context={
         "request": request,
         "title": title,
-        "content": html,
+        "content": _mark_duplicate_title(html, title),
         "file_path": file_path,
         "slug": slug,
-        "filename": Path(file_path).name,
+        "breadcrumbs": _breadcrumbs(file_path),
+        "updated": datetime.fromtimestamp(mtime, JST),
         "frontmatter": frontmatter,
         "is_published": is_pub,
-        "is_localhost": is_localhost,
+        # 外部表示中は、編集メニューなどを外部の人と同じく出さない
+        "is_localhost": is_localhost and not public_view,
+        "is_admin": is_localhost,
+        "public_view": public_view,
+        "publish_check": publish_check,
         "reading_time": reading_time,
         "description": description,
         "og_url": og_url,

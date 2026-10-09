@@ -40,6 +40,13 @@
     .scroll-to-top,
     .page-menu-dropdown,
     .view-tags,
+    .view-header-actions,
+    .view-meta,
+    .public-view-toggle,
+    .public-view-banner,
+    .public-view-private-notice,
+    .publish-check-panel,
+    .markdown-body h1.view-title-duplicate,
     .backlinks-section,
     .related-section {
         display: none !important;

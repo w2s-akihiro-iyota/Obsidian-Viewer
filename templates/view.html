@@ -47,69 +47,216 @@
 {% block container_class %}container-wide{% endblock %}
 
 {% block content %}
+{% macro check_row(label, count) %}
+<li class="publish-check-item{% if count %} has-issue{% endif %}">
+    <div class="publish-check-row">
+        <span class="publish-check-label">{{ label }}</span>
+        {% if count %}
+        <span class="publish-check-num">{{ count }} 件</span>
+        {% else %}
+        <span class="publish-check-ok-mark">OK</span>
+        {% endif %}
+    </div>
+    {% if count %}{{ caller() }}{% endif %}
+</li>
+{% endmacro %}
+
+{% macro check_count_badge(check) %}
+{% if check.issue_count %}
+<span class="publish-check-count">要確認 {{ check.issue_count }}</span>
+{% else %}
+<span class="publish-check-count is-ok">OK</span>
+{% endif %}
+{% endmacro %}
+
 <div class="view-header">
-    <div class="breadcrumb">
-        <a href="/">Home</a> / <span>{{ filename }}</span>
+    <div class="view-header-top">
+        <div class="breadcrumb" aria-label="パンくずリスト">
+            <a href="/">Home</a>
+            {% for crumb in breadcrumbs %}
+            <span class="breadcrumb-sep" aria-hidden="true">›</span>
+            <a href="{{ crumb.href }}" class="breadcrumb-folder">{{ crumb.name }}</a>
+            {% endfor %}
+            <span class="breadcrumb-sep" aria-hidden="true">›</span>
+            <span class="breadcrumb-current" aria-current="page">{{ title }}</span>
+        </div>
+
+        <div class="view-header-actions">
+            {% if is_admin %}
+            {# 管理者だけ: 外部の人に見える内容（?as=public）と通常の表示を切り替える #}
+            {% if public_view %}
+            <a href="/view/{{ slug }}" class="public-view-toggle is-active" title="管理者の通常の表示に戻る">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                    <line x1="2" y1="2" x2="22" y2="22"></line>
+                </svg>
+                <span class="public-view-toggle-label">通常の表示に戻る</span>
+                {{ check_count_badge(publish_check) }}
+            </a>
+            {% else %}
+            <a href="/view/{{ slug }}?as=public" class="public-view-toggle" title="外部の人に見える内容を確認する">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span class="public-view-toggle-label">外部の人の表示</span>
+                {{ check_count_badge(publish_check) }}
+            </a>
+            {% endif %}
+            {% endif %}
+            <div class="page-menu-container">
+                <button class="page-menu-btn" id="page-menu-btn" title="メニュー">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="1"></circle>
+                        <circle cx="12" cy="5" r="1"></circle>
+                        <circle cx="12" cy="19" r="1"></circle>
+                    </svg>
+                </button>
+                <div class="page-menu-dropdown" id="page-menu-dropdown">
+                    {% if is_localhost %}
+                    <a class="menu-option" href="/editor?path={{ slug }}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        <span>編集</span>
+                    </a>
+                    {% endif %}
+                    <button class="menu-option" id="copy-url-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <span>URLをコピー</span>
+                    </button>
+                    <button class="menu-option" id="export-pdf-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span>PDFで出力</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h1 class="view-title">{{ title }}</h1>
+
+    <div class="view-meta">
         {% if is_published %}
         <span class="file-status-badge">公開中</span>
+        {% elif is_admin %}
+        <span class="file-status-badge is-private">非公開</span>
         {% endif %}
+        <time class="view-updated" datetime="{{ updated.isoformat(timespec='seconds') }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            更新 {{ updated.strftime('%Y-%m-%d %H:%M') }}
+        </time>
         <span class="reading-time">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
             約{{ reading_time }}分で読了
         </span>
+        {% if backlinks %}
+        <a href="#backlinks" class="view-backlink-count">リンク元 {{ backlinks|length }}</a>
+        {% else %}
+        <span class="view-backlink-count">リンク元 0</span>
+        {% endif %}
     </div>
 
-    <div class="page-menu-container">
-        <button class="page-menu-btn" id="page-menu-btn" title="メニュー">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="1"></circle>
-                <circle cx="12" cy="5" r="1"></circle>
-                <circle cx="12" cy="19" r="1"></circle>
-            </svg>
-        </button>
-        <div class="page-menu-dropdown" id="page-menu-dropdown">
-            {% if is_localhost %}
-            <a class="menu-option" href="/editor?path={{ slug }}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-                <span>編集</span>
-            </a>
-            {% endif %}
-            <button class="menu-option" id="copy-url-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                </svg>
-                <span>URLをコピー</span>
-            </button>
-            <button class="menu-option" id="export-pdf-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <span>PDFで出力</span>
-            </button>
-        </div>
+    {% if frontmatter.tags %}
+    <div class="view-tags">
+        {% set tags = frontmatter.tags if frontmatter.tags is iterable and frontmatter.tags is not string else
+        [frontmatter.tags] %}
+        {% for tag in tags %}
+        <a href="/?tag={{ tag }}" class="view-tag">#{{ tag }}</a>
+        {% endfor %}
     </div>
+    {% endif %}
 </div>
 
-{% if frontmatter.tags %}
-<div class="view-tags">
-    {% set tags = frontmatter.tags if frontmatter.tags is iterable and frontmatter.tags is not string else
-    [frontmatter.tags] %}
-    {% for tag in tags %}
-    <a href="/?tag={{ tag }}" class="view-tag">#{{ tag }}</a>
-    {% endfor %}
+{% if public_view %}
+{# 管理者の「外部の人の表示」: 本文は外部向けと同じ。上に確認用のバナーとチェック結果を出す #}
+<div class="public-view-banner" role="status">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+    <span>{{ system_message("S203") }}</span>
 </div>
+{% if not is_published %}
+<div class="public-view-private-notice" role="alert">{{ system_message("S204") }}</div>
+{% endif %}
+
+<section class="publish-check-panel" aria-label="公開チェック">
+    <h2 class="publish-check-title">公開チェック {{ check_count_badge(publish_check) }}</h2>
+    {% if not publish_check.issue_count %}
+    <p class="publish-check-all-ok">{{ system_message("S205") }}</p>
+    {% endif %}
+    <ul class="publish-check-items">
+        {% call check_row("ノート自身が非公開（外部からは 403）", 1 if publish_check.is_private else 0) %}{% endcall %}
+        {% call check_row("非公開ノートへのリンク（外部ではリンク切れ）", publish_check.private_links|length) %}
+        <ul class="publish-check-list">
+            {% for note in publish_check.private_links %}
+            <li><a href="/view/{{ note.slug }}">{{ note.title }}</a> <span class="publish-check-path">{{ note.path }}</span></li>
+            {% endfor %}
+        </ul>
+        {% endcall %}
+        {% call check_row("非公開ノートの埋め込み（外部では表示されない）", publish_check.private_embeds|length) %}
+        <ul class="publish-check-list">
+            {% for note in publish_check.private_embeds %}
+            <li><a href="/view/{{ note.slug }}">{{ note.title }}</a> <span class="publish-check-path">{{ note.path }}</span></li>
+            {% endfor %}
+        </ul>
+        {% endcall %}
+        {% call check_row("存在しないノートへのリンク", publish_check.missing_links|length) %}
+        <ul class="publish-check-list">
+            {% for name in publish_check.missing_links %}
+            <li>{{ name }}</li>
+            {% endfor %}
+        </ul>
+        {% endcall %}
+        {% call check_row("見つからない画像", publish_check.missing_images|length) %}
+        <ul class="publish-check-list">
+            {% for name in publish_check.missing_images %}
+            <li>{{ name }}</li>
+            {% endfor %}
+        </ul>
+        {% endcall %}
+        {% call check_row("Dataview で外部に出ない結果", publish_check.dataview_gaps|length) %}
+        <ul class="publish-check-list">
+            {% for gap in publish_check.dataview_gaps %}
+            <li>
+                <code>{{ gap.query }}</code> … 外部では {{ gap.hidden_count }} 件が出ません
+                <ul class="publish-check-sublist">
+                    {% for note in gap.hidden %}
+                    <li><a href="/view/{{ note.slug }}">{{ note.title }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endcall %}
+    </ul>
+</section>
 {% endif %}
 
 <article class="markdown-body">
@@ -117,7 +264,7 @@
 </article>
 
 {% if backlinks %}
-<section class="backlinks-section">
+<section class="backlinks-section" id="backlinks">
     <h3 class="backlinks-heading">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">

@@ -118,7 +118,12 @@ function initSidebar() {
                     if (sidebarOverlay) sidebarOverlay.classList.remove('active');
                 }
 
-                header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // 本文側の隠した h1（記事ヘッダーのタイトルと同じもの）は高さ 0 なので、
+                // そこへ飛ぶとタイトルが画面の上に切れる。記事ヘッダーが見える位置へ飛ばす
+                const scrollTarget = header.classList.contains('view-title-duplicate')
+                    ? (document.querySelector('.view-header') || header)
+                    : header;
+                scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
                 // Highlight active
                 document.querySelectorAll('.toc-item').forEach(i => i.classList.remove('active'));

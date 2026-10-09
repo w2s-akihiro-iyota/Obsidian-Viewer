@@ -2,8 +2,9 @@
 import re
 import uuid
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from html import escape
-from typing import Callable
+from typing import Callable, Iterator
 
 from app import cache
 from app.config import CONTENT_DIR, MAX_EMBED_DEPTH
@@ -51,6 +52,20 @@ class EmbedContext:
         return html
 
 
+@dataclass(frozen=True)
+class WikiLink:
+    """本文中の [[...]] / ![[...]] 1 つ分"""
+    is_embed: bool          # ![[...]] なら True
+    name: str               # リンク先の名前（# より前。[[#見出し]] なら空）
+    heading: str            # # より後ろの見出し（無ければ空）
+    alias: str | None       # | より後ろ（ノートなら表示名、画像なら表示サイズ）
+
+    @classmethod
+    def from_match(cls, m: re.Match) -> "WikiLink":
+        name, _, heading = (part.strip() for part in m.group(2).strip().partition('#'))
+        return cls(is_embed=m.group(1) == '!', name=name, heading=heading, alias=m.group(3))
+
+
 class _FenceTracker:
     """
     コードブロック（``` / ~~~）の中かどうかを 1 行ずつ追う
@@ -61,6 +76,15 @@ class _FenceTracker:
 
     def __init__(self):
         self._open: tuple[str, int] | None = None   # (記号, 長さ)
+        self._info = ""                             # 最後に開いたコードブロックの種類（```dataview なら dataview）
+
+    @property
+    def is_open(self) -> bool:
+        return self._open is not None
+
+    @property
+    def info(self) -> str:
+        return self._info
 
     def in_code(self, line: str) -> bool:
         """この行がコードブロックの区切りか中身なら True"""
@@ -68,11 +92,140 @@ class _FenceTracker:
         if self._open is None:
             if m:
                 self._open = (m.group(1)[0], len(m.group(1)))
+                self._info = m.group(2).strip()
                 return True
             return False
         if m and m.group(1)[0] == self._open[0] and len(m.group(1)) >= self._open[1] and not m.group(2).strip():
             self._open = None
         return True
+
+
+class _LineRole(Enum):
+    """コードブロックから見た行の役割"""
+    TEXT = auto()    # コードブロックの外
+    OPEN = auto()    # 開く区切り行
+    BODY = auto()    # コードブロックの中身
+    CLOSE = auto()   # 閉じる区切り行
+
+
+def _unquote(line: str) -> str:
+    """コールアウト（> [!note]）の行頭の > を外す。コールアウトの中のコードブロックも同じように扱うため"""
+    return line.lstrip('> ')
+
+
+def _walk_lines(content: str) -> Iterator[tuple[str, str, _LineRole, str]]:
+    """
+    本文を 1 行ずつ (元の行, > を外した行, 役割, コードブロックの種類) で返す
+
+    コードブロックの判定はここ 1 か所で行い、リンクの走査（_link_segments）と
+    コードブロックの取り出し（iter_fenced_blocks）が共有する。
+    """
+    fence = _FenceTracker()
+    for line in content.split('\n'):
+        unquoted = _unquote(line)
+        was_open = fence.is_open
+        if not fence.in_code(unquoted):
+            role = _LineRole.TEXT
+        elif not was_open:
+            role = _LineRole.OPEN
+        elif fence.is_open:
+            role = _LineRole.BODY
+        else:
+            role = _LineRole.CLOSE
+        yield line, unquoted, role, fence.info
+
+
+def _link_segments(content: str) -> Iterator[tuple[str, bool]]:
+    """
+    本文を「リンクを探す部分」と「探さない部分」に分けて順に返す（つなげると元の本文に戻る）
+
+    探さないのは、コードブロック（コールアウトの中も含む）・インラインコード・行の区切り。
+    描画（process_wikilinks）とリンクの走査（iter_wikilinks）が同じ判定を使うための共通部分。
+    """
+    for i, (line, _, role, _) in enumerate(_walk_lines(content)):
+        if i:
+            yield '\n', False
+        if role is not _LineRole.TEXT or '[[' not in line:
+            yield line, False
+            continue
+        pos = 0
+        for m in _INLINE_CODE_RE.finditer(line):
+            yield line[pos:m.start()], True
+            yield m.group(0), False
+            pos = m.end()
+        yield line[pos:], True
+
+
+def iter_wikilinks(content: str) -> Iterator[WikiLink]:
+    """コードの中を飛ばしながら、本文の [[...]] / ![[...]] を出てくる順に返す"""
+    for text, searchable in _link_segments(content):
+        if searchable:
+            for m in _WIKILINK_RE.finditer(text):
+                yield WikiLink.from_match(m)
+
+
+def iter_fenced_blocks(content: str) -> Iterator[tuple[str, str]]:
+    """
+    コードブロックごとに (種類, 中身) を返す（```dataview なら ("dataview", クエリ)）
+
+    コードブロックの中に書いた ``` は中身として扱う（_walk_lines と同じ判定）。
+    """
+    lines: list[str] | None = None   # 開いているコードブロックの中身（開いていなければ None）
+    info = ""
+    for _, unquoted, role, block_info in _walk_lines(content):
+        if role is _LineRole.OPEN:
+            lines, info = [], block_info
+        elif role is _LineRole.BODY:
+            lines.append(unquoted)
+        elif role is _LineRole.CLOSE:
+            yield info, '\n'.join(lines)
+            lines = None
+    # 閉じずに終わったコードブロックは、Markdown と同じく本文の最後までをコードとして扱う
+    if lines is not None:
+        yield info, '\n'.join(lines)
+
+
+class LinkKind(Enum):
+    """リンク 1 件の振り分け（描画と公開チェックで共通）"""
+    IMAGE = auto()           # 見つかった画像（![[画像]]）
+    MISSING_IMAGE = auto()   # 見つからない画像（![[画像.png]] で、画像ファイルが無い）
+    HEADING = auto()         # 同じノート内の見出し（[[#見出し]]）
+    MISSING_NOTE = auto()    # 存在しないノート（[[画像.png]] のように埋め込みでない画像名も、描画どおりここ）
+    PRIVATE_NOTE = auto()    # 非公開ノート（published_paths を渡したときだけ）
+    NOTE = auto()            # 表示できるノート
+
+
+@dataclass(frozen=True)
+class LinkTarget:
+    """リンクの振り分け結果"""
+    kind: LinkKind
+    path: str | None = None        # NOTE / PRIVATE_NOTE の解決先（ノートの相対パス）
+    image_url: str | None = None   # IMAGE の URL
+
+
+def classify_link(link: WikiLink, published_paths: set[str] | None) -> LinkTarget:
+    """
+    リンク 1 件を、描画で何になるかで振り分ける
+
+    published_paths を渡すと、そこに無いノートを非公開ノートとする（外部向け）。None なら全ノートを表示できる扱い。
+    """
+    # 画像になるのは、見出しの無い埋め込みだけ（| の後ろは表示サイズ）
+    if link.is_embed and link.name and not link.heading:
+        image_url = find_image_in_static(link.name)
+        if image_url:
+            return LinkTarget(LinkKind.IMAGE, image_url=image_url)
+        if is_image_name(link.name):
+            return LinkTarget(LinkKind.MISSING_IMAGE)
+
+    if not link.name and link.heading:
+        return LinkTarget(LinkKind.HEADING)
+
+    path = resolve_note_path(link.name, cache.FILE_NAME_CACHE, cache.PATH_TO_SLUG)
+    if path is None:
+        return LinkTarget(LinkKind.MISSING_NOTE)
+    if published_paths is not None and path not in published_paths:
+        return LinkTarget(LinkKind.PRIVATE_NOTE, path=path)
+    return LinkTarget(LinkKind.NOTE, path=path)
 
 
 def _extract_section(body: str, heading: str) -> str | None:
@@ -146,55 +299,35 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
     )
 
     def replace(match: re.Match) -> str:
-        is_embed = match.group(1) == '!'
-        target = match.group(2).strip()
-        alias = match.group(3)
-        name, _, heading = (part.strip() for part in target.partition('#'))
+        link = WikiLink.from_match(match)
+        name, heading, alias = link.name, link.heading, link.alias
+        target = classify_link(link, published_paths)
 
-        # 画像（| の後ろは表示サイズ）
-        if is_embed and name and not heading:
-            image_url = find_image_in_static(name)
-            if image_url:
-                return image_html(image_url, name, alias)
-            if is_image_name(name):
-                return f'<span class="internal-link-broken">{escape(name)}</span>'
-
-        # 同じノート内の見出しへのリンク
-        if not name and heading:
+        if target.kind is LinkKind.IMAGE:
+            return image_html(target.image_url, name, alias)
+        if target.kind is LinkKind.MISSING_IMAGE:
+            return f'<span class="internal-link-broken">{escape(name)}</span>'
+        if target.kind is LinkKind.HEADING:
             return f'<a href="#{heading_anchor(heading)}" class="internal-link">{escape(alias or heading)}</a>'
 
         title = escape(alias or (f"{name} > {heading}" if heading else name))
-        path = resolve_note_path(name, cache.FILE_NAME_CACHE, cache.PATH_TO_SLUG)
-        if path and published_paths is not None and path not in published_paths:
-            path = None
-        if path is None:
+        # 存在しないノートと、外部向けの非公開ノートは同じ表示にする（非公開ノートの存在を見せない）
+        if target.kind is not LinkKind.NOTE:
             return f'<span class="internal-link-broken">{title}</span>'
 
+        path = target.path
         href = f"/view/{cache.PATH_TO_SLUG.get(path, path)}"
         if heading:
             href += f"#{heading_anchor(heading)}"
 
         # 埋め込み。ループ・深すぎる入れ子はリンクにとどめる
-        if is_embed and path not in ctx.stack and ctx.depth < MAX_EMBED_DEPTH:
+        if link.is_embed and path not in ctx.stack and ctx.depth < MAX_EMBED_DEPTH:
             return ctx.stash(_render_embed(path, heading, href, title, ctx))
 
         # アイコンはポストプロセス（_inject_note_icons）で付与
         return f'<a href="{href}" class="internal-link">{title}</a>'
 
-    def replace_outside_inline_code(line: str) -> str:
-        parts, pos = [], 0
-        for m in _INLINE_CODE_RE.finditer(line):
-            parts.append(_WIKILINK_RE.sub(replace, line[pos:m.start()]))
-            parts.append(m.group(0))
-            pos = m.end()
-        parts.append(_WIKILINK_RE.sub(replace, line[pos:]))
-        return ''.join(parts)
-
-    out, fence = [], _FenceTracker()
-    for line in content.split('\n'):
-        # コールアウト（> [!note]）の中のコードブロックも同じように扱う
-        if fence.in_code(line.lstrip('> ')) or '[[' not in line:
-            out.append(line)
-        else:
-            out.append(replace_outside_inline_code(line))
-    return '\n'.join(out)
+    return ''.join(
+        _WIKILINK_RE.sub(replace, text) if searchable else text
+        for text, searchable in _link_segments(content)
+    )

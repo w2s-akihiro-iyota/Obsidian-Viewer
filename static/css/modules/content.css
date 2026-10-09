@@ -166,6 +166,19 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* 記事ヘッダーのメタ情報行では、行頭に置くので左の余白を取らない */
+.view-meta .file-status-badge {
+    margin-left: 0;
+}
+
+/* 非公開（管理者にだけ見える） */
+.file-status-badge.is-private {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+}
+
 .file-meta {
     display: flex;
     flex-direction: column;
@@ -1341,13 +1354,24 @@ details[open] .accordion-icon {
 .internal-link:hover .internal-link-icon {
     opacity: 1;
 }
-/* 見出しへのリンク（[[ノート#見出し]]）で飛んだとき、固定ヘッダーに隠れないようにする */
+/* 本文先頭の h1 が記事ヘッダーのタイトルと同じとき（app/api/content.py が class を付ける）。
+   display:none だと目次から飛べないため、高さ 0 で流れの中に残し、アンカーとしては働かせる */
+.markdown-body h1.view-title-duplicate {
+    height: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden;
+}
+
+/* 見出しへのリンク（[[ノート#見出し]]）や目次で飛んだとき、固定ヘッダーに隠れないようにする */
 .markdown-body h1[id],
 .markdown-body h2[id],
 .markdown-body h3[id],
 .markdown-body h4[id],
 .markdown-body h5[id],
-.markdown-body h6[id] {
+.markdown-body h6[id],
+.view-header {
     scroll-margin-top: calc(var(--header-height) + 16px);
 }
 
@@ -1525,6 +1549,11 @@ details[open] .accordion-icon {
     margin-bottom: 16px;
 }
 
+/* 記事ヘッダーの中に置くタグ（下線はヘッダー側で引く） */
+.view-header .view-tags {
+    margin: 12px 0 0;
+}
+
 .view-tag {
     display: inline-block;
     padding: 4px 12px;
@@ -1552,6 +1581,26 @@ details[open] .accordion-icon {
     margin-left: 12px;
     font-size: 0.8rem;
     color: var(--text-muted);
+}
+
+/* メタ情報行では gap で間を空ける */
+.view-meta .reading-time {
+    margin-left: 0;
+}
+
+/* 更新日・リンク元の件数 (view.html の記事ヘッダー) */
+.view-updated {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.view-backlink-count {
+    color: var(--text-muted);
+}
+
+a.view-backlink-count:hover {
+    color: var(--accent-purple);
 }
 
 /* 読了時間 (index.html file-meta) */

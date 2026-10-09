@@ -200,10 +200,17 @@ def resolve_note_path(name: str, file_name_map: dict, path_to_slug: dict) -> str
 
 
 def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict) -> tuple[dict, dict]:
-    """全ファイルの[[wikilink]]を解析し、(バックリンク, フォワードリンク) のマップを作る"""
+    """
+    全ファイルの[[wikilink]]を解析し、(バックリンク, フォワードリンク) のマップを作る
+
+    リンクの拾い方（コードの中は数えない・見出しと別名の分け方）は描画と同じ iter_wikilinks を使う。
+    埋め込み（![[ノート]]）もリンクとして数える。
+    """
+    # wikilinks は indexing を読み込むため、循環しないようここで読み込む
+    from app.services.wikilinks import iter_wikilinks
+
     backlinks = {}   # {target_path: [{title, path}]}
     forward = {}     # {source_path: [target_path]}
-    wikilink_re = re.compile(r'\[\[([^\]\|#]+)')
 
     for f in files:
         source_path = f["path"]
@@ -221,11 +228,12 @@ def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict)
             continue
 
         _, body = parse_frontmatter(content)
-        links = wikilink_re.findall(body)
         resolved_targets = []
 
-        for link_name in links:
-            target_path = resolve_note_path(link_name.strip(), file_name_map, path_to_slug)
+        for link in iter_wikilinks(body):
+            if not link.name:   # [[#見出し]] は同じノート内
+                continue
+            target_path = resolve_note_path(link.name, file_name_map, path_to_slug)
             if target_path and target_path != source_path:
                 resolved_targets.append(target_path)
                 # バックリンクに追加
