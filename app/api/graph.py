@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app import cache
 from app.api import templates
-from app.utils.helpers import is_request_local
+from app.utils.helpers import is_admin_request
 
 router = APIRouter()
 
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/graph", response_class=HTMLResponse)
 async def graph_page(request: Request):
     """グラフビューページを表示"""
-    is_localhost = is_request_local(request)
+    is_localhost = is_admin_request(request)
     return templates.TemplateResponse(request=request, name="graph.html", context={
         "request": request,
         "is_localhost": is_localhost
@@ -22,7 +22,7 @@ async def graph_page(request: Request):
 @router.get("/api/graph")
 async def api_graph(request: Request):
     """グラフデータ（ノードとリンク）をJSONで返す"""
-    is_localhost = is_request_local(request)
+    is_localhost = is_admin_request(request)
 
     # ノード生成
     nodes = []

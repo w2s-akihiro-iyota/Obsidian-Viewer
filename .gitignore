@@ -25,7 +25,8 @@ images/*
 !images/samples/
 
 # Docker
-docker-compose.yml
+# docker-compose.yml は共通設定として Git 管理する。PC ごとの設定は override に書く
+docker-compose.override.yml
 
 # Environment Specific Configs
 server_config.yaml

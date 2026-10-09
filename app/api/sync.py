@@ -12,7 +12,7 @@ from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 from app.models.sync import SyncConfig
 from app.services.sync import load_config, save_config, perform_sync
-from app.utils.helpers import localhost_guard
+from app.utils.helpers import admin_guard
 from app.utils.messages import get_error, get_warning
 
 router = APIRouter()
@@ -20,7 +20,7 @@ router = APIRouter()
 
 @router.post("/api/sync/save")
 async def api_save_sync_settings(request: Request):
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
 
     data = await request.json()
 
@@ -74,7 +74,7 @@ async def api_save_sync_settings(request: Request):
 
 @router.get("/api/sync/config")
 async def api_get_sync_config(request: Request):
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
     config = load_config()
     return config
 
@@ -92,7 +92,7 @@ async def api_get_public_config():
 @router.post("/api/sync/now")
 @router.post("/api/sync")
 async def api_sync_now(request: Request):
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
     config = load_config()
     success, message = perform_sync(config)
     # 同期後、定期実行のタイマーをリセットさせるために通知を送る
@@ -106,7 +106,7 @@ async def api_sync_now(request: Request):
 @router.post("/api/reindex")
 @router.post("/api/rebuild-index")
 async def api_reindex(request: Request):
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
 
     refresh_global_caches()
     return {"status": "success"}
@@ -115,7 +115,7 @@ async def api_reindex(request: Request):
 @router.get("/api/dirs")
 @router.get("/api/list-dirs")
 async def list_dirs(request: Request, path: str = ""):
-    if error := localhost_guard(request): return error
+    if error := admin_guard(request): return error
 
     try:
         if not path:

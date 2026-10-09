@@ -8,7 +8,7 @@ ObsidianのようなインターフェースでMarkdownファイルをブラウ�
 - **Obsidianライクなデザイン**: ダークモード/ライトモード対応の美しいUI
 - **ダッシュボード画面**: 草生やしヒートマップ、全体統計、よく使われるタグ、最近更新されたノート一覧など
 - **グラフビュー表示**: Obsidian特有のページ間の繋がり（リンク関係）をネットワーク図として可視化
-- **ブラウザからの記事編集・作成**: ローカル(localhost)環境からブラウザ上で直接Markdownの保存やリアルタイムプレビューが可能
+- **ブラウザからの記事編集・作成**: 管理用URL（`http://localhost:8002`）から、新しいノートの作成と既存ノートの編集ができる。記事ページの「⋮」メニュー →「編集」で開き、保存すると Vault の実ファイルも更新される。開いたあとに Obsidian 側で更新されていた場合は、黙って上書きせずに確認する
 - **閲覧・共有の利便性向上**:
   - 画像のLightbox（拡大）表示サポート
   - コードブロックのワンクリックコピーボタン
@@ -44,17 +44,23 @@ cd パス/to/Obsidian-Viewer
 
 ### 3. Obsidian保管庫 (Vault) の連携設定
 
-`docker-compose.yml` をテキストエディタで開き、Obsidianの保管庫パスをマウント設定に追加します。
+プロジェクトのフォルダに `docker-compose.override.yml` を作り、Obsidianの保管庫パスをマウント設定に書きます。
+このファイルは Git の管理外です。`docker-compose up` のときに `docker-compose.yml` へ自動で上乗せされます。
+`docker-compose.yml` を直接書き換えないことで、自分のPCのパスがコミットに混ざりません。
 
 ```yaml
-# docker-compose.yml の 17行目付近
-- {ObsidianのVaultパス}:/0_host_pc:ro
+# docker-compose.override.yml
+services:
+  viewer:
+    volumes:
+      - {ObsidianのVaultパス}:/0_host_pc:ro
 ```
 
 **例 (Windowsの場合):**
 ```yaml
-- D:\Documents\Obsidian:/0_host_pc:ro
+      - D:\Documents\Obsidian:/0_host_pc:ro
 ```
+※ブラウザのエディタから Vault へ保存する場合は、`:ro`（読み取り専用）を外してください。
 ※パスにスペースが含まれる場合は `"` で囲んでください。
 ※設定後、アプリ内から `/0_host_pc` を通じてファイルを参照・同期できるようになります。
 
@@ -70,8 +76,15 @@ docker-compose up -d --build
 ### 5. ブラウザでアクセス
 
 ブラウザを開き、以下のURLにアクセスしてください。
+用途によって開くURLが分かれます。
 
-http://localhost:8000
+| URL | 見えるもの | 開ける場所 |
+|---|---|---|
+| http://localhost:8002 | 管理用。すべてのノートと、設定・同期・エディタ・ダッシュボード | このPCからだけ |
+| http://localhost:8000 | 公開用。`publish: true` のノートだけ | 外部からも開ける |
+
+管理用ポートは `docker-compose.yml` で `127.0.0.1` にだけ公開しているため、ほかのPCからは開けません。
+ホスト側のポート番号（`8002`）は、`docker-compose.yml` の `"127.0.0.1:8002:8001"` の左側で変えられます。
 
 ### 6. コンテナの停止
 
@@ -111,8 +124,9 @@ publish: true
 
 ### 記事の公開設定
 
-Obsidian Viewer は、外部（localhost以外）からアクセスされた場合、Frontmatter に `publish: true` が設定されたファイルのみを表示します。
-localhost からのアクセスでは、すべてのファイルが閲覧可能です。
+Obsidian Viewer は、公開用ポート（`8000`）からアクセスされた場合、Frontmatter に `publish: true` が設定されたファイルのみを表示します。
+管理用ポート（`http://localhost:8002`）からのアクセスでは、すべてのファイルが閲覧可能です。
+公開ノートの中の Dataview やタグ一覧も、公開用ポートでは公開ノートだけを対象にします。
 
 #### 方法1: Obsidian Linter プラグインで自動付与する（推奨）
 
@@ -140,22 +154,22 @@ publish: true
 
 ### 共有URLの設定
 
-記事ページの「URLをコピー」機能では、デフォルトで `http://localhost:8000/view/...` 形式のURLが生成されます。
+記事ページの「URLをコピー」機能では、デフォルトで今開いているURL（`http://localhost:8002/view/...` など）が生成されます。
 外部の人にURLを共有する場合は、**公開URL (Base URL)** を設定することで、コピーされるURLのドメイン部分を置換できます。
 
 #### 設定手順
 
-1. localhost でアプリにアクセスし、サイドバー下の **歯車アイコン** から設定画面を開く
+1. 管理用URL（`http://localhost:8002`）でアプリにアクセスし、サイドバー下の **歯車アイコン** から設定画面を開く
 2. **システム > ファイル同期** タブを選択する
 3. 「**公開URL (Base URL)**」欄に、外部からアクセス可能なURLを入力する
-   - 例: `https://docs.example.com`
+   - 例: `https://docs.example.com`、`http://{PC名}:8000`（公開用ポートを指定する）
 4. 「**設定を保存**」をクリックする
 
 #### 動作例
 
 | 公開URL設定 | コピーされるURL |
 |---|---|
-| 未設定 | `http://localhost:8000/view/記事名.md` |
+| 未設定 | `http://localhost:8002/view/記事名.md` |
 | `https://docs.example.com` | `https://docs.example.com/view/記事名.md` |
 
 > **注意:** 公開URLは、ポートフォワーディングやリバースプロキシなどで外部からアクセスできる状態になっている必要があります。本設定はURLのコピー時の置換のみを行い、ネットワーク設定自体は変更しません。

@@ -12,5 +12,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 5. アプリの起動設定
-# --workers 1 を指定することで、プロセスの重複を防ぎ、ログの重複も解消します
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# 1 プロセスで公開用（8000）と管理用（8001）の 2 ポートを待ち受けます（app/server.py）
+# プロセスを 1 つに保つことで、キャッシュの共有とログの重複防止を両立します
+CMD ["python", "-m", "app.server"]

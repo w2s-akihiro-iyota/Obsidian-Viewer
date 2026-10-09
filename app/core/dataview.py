@@ -239,11 +239,15 @@ def _evaluate_condition(file_entry: dict, field: str, op: str, value: str) -> bo
     return False
 
 
-def execute_query(query: DataviewQuery) -> list[dict]:
-    """GLOBAL_FILE_CACHEに対してクエリを実行"""
+def execute_query(query: DataviewQuery, published_only: bool = True) -> list[dict]:
+    """GLOBAL_FILE_CACHEに対してクエリを実行（published_only=True なら公開ノートだけを対象にする）"""
     results = []
 
     for f in cache.GLOBAL_FILE_CACHE:
+        # 外部の閲覧者には非公開ノートを出さない
+        if published_only and not f.get("published"):
+            continue
+
         # FROMフィルタ（フォルダ）
         if query.from_folder:
             if not f["path"].startswith(query.from_folder + "/"):
@@ -370,11 +374,11 @@ def render_error(message: str) -> str:
     return f'<div class="dataview-error">Dataview Error: {escape(message)}</div>'
 
 
-def process_dataview(text: str) -> str:
+def process_dataview(text: str, published_only: bool = True) -> str:
     """メインエントリポイント: Dataviewクエリ文字列を受け取りHTMLを返す"""
     try:
         query = parse_query(text)
-        results = execute_query(query)
+        results = execute_query(query, published_only)
 
         if query.query_type == "TABLE":
             return render_table(query, results)

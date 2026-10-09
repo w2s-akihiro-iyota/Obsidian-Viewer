@@ -34,7 +34,15 @@ def find_image_in_static(filename: str) -> str | None:
                     
     return None
 
-def process_obsidian_images(content: str) -> str:
+def process_obsidian_images(content: str, published_only: bool = True) -> str:
+    """
+    Obsidian 記法の画像（![[...]]）と内部リンク（[[...]]）を HTML に置き換える
+
+    published_only=True のときは、非公開ノートへのリンクをリンク切れと同じ表示にする。
+    リンク先のパス（slug）から、非公開ノートの存在やフォルダ構成が外部に見えないようにするため。
+    """
+    published_paths = {f["path"] for f in cache.GLOBAL_FILE_CACHE if f.get("published")} if published_only else None
+
     def replace_image(match):
         full_match = match.group(0)
         filename = match.group(1).strip()
@@ -65,6 +73,8 @@ def process_obsidian_images(content: str) -> str:
         lookup_name = filename[:-3] if filename.endswith('.md') else filename
 
         target_path = cache.FILE_NAME_CACHE.get(lookup_name)
+        if target_path and published_paths is not None and target_path not in published_paths:
+            target_path = None
         if target_path:
             slug = cache.PATH_TO_SLUG.get(target_path, target_path)
             return f'<a href="/view/{slug}" class="internal-link">{display_name}</a>'

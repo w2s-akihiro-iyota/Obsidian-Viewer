@@ -225,6 +225,69 @@ body.editor-resizing .editor-preview-pane {
     }
 }
 
+/* --- 既存ノートの編集モード --- */
+.editor-edit-path {
+    display: block;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-dirty-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border: 1px solid #f9a825;
+    border-radius: 999px;
+    color: #f9a825;
+    white-space: nowrap;
+}
+
+.editor-dirty-badge[hidden],
+.editor-conflict-bar[hidden] {
+    display: none;
+}
+
+.editor-back-btn {
+    padding: 6px 14px;
+    min-width: auto;
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.editor-conflict-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+    border-left: 4px solid #f9a825;
+    background: var(--bg-secondary);
+    color: var(--text-normal);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.editor-conflict-text {
+    flex: 1 1 280px;
+}
+
+.editor-conflict-bar .secondary-btn {
+    padding: 6px 14px;
+    min-width: auto;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .editor-edit-path {
+        max-width: 160px;
+    }
+}
+
 /* --- Activity Bar Editor Button --- */
 #editor-open-btn {
     text-decoration: none;

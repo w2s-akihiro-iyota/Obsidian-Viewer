@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 
 from app import cache
 from app.api import templates
-from app.utils.helpers import is_request_local
+from app.utils.helpers import is_admin_request
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     """ダッシュボードページ（localhost限定）"""
-    if not is_request_local(request):
+    if not is_admin_request(request):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     files = cache.GLOBAL_FILE_CACHE

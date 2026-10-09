@@ -19,10 +19,15 @@ def _inject_note_icons(html: str) -> str:
     )
 
 
-def render_markdown(body: str) -> str:
-    """Markdownレンダリングパイプラインを統合実行する"""
+def render_markdown(body: str, published_only: bool = True) -> str:
+    """
+    Markdownレンダリングパイプラインを統合実行する
+
+    published_only=True（既定）のときは、Dataview や内部リンクを公開ノートだけに絞る。
+    管理者向けに描画するときだけ False を明示する（渡し忘れても非公開ノートが漏れない側に倒す）。
+    """
     body = process_admonition_blocks(body)
-    body = process_obsidian_images(body)
-    html = md.render(body)
+    body = process_obsidian_images(body, published_only)
+    html = md.render(body, {"published_only": published_only})
     html = _inject_note_icons(html)
     return html

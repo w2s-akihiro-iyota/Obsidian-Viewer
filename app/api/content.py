@@ -16,7 +16,7 @@ from app.config import CONTENT_DIR, PER_PAGE
 from app.core.indexing import parse_frontmatter, is_published
 from app.services.content import render_markdown
 from app.services.images import find_image_in_static
-from app.utils.helpers import is_request_local
+from app.utils.helpers import is_admin_request
 from app.utils.messages import get_all_messages
 
 router = APIRouter()
@@ -69,7 +69,7 @@ async def preview_file(request: Request, path: str):
         content = f.read()
 
     # Validation for non-localhost
-    is_localhost = is_request_local(request)
+    is_localhost = is_admin_request(request)
     if not is_localhost:
         frontmatter, _ = parse_frontmatter(content)
         if not is_published(frontmatter):
@@ -79,7 +79,7 @@ async def preview_file(request: Request, path: str):
     frontmatter, body = parse_frontmatter(content)
     title = frontmatter.get("title") or Path(path).stem
 
-    html = render_markdown(body)
+    html = render_markdown(body, published_only=not is_localhost)
     return JSONResponse(content={"title": title, "content": html})
 
 
@@ -95,7 +95,9 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     if tag:
         filtered = [f for f in filtered if tag in (f.get('tags') or [])]
 
-    if not is_request_local(request):
+    is_localhost = is_admin_request(request)
+
+    if not is_localhost:
         # Force public visibility for external requests
         filtered = [f for f in filtered if f.get('published')]
     else:
@@ -105,8 +107,10 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
             filtered = [f for f in filtered if not f.get('published')]
 
     # Tags for cloud
+    # 外部の閲覧者には、公開ノートに付いたタグだけを見せる（非公開ノートのタグ名を漏らさない）
+    tag_source = cache.GLOBAL_FILE_CACHE if is_localhost else [f for f in cache.GLOBAL_FILE_CACHE if f.get('published')]
     all_tags = set()
-    for f in cache.GLOBAL_FILE_CACHE:
+    for f in tag_source:
         for t in (f.get('tags') or []):
             all_tags.add(t)
     all_tags = sorted(list(all_tags))
@@ -117,8 +121,6 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     start = (page - 1) * PER_PAGE
     end = start + PER_PAGE
     paginated_files = filtered[start:end]
-
-    is_localhost = is_request_local(request)
 
     return templates.TemplateResponse(request=request, name="index.html", context={
         "request": request,
@@ -156,9 +158,11 @@ async def read_item(request: Request, file_path: str):
         raise HTTPException(status_code=404, detail="File not found")
 
     mtime = full_path.stat().st_mtime
+    is_localhost = is_admin_request(request)
 
     # Check cache
-    cache_key = str(file_path)
+    # 外部向けは Dataview の結果が変わるため、閲覧者の種類ごとに別のキャッシュにする
+    cache_key = (str(file_path), not is_localhost)
     if cache_key in cache.MARKDOWN_CACHE and cache.MARKDOWN_CACHE[cache_key]['mtime'] == mtime:
         entry = cache.MARKDOWN_CACHE[cache_key]
         html = entry['html']
@@ -171,7 +175,7 @@ async def read_item(request: Request, file_path: str):
         frontmatter, body = parse_frontmatter(content)
         title = frontmatter.get('title') or Path(file_path).stem
 
-        html = render_markdown(body)
+        html = render_markdown(body, published_only=not is_localhost)
         # Update cache
         cache.MARKDOWN_CACHE[cache_key] = {
             'html': html,
@@ -179,8 +183,6 @@ async def read_item(request: Request, file_path: str):
             'mtime': mtime,
             'frontmatter': frontmatter
         }
-
-    is_localhost = is_request_local(request)
 
     is_pub = is_published(frontmatter)
 
@@ -321,7 +323,7 @@ async def api_search(request: Request, q: str = ""):
     if not q:
         return []
 
-    is_localhost = is_request_local(request)
+    is_localhost = is_admin_request(request)
 
     # TF-IDFインデックスが構築済みなら新方式を使用
     if cache.SEARCH_INDEX is not None:
@@ -334,7 +336,7 @@ async def api_search(request: Request, q: str = ""):
 @router.get("/api/search/benchmark")
 async def api_search_benchmark(request: Request):
     """旧方式と新方式の検索パフォーマンスを比較（localhost限定）"""
-    if not is_request_local(request):
+    if not is_admin_request(request):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     if cache.SEARCH_INDEX is None:
