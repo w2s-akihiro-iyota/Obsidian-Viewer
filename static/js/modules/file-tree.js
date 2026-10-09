@@ -38,11 +38,91 @@ function initFileTree() {
             debounceTimer = setTimeout(render, 150);
         });
         filterInput.addEventListener('keydown', (e) => {
+            // 日本語入力の変換確定（Enter）や候補選択（↑↓）は横取りしない
+            if (e.isComposing || e.keyCode === 229) return;
+
             if (e.key === 'Escape' && filterInput.value) {
                 filterInput.value = '';
                 render();
+            } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                // 打った直後でも、絞り込みを済ませてから動く
+                clearTimeout(debounceTimer);
+                render();
+                const items = getVisibleItems();
+                if (items.length === 0) return;
+                e.preventDefault();
+                if (e.key === 'ArrowDown') {
+                    items[0].focus();
+                } else {
+                    // Enter は一致した最初のノートを開く
+                    const firstFile = items.find(item => item.classList.contains('tree-file'));
+                    if (firstFile) window.location.href = firstFile.href;
+                }
             }
         });
+    }
+
+    // Files タブを押したら、開いているノート（無ければ先頭）にフォーカスして、すぐ矢印キーで動けるようにする
+    const filesTab = document.querySelector('.sidebar-tab[data-panel="sidebar-files"]');
+    if (filesTab) {
+        filesTab.addEventListener('click', () => {
+            const target = container.querySelector('.tree-file.active') || getVisibleItems()[0];
+            if (target) target.focus({ preventScroll: true });
+        });
+    }
+
+    // --- キーボード操作（ツリーの中にフォーカスがあるとき） ---
+    // ↑↓: 前後へ / →: フォルダを開く・中へ / ←: フォルダを閉じる・親へ / Home・End: 先頭・末尾
+    // Enter: ノートを開く・フォルダを開閉（a と button の標準動作のまま）
+    container.addEventListener('keydown', (e) => {
+        const current = e.target.closest('.tree-folder, .tree-file');
+        if (!current || e.altKey || e.ctrlKey || e.metaKey) return;
+
+        const items = getVisibleItems();
+        const index = items.indexOf(current);
+        const folderItem = current.classList.contains('tree-folder') ? current.parentElement : null;
+        const isOpen = folderItem && folderItem.classList.contains('open');
+
+        switch (e.key) {
+            case 'ArrowDown':
+                if (index < items.length - 1) items[index + 1].focus();
+                break;
+            case 'ArrowUp':
+                if (index > 0) items[index - 1].focus();
+                else if (filterInput) filterInput.focus();
+                break;
+            case 'ArrowRight':
+                if (folderItem && !isOpen) current.click();
+                else if (folderItem) items[index + 1]?.focus();
+                break;
+            case 'ArrowLeft': {
+                if (isOpen) {
+                    current.click();
+                    break;
+                }
+                const parentFolder = current.parentElement.parentElement.closest('.tree-folder-item');
+                if (parentFolder) parentFolder.querySelector(':scope > .tree-folder').focus();
+                break;
+            }
+            case 'Home':
+                items[0]?.focus();
+                break;
+            case 'End':
+                items[items.length - 1]?.focus();
+                break;
+            default:
+                return;
+        }
+        // 矢印キーでページ本体がスクロールしないように
+        e.preventDefault();
+    });
+
+    /**
+     * いま見えている（閉じたフォルダの中にない）フォルダとノートを上から順に
+     */
+    function getVisibleItems() {
+        return Array.from(container.querySelectorAll('.tree-folder, .tree-file'))
+            .filter(item => item.offsetParent !== null);
     }
 
     function render() {

@@ -821,6 +821,14 @@ html.sidebar-collapsed .sidebar {
     background: linear-gradient(90deg, rgba(123, 97, 255, 0.15), transparent);
 }
 
+/* 矢印キーで選んでいる位置 */
+.file-tree .tree-folder:focus-visible,
+.file-tree .tree-file:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: -2px;
+    color: var(--text-normal);
+}
+
 .tree-empty {
     padding: 20px;
     text-align: center;
