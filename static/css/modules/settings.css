@@ -1534,3 +1534,56 @@ input:checked+.slider:before {
     user-select: none;
     transition: none;
 }
+
+/* Quick Switcher（Ctrl+K） */
+.search-modal-section {
+    padding: 4px 16px 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.search-modal-results .search-result-item.selected {
+    background-color: var(--accent-purple);
+    color: white;
+}
+
+/* 色を付けるのは選択中の候補だけ。ホバーの色と重なると2つ選ばれて見える（指した候補は mousemove で選択中になる） */
+.search-modal-results .search-result-item:hover:not(.selected) {
+    background-color: transparent;
+    color: var(--text-normal);
+}
+
+.search-modal-results .search-result-item.selected .search-result-snippet,
+.search-modal-results .search-result-item.selected .search-result-path {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.search-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.search-modal-footer kbd {
+    display: inline-block;
+    margin-right: 2px;
+    padding: 1px 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background-color: var(--bg-primary);
+    font-family: var(--code-font);
+    font-size: 0.85em;
+    line-height: 1.2;
+}
+
+/* スマホはキーボード操作をしないので操作ヒントを出さない */
+@media (max-width: 768px) {
+    .search-modal-footer {
+        display: none;
+    }
+}

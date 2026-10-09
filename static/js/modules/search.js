@@ -2,22 +2,112 @@
 // search.js - Desktop search, mobile search modal, HTMX state, view toggle, accordion
 // ==============================================
 
+// 絞り込み条件（tag:会議 / path:"スペース 入り"）。サーバー側の parse_search_query と同じ書式
+const SEARCH_FILTER_RE = /(^|\s)(tag|path):("[^"]*"|\S+)/gi;
+// クイックスイッチャーの「最近見たノート」に出す件数
+const RECENT_NOTES_MAX = 10;
+// 検索語のハイライトを入れない要素（図・数式の元テキストを壊さないため）
+const HIGHLIGHT_SKIP_SELECTOR = 'script, style, textarea, svg, mark, .mermaid, .katex, .katex-display';
+
 /**
- * クエリ文字列をハイライトする
+ * 検索結果から開いたノートで、検索語（URL の ?hl=）をハイライトし、最初の一致までスクロールする
+ */
+function highlightSearchTermsInPage() {
+    const params = new URLSearchParams(window.location.search);
+    const terms = params.get('hl');
+    if (!terms) return;
+
+    // URL コピーや再読み込みにハイライト指定を残さない
+    params.delete('hl');
+    const rest = params.toString();
+    window.history.replaceState(window.history.state, '',
+        window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
+
+    const run = () => {
+        const body = document.querySelector('.markdown-body');
+        const regex = buildTermsRegExp(terms);
+        if (!body || !regex) return;
+
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
+            acceptNode: node => (node.parentElement.closest(HIGHLIGHT_SKIP_SELECTOR)
+                ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+        });
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+        textNodes.forEach(node => {
+            const parts = node.textContent.split(regex);
+            if (parts.length === 1) return;
+            const fragment = document.createDocumentFragment();
+            // split に括弧付きの正規表現を渡すと、奇数番目が一致した部分になる
+            parts.forEach((part, i) => {
+                if (!part) return;
+                if (i % 2 === 1) {
+                    const mark = document.createElement('mark');
+                    mark.className = 'search-highlight';
+                    mark.textContent = part;
+                    fragment.appendChild(mark);
+                } else {
+                    fragment.appendChild(document.createTextNode(part));
+                }
+            });
+            node.replaceWith(fragment);
+        });
+
+        const first = body.querySelector('mark.search-highlight');
+        if (first && !window.location.hash) first.scrollIntoView({ block: 'center' });
+    };
+
+    // 数式（KaTeX）の描画が終わってから。描画前の $...$ に手を入れると数式が崩れる
+    if (document.readyState === 'complete') run();
+    else window.addEventListener('load', run, { once: true });
+}
+
+/**
+ * クエリから tag: / path: を除いた検索語
+ */
+function stripSearchFilters(query) {
+    return query.replace(SEARCH_FILTER_RE, ' ').trim().split(/\s+/).filter(Boolean).join(' ');
+}
+
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, ch => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+/**
+ * 検索語（空白区切りの各語）に一致する部分を囲む正規表現。語が無ければ null
+ */
+function buildTermsRegExp(query) {
+    const terms = [...new Set(query.split(/\s+/).filter(Boolean))]
+        .sort((a, b) => b.length - a.length);
+    if (terms.length === 0) return null;
+    return new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi');
+}
+
+/**
+ * クエリ文字列をハイライトしたHTMLを返す（text はエスケープする）
  */
 function highlightMatch(text, query) {
-    if (!query) return text;
-    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark class="search-highlight">$1</mark>');
+    const escapedText = escapeHtml(text);
+    const regex = query ? buildTermsRegExp(escapeHtml(query)) : null;
+    if (!regex) return escapedText;
+    return escapedText.replace(regex, '<mark class="search-highlight">$1</mark>');
 }
 
 /**
  * 検索結果アイテムを生成する共通関数
+ * query は tag: / path: を除いた検索語。開いた先のノートでもハイライトする
  */
 function createSearchResultItem(item, query, closeCallback) {
     const link = document.createElement('a');
-    link.href = `/view/${item.slug}`;
+    link.href = `/view/${item.slug}` + (query ? `?hl=${encodeURIComponent(query)}` : '');
     link.className = 'search-result-item';
+    link.setAttribute('role', 'option');
 
     // タイトル
     const titleSpan = document.createElement('div');
@@ -33,10 +123,10 @@ function createSearchResultItem(item, query, closeCallback) {
         link.appendChild(snippetEl);
     }
 
-    // パス
+    // パス（最近見たノートでは見た時刻）
     const meta = document.createElement('div');
     meta.className = 'search-result-path';
-    meta.textContent = item.path;
+    meta.textContent = item.meta ?? item.path;
     link.appendChild(meta);
 
     if (closeCallback) {
@@ -69,8 +159,9 @@ function initSearch() {
                         if (searchResults) {
                             searchResults.innerHTML = '';
                             if (data.length > 0) {
+                                const terms = stripSearchFilters(query);
                                 data.forEach(item => {
-                                    searchResults.appendChild(createSearchResultItem(item, query));
+                                    searchResults.appendChild(createSearchResultItem(item, terms));
                                 });
                             } else {
                                 const empty = document.createElement('div');
@@ -172,32 +263,98 @@ function initSearch() {
         }
     });
 
-    // --- Mobile Search Modal Logic ---
+    // --- Quick Switcher（Ctrl+K）/ Mobile Search Modal ---
     const mobileSearchBtn = document.getElementById('mobile-search-toggle');
     const searchModal = document.getElementById('search-modal');
     const closeSearchModalBtn = document.getElementById('close-search-modal');
     const modalSearchInput = document.getElementById('modal-search-input');
     const modalSearchResults = document.getElementById('modal-search-results');
 
-    if (mobileSearchBtn && searchModal && closeSearchModalBtn) {
-        // Open Modal
-        mobileSearchBtn.addEventListener('click', () => {
-            searchModal.classList.add('active');
-            document.body.classList.add('no-scroll'); // Lock scroll
-            setTimeout(() => {
-                if (modalSearchInput) modalSearchInput.focus();
-            }, 100);
-        });
+    if (searchModal && modalSearchInput && modalSearchResults) {
+        let modalDebounceTimer;
+        let modalRequestSeq = 0;
+        let selectedIndex = -1;
 
-        // Close Modal
-        const closeModal = () => {
-            searchModal.classList.remove('active');
-            document.body.classList.remove('no-scroll'); // Unlock scroll
-            if (modalSearchInput) modalSearchInput.value = '';
-            if (modalSearchResults) modalSearchResults.innerHTML = '';
+        const getItems = () => Array.from(modalSearchResults.querySelectorAll('.search-result-item'));
+
+        const selectItem = (index) => {
+            const items = getItems();
+            if (items.length === 0) {
+                selectedIndex = -1;
+                return;
+            }
+            selectedIndex = (index + items.length) % items.length;
+            items.forEach((item, i) => {
+                const selected = i === selectedIndex;
+                item.classList.toggle('selected', selected);
+                item.setAttribute('aria-selected', String(selected));
+            });
+            items[selectedIndex].scrollIntoView({ block: 'nearest' });
         };
 
-        closeSearchModalBtn.addEventListener('click', closeModal);
+        const showMessage = (text) => {
+            const empty = document.createElement('div');
+            empty.className = 'search-result-empty';
+            empty.textContent = text;
+            modalSearchResults.appendChild(empty);
+        };
+
+        // 入力が空のときは最近見たノート（閲覧履歴）を出す
+        const renderRecent = () => {
+            modalSearchResults.innerHTML = '';
+            const currentSlug = getCurrentSlug();
+            const recent = getHistory().filter(h => h.path !== currentSlug).slice(0, RECENT_NOTES_MAX);
+            if (recent.length === 0) {
+                showMessage('最近見たノートはありません');
+                selectedIndex = -1;
+                return;
+            }
+            const heading = document.createElement('div');
+            heading.className = 'search-modal-section';
+            heading.textContent = '最近見たノート';
+            modalSearchResults.appendChild(heading);
+            recent.forEach(h => {
+                modalSearchResults.appendChild(createSearchResultItem(
+                    { title: h.title, slug: h.path, meta: formatRelativeTime(h.timestamp) }, '', closeModal));
+            });
+            selectItem(0);
+        };
+
+        const renderResults = (data, query) => {
+            modalSearchResults.innerHTML = '';
+            if (data.length === 0) {
+                showMessage('No results found');
+                selectedIndex = -1;
+                return;
+            }
+            const terms = stripSearchFilters(query);
+            data.forEach(item => {
+                modalSearchResults.appendChild(createSearchResultItem(item, terms, closeModal));
+            });
+            selectItem(0);
+        };
+
+        const openModal = () => {
+            searchModal.classList.add('active');
+            document.body.classList.add('no-scroll'); // Lock scroll
+            renderRecent();
+            // visibility の切り替えが終わってからでないとフォーカスできない
+            setTimeout(() => modalSearchInput.focus(), 50);
+        };
+
+        // Close Modal
+        function closeModal() {
+            clearTimeout(modalDebounceTimer);
+            modalRequestSeq++; // 閉じた後に届いた検索結果は捨てる
+            searchModal.classList.remove('active');
+            document.body.classList.remove('no-scroll'); // Unlock scroll
+            modalSearchInput.value = '';
+            modalSearchResults.innerHTML = '';
+            selectedIndex = -1;
+        }
+
+        if (mobileSearchBtn) mobileSearchBtn.addEventListener('click', openModal);
+        if (closeSearchModalBtn) closeSearchModalBtn.addEventListener('click', closeModal);
 
         // Close on click outside
         searchModal.addEventListener('click', (e) => {
@@ -206,49 +363,72 @@ function initSearch() {
             }
         });
 
-        // Close on Escape key
         document.addEventListener('keydown', (e) => {
+            // Ctrl+K（Mac は Cmd+K）で開く・閉じる
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                if (searchModal.classList.contains('active')) closeModal();
+                else openModal();
+                return;
+            }
+            // Close on Escape key
             if (e.key === 'Escape' && searchModal.classList.contains('active')) {
                 closeModal();
             }
         });
 
-        // Search within Modal
-        let modalDebounceTimer;
-        if (modalSearchInput) {
-            modalSearchInput.addEventListener('input', (e) => {
-                clearTimeout(modalDebounceTimer);
-                const query = e.target.value;
+        modalSearchInput.addEventListener('keydown', (e) => {
+            // 日本語入力の変換確定（Enter）や候補選択（↑↓）は横取りしない
+            if (e.isComposing || e.keyCode === 229) return;
 
-                if (query.trim() === '') {
-                    if (modalSearchResults) modalSearchResults.innerHTML = '';
-                    return;
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectItem(selectedIndex + (e.key === 'ArrowDown' ? 1 : -1));
+            } else if (e.key === 'Enter') {
+                const item = getItems()[selectedIndex];
+                if (!item) return;
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) {
+                    window.open(item.href, '_blank', 'noopener');
+                    closeModal();
+                } else {
+                    window.location.href = item.href;
                 }
+            }
+        });
 
-                modalDebounceTimer = setTimeout(() => {
-                    fetch(`/api/search?q=${encodeURIComponent(query)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (modalSearchResults) {
-                                modalSearchResults.innerHTML = '';
-                                if (data.length > 0) {
-                                    data.forEach(item => {
-                                        modalSearchResults.appendChild(
-                                            createSearchResultItem(item, query, closeModal)
-                                        );
-                                    });
-                                } else {
-                                    const empty = document.createElement('div');
-                                    empty.className = 'search-result-empty';
-                                    empty.textContent = 'No results found';
-                                    modalSearchResults.appendChild(empty);
-                                }
-                            }
-                        });
-                }, DEBOUNCE_DELAY);
-            });
-        }
+        // マウスで指した候補を選択中にする（Enter で開く対象をそろえる）
+        modalSearchResults.addEventListener('mousemove', (e) => {
+            const item = e.target.closest('.search-result-item');
+            if (!item) return;
+            const index = getItems().indexOf(item);
+            if (index !== selectedIndex) selectItem(index);
+        });
+
+        // Search within Modal
+        modalSearchInput.addEventListener('input', (e) => {
+            clearTimeout(modalDebounceTimer);
+            const query = e.target.value;
+            const requestSeq = ++modalRequestSeq;
+
+            if (query.trim() === '') {
+                renderRecent();
+                return;
+            }
+
+            modalDebounceTimer = setTimeout(() => {
+                fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // 後から打った語の結果を、先に打った語の遅い応答で上書きしない
+                        if (requestSeq !== modalRequestSeq) return;
+                        renderResults(data, query);
+                    });
+            }, DEBOUNCE_DELAY);
+        });
     }
+
+    highlightSearchTermsInPage();
 
     // --- Accordion Animation Logic ---
     const accordions = document.querySelectorAll('.search-accordion');

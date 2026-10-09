@@ -124,23 +124,23 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     tree = []
     
     # Helper to find or create folder in tree
-    def get_folder(parent_list, folder_name):
+    def get_folder(parent_list, folder_name, folder_path):
         for item in parent_list:
             if item['type'] == 'directory' and item['name'] == folder_name:
                 return item
-        new_folder = {"name": folder_name, "type": "directory", "children": []}
+        new_folder = {"name": folder_name, "path": folder_path, "type": "directory", "children": []}
         parent_list.append(new_folder)
         return new_folder
 
     for root, dirs, files in os.walk(directory):
         rel_root = Path(root).relative_to(relative_to)
-        
+
         # Build path to this folder in our tree
         current_level = tree
         if str(rel_root) != '.':
             parts = rel_root.parts
-            for part in parts:
-                folder = get_folder(current_level, part)
+            for i, part in enumerate(parts):
+                folder = get_folder(current_level, part, '/'.join(parts[:i + 1]))
                 current_level = folder['children']
         
         for file in files:
@@ -163,16 +163,26 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
                     "name": file,
                     "title": title,
                     "path": str(rel_path).replace('\\', '/'),
-                    "type": "file"
+                    "type": "file",
+                    "published": is_published(frontmatter),
                 })
 
-    # Sort tree (folders first, then alphabetical)
+    # ノートを1つも含まないフォルダは消す（公開用の木に、非公開ノートしか無いフォルダの名前を出さないため）
+    def prune_empty(node_list):
+        node_list[:] = [
+            item for item in node_list
+            if item['type'] != 'directory' or prune_empty(item['children'])
+        ]
+        return node_list
+
+    # Sort tree (folders first, then by file name like Obsidian)
     def sort_tree(node_list):
-        node_list.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['title'].lower() if 'title' in x else x['name'].lower()))
+        node_list.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['name'].lower()))
         for item in node_list:
             if item['type'] == 'directory':
                 sort_tree(item['children'])
-    
+
+    prune_empty(tree)
     sort_tree(tree)
     return tree
 
