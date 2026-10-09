@@ -5,15 +5,19 @@ from pathlib import Path
 
 # Third party
 from fastapi import APIRouter, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 # Local
 from app.core.indexing import refresh_global_caches
 from app.events import config_updated_event
 from app.models.sync import SyncConfig
-from app.services.sync import load_config, save_config, perform_sync
+from app.services.sync import (
+    SyncInProgressError, confirm_pending_deletions, get_pending_deletions, load_config, pending_deletion_count,
+    perform_sync, save_config,
+)
 from app.utils.helpers import admin_guard
-from app.utils.messages import get_error, get_warning
+from app.utils.messages import get_error, get_system, get_warning
 
 router = APIRouter()
 
@@ -94,13 +98,36 @@ async def api_get_public_config():
 async def api_sync_now(request: Request):
     if error := admin_guard(request): return error
     config = load_config()
-    success, message = perform_sync(config)
+    # 同期は重いので別スレッドで行い、ほかのリクエストを止めない
+    try:
+        success, message = await run_in_threadpool(perform_sync, config)
+    except SyncInProgressError:
+        return JSONResponse({"status": "busy", "message": get_system("S106")}, status_code=409)
     # 同期後、定期実行のタイマーをリセットさせるために通知を送る
     config_updated_event.set()
     if success:
-        return {"status": "success", "last_sync": config.last_sync, "message": message}
+        return {"status": "success", "last_sync": config.last_sync, "message": message,
+                "pending_deletions": pending_deletion_count()}
     else:
         return JSONResponse({"status": "error", "message": message}, status_code=500)
+
+
+@router.get("/api/sync/pending-deletions")
+async def api_pending_deletions(request: Request):
+    """削除が多すぎる等の理由で保留した削除の一覧（localhost限定）"""
+    if error := admin_guard(request): return error
+    return {"pending": get_pending_deletions()}
+
+
+@router.post("/api/sync/confirm-deletions")
+async def api_confirm_deletions(request: Request):
+    """保留した削除を、確認のうえで実行する（localhost限定）"""
+    if error := admin_guard(request): return error
+    try:
+        deleted = await run_in_threadpool(confirm_pending_deletions)
+    except SyncInProgressError:
+        return JSONResponse({"status": "busy", "message": get_system("S106")}, status_code=409)
+    return {"status": "success", "message": get_system("S107").format(count=deleted), "deleted": deleted}
 
 
 @router.post("/api/reindex")
@@ -108,7 +135,7 @@ async def api_sync_now(request: Request):
 async def api_reindex(request: Request):
     if error := admin_guard(request): return error
 
-    refresh_global_caches()
+    await run_in_threadpool(refresh_global_caches)
     return {"status": "success"}
 
 

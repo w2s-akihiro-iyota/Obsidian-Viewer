@@ -22,6 +22,17 @@ from app.utils.messages import get_all_messages
 router = APIRouter()
 
 
+def _mtimes(paths: set[str]) -> dict[str, float | None]:
+    """埋め込んだノートの更新日時（消えていれば None）"""
+    result = {}
+    for p in paths:
+        try:
+            result[p] = (CONTENT_DIR / p).stat().st_mtime
+        except OSError:
+            result[p] = None
+    return result
+
+
 def _get_related_articles(file_path: str, tags: list, is_localhost: bool, limit: int = 5) -> list[dict]:
     """タグの共通度に基づいて関連記事を取得"""
     if not tags:
@@ -79,7 +90,7 @@ async def preview_file(request: Request, path: str):
     frontmatter, body = parse_frontmatter(content)
     title = frontmatter.get("title") or Path(path).stem
 
-    html = render_markdown(body, published_only=not is_localhost)
+    html = render_markdown(body, published_only=not is_localhost, source_path=path)
     return JSONResponse(content={"title": title, "content": html})
 
 
@@ -163,8 +174,9 @@ async def read_item(request: Request, file_path: str):
     # Check cache
     # 外部向けは Dataview の結果が変わるため、閲覧者の種類ごとに別のキャッシュにする
     cache_key = (str(file_path), not is_localhost)
-    if cache_key in cache.MARKDOWN_CACHE and cache.MARKDOWN_CACHE[cache_key]['mtime'] == mtime:
-        entry = cache.MARKDOWN_CACHE[cache_key]
+    entry = cache.MARKDOWN_CACHE.get(cache_key)
+    # 自分の更新日時に加えて、埋め込んだノートの更新日時も変わっていなければキャッシュを使う
+    if entry and entry['mtime'] == mtime and _mtimes(set(entry.get('deps', {}))) == entry.get('deps', {}):
         html = entry['html']
         title = entry['title']
         frontmatter = entry.get('frontmatter', {})
@@ -175,13 +187,15 @@ async def read_item(request: Request, file_path: str):
         frontmatter, body = parse_frontmatter(content)
         title = frontmatter.get('title') or Path(file_path).stem
 
-        html = render_markdown(body, published_only=not is_localhost)
+        deps: set[str] = set()
+        html = render_markdown(body, published_only=not is_localhost, deps=deps, source_path=file_path)
         # Update cache
         cache.MARKDOWN_CACHE[cache_key] = {
             'html': html,
             'title': title,
             'mtime': mtime,
-            'frontmatter': frontmatter
+            'frontmatter': frontmatter,
+            'deps': _mtimes(deps),
         }
 
     is_pub = is_published(frontmatter)

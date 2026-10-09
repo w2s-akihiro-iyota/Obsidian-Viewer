@@ -1341,6 +1341,50 @@ details[open] .accordion-icon {
 .internal-link:hover .internal-link-icon {
     opacity: 1;
 }
+/* 見出しへのリンク（[[ノート#見出し]]）で飛んだとき、固定ヘッダーに隠れないようにする */
+.markdown-body h1[id],
+.markdown-body h2[id],
+.markdown-body h3[id],
+.markdown-body h4[id],
+.markdown-body h5[id],
+.markdown-body h6[id] {
+    scroll-margin-top: calc(var(--header-height) + 16px);
+}
+
+/* ノートの埋め込み（![[ノート]] / ![[ノート#見出し]]） */
+.markdown-embed {
+    margin: 1em 0;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--accent-purple);
+    border-radius: 4px;
+    background-color: var(--bg-secondary);
+    overflow: hidden;
+}
+
+.markdown-embed-title {
+    padding: 0.4em 1em;
+    font-size: 0.85em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.markdown-embed-link {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.markdown-embed-link:hover {
+    color: var(--accent-purple);
+}
+
+.markdown-embed-content {
+    padding: 0 1em;
+}
+
+.markdown-embed-missing {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .internal-link-broken {
     color: var(--text-muted);
     text-decoration: none;

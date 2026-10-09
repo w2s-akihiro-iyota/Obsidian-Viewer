@@ -401,7 +401,8 @@ function initSidebar() {
             }
 
             if (path) {
-                path = decodeURIComponent(path);
+                // [[ノート#見出し]] の #見出し はノートの特定には使わない
+                path = decodeURIComponent(path.split('#')[0]);
                 showPreview(link, path);
             }
         } else {

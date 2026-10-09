@@ -28,8 +28,15 @@ PER_PAGE = 12
 # 読了時間の算出基準（日本語: 500文字/分）
 READING_SPEED_JP = 500
 
-# 同期時に削除しない保護対象
+# 同期時に削除しない保護対象（コピー先の直下の名前で判定）
 PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
+PROTECTED_IMAGE_ITEMS = PROTECTED_ITEMS + ["logo.png"]
+
+# 1回の同期でこの割合以上のファイルが消える場合は、削除を保留して確認を待つ
+SYNC_DELETE_HOLD_RATIO = 0.5
+
+# ノートの埋め込み（![[ノート]]）の入れ子の上限。これより深いものは埋め込まずにリンクにする
+MAX_EMBED_DEPTH = 2
 
 # Ensure directories exist
 for d in [CONTENT_DIR, STATICS_DIR, IMAGES_DIR, TEMPLATES_DIR]:
