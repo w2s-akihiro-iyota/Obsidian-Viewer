@@ -724,10 +724,29 @@ html.sidebar-collapsed .sidebar {
     display: none;
 }
 
+/* 絞り込み欄はツリーをスクロールしても上に残す */
+.sidebar-content,
+#sidebar-files {
+    background-color: inherit; /* テーマごとのサイドバーの色を絞り込み欄の背景まで引き継ぐ */
+}
+
+/* 矢印キーで上へ移ったとき、選んだ項目が絞り込み欄の下に隠れないようにする */
+.sidebar-content {
+    scroll-padding-top: 40px;
+}
+
+.file-tree-filter-bar {
+    position: sticky;
+    top: -16px; /* .sidebar-content の padding-top 分。スクロール領域の上端にぴったり付ける */
+    z-index: 1;
+    margin: -10px 0 0; /* .sidebar-panel の padding-top を打ち消す */
+    padding: 10px 0 8px;
+    background-color: inherit;
+}
+
 .file-tree-filter {
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 8px;
     padding: 6px 10px;
     border: 1px solid var(--border-color);
     border-radius: 6px;

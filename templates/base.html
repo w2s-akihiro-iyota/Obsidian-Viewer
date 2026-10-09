@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261011">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261012">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -89,7 +89,9 @@
             </div>
             <div class="sidebar-content">
                 <div id="sidebar-files" class="sidebar-panel active">
-                    <input type="text" id="file-tree-filter" class="file-tree-filter" placeholder="ファイル名で絞り込み…" autocomplete="off">
+                    <div class="file-tree-filter-bar">
+                        <input type="text" id="file-tree-filter" class="file-tree-filter" placeholder="ファイル名で絞り込み…" autocomplete="off">
+                    </div>
                     <div id="file-tree" class="file-tree">
                         <div class="tree-empty">読み込み中…</div>
                     </div>
