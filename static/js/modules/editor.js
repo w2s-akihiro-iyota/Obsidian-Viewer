@@ -14,6 +14,42 @@ function initEditor() {
     let previewTimer = null;
     const PREVIEW_DEBOUNCE = 500;
 
+    // 既存ノートの編集モード（/editor?path=... で開いたとき）
+    const editPath = textarea.dataset.editPath || '';
+    const dirtyBadge = document.getElementById('editor-dirty-badge');
+    const conflictBar = document.getElementById('editor-conflict-bar');
+    const backLink = document.querySelector('.editor-back-btn');
+    let baseHash = '';   // 読み込んだ時点の中身のハッシュ。保存時の衝突検知に使う
+    let isDirty = false;
+    let isSaving = false;
+
+    function setDirty(dirty) {
+        isDirty = dirty;
+        if (dirtyBadge) dirtyBadge.hidden = !dirty;
+    }
+
+    function showConflict(show) {
+        if (conflictBar) conflictBar.hidden = !show;
+    }
+
+    // ノートを読み込み直す（初回表示・衝突時の「最新を読み込み直す」で使う）
+    function loadNote() {
+        return fetch(`/api/editor/note?path=${encodeURIComponent(editPath)}`)
+            .then(async res => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'ノートを読み込めませんでした');
+                textarea.value = data.content;
+                baseHash = data.hash;
+                setDirty(false);
+                showConflict(false);
+                updatePreview();
+            })
+            .catch(err => {
+                console.error('Load error:', err);
+                showToast(err.message, 'error');
+            });
+    }
+
     // プレビュー後処理: highlight.js / KaTeX / Mermaid の再適用
     function postProcessPreview() {
         // Highlight.js
@@ -82,6 +118,7 @@ function initEditor() {
 
     // デバウンス付き入力監視
     textarea.addEventListener('input', () => {
+        if (editPath) setDirty(true);
         clearTimeout(previewTimer);
         previewTimer = setTimeout(updatePreview, PREVIEW_DEBOUNCE);
     });
@@ -104,7 +141,7 @@ function initEditor() {
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             // エディタページでのみ動作
-            if (textarea && document.activeElement === textarea || filenameInput) {
+            if (document.activeElement === textarea || filenameInput || editPath) {
                 e.preventDefault();
                 saveFile();
             }
@@ -117,6 +154,10 @@ function initEditor() {
     }
 
     function saveFile() {
+        if (editPath) {
+            updateNote(false);
+            return;
+        }
         const filename = filenameInput ? filenameInput.value.trim() : '';
         const content = textarea.value;
 
@@ -160,6 +201,81 @@ function initEditor() {
                 saveBtn.classList.remove('loading');
                 saveBtn.disabled = false;
             });
+    }
+
+    // 既存ノートの上書き保存。force=true は衝突を承知で上書きする
+    function updateNote(force) {
+        // 保存中の二重送信（Ctrl+S の連打など）は、古い baseHash のまま飛んで偽の衝突になるので止める
+        if (isSaving) return;
+        if (!textarea.value.trim()) {
+            showToast(MESSAGES.errors?.E203 || 'コンテンツが空です', 'error');
+            textarea.focus();
+            return;
+        }
+
+        isSaving = true;
+        saveBtn.classList.add('loading');
+        saveBtn.disabled = true;
+        const sentContent = textarea.value;
+
+        fetch('/api/editor/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: editPath, content: sentContent, base_hash: baseHash, force })
+        })
+            .then(async res => {
+                const data = await res.json();
+                if (res.ok) {
+                    baseHash = data.hash;
+                    // 応答を待つあいだに打った文字は、まだ保存されていない
+                    setDirty(textarea.value !== sentContent);
+                    showConflict(false);
+                    if (backLink && data.slug) backLink.href = `/view/${data.slug}`;
+                    showToast(data.message || 'ノートを更新しました', 'success');
+                    if (data.host_saved === false) {
+                        showToast('Vault に同じノートが無いため、ビューア側だけを更新しました', 'warning');
+                    } else if (data.app_saved === false) {
+                        showToast('Vault は更新しました。ビューアへの反映は次の同期で行われます', 'warning');
+                    }
+                } else if (res.status === 409) {
+                    showConflict(true);
+                    showToast(data.message, 'warning');
+                } else {
+                    showToast(data.message || '保存に失敗しました', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Update error:', err);
+                showToast('保存に失敗しました', 'error');
+            })
+            .finally(() => {
+                isSaving = false;
+                saveBtn.classList.remove('loading');
+                saveBtn.disabled = false;
+            });
+    }
+
+    if (editPath) {
+        document.getElementById('editor-conflict-overwrite')?.addEventListener('click', () => updateNote(true));
+        document.getElementById('editor-conflict-reload')?.addEventListener('click', async () => {
+            // 読み込み直すと入力内容が消えるため、先にクリップボードへ退避する
+            try {
+                await copyToClipboard(textarea.value);
+                showToast('今の入力内容をクリップボードにコピーしました', 'info');
+            } catch (err) {
+                if (!confirm('入力内容をクリップボードにコピーできませんでした。破棄して読み込み直しますか？')) return;
+            }
+            loadNote();
+        });
+
+        // 保存していない変更があるまま離れようとしたら止める
+        window.addEventListener('beforeunload', (e) => {
+            if (!isDirty) return;
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        loadNote();
     }
 
     // ペインリサイザー

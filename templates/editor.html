@@ -3,7 +3,7 @@
 {% block title %}Markdown Editor - Obsidian Viewer{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/static/css/editor.css?v=20260221">
+<link rel="stylesheet" href="/static/css/editor.css?v=20261009">
 <!-- KaTeX for Math -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -17,13 +17,21 @@
 {% block content %}
 <div class="editor-toolbar">
     <div class="editor-toolbar-left">
-        <h2 class="editor-title">Markdown Editor</h2>
+        <h2 class="editor-title">{% if edit_path %}ノートを編集{% else %}Markdown Editor{% endif %}</h2>
     </div>
     <div class="editor-toolbar-right">
+        {% if edit_path %}
+        <div class="editor-filename-group" title="{{ edit_path }}">
+            <span class="editor-edit-path">{{ edit_path }}</span>
+        </div>
+        <span id="editor-dirty-badge" class="editor-dirty-badge" hidden>未保存の変更あり</span>
+        <a href="/view/{{ edit_slug }}" class="secondary-btn editor-back-btn">記事に戻る</a>
+        {% else %}
         <div class="editor-filename-group">
             <input type="text" id="editor-filename" placeholder="ファイル名" autocomplete="off">
             <span class="editor-filename-ext">.md</span>
         </div>
+        {% endif %}
         <button id="editor-save-btn" class="primary-btn">
             <span class="btn-text">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -39,12 +47,20 @@
     </div>
 </div>
 
+{% if edit_path %}
+<div id="editor-conflict-bar" class="editor-conflict-bar" role="alert" hidden>
+    <span class="editor-conflict-text">このノートは、開いたあとにほかの場所（Obsidian など）で更新されています。</span>
+    <button type="button" id="editor-conflict-overwrite" class="secondary-btn">それでも上書きする</button>
+    <button type="button" id="editor-conflict-reload" class="secondary-btn" title="今の入力内容はクリップボードにコピーしてから読み込み直します">最新を読み込み直す</button>
+</div>
+{% endif %}
+
 <div class="editor-panes">
     <div class="editor-pane editor-input-pane">
         <div class="editor-pane-header">
             <span>Editor</span>
         </div>
-        <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false"></textarea>
+        <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false"{% if edit_path %} data-edit-path="{{ edit_path }}" data-view-slug="{{ edit_slug }}"{% endif %}></textarea>
     </div>
     <div class="editor-resizer" id="editor-resizer"></div>
     <div class="editor-pane editor-preview-pane">

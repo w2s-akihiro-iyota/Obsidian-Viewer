@@ -31,6 +31,7 @@ app/
 ├── models/sync.py         # Request/Response用Pydanticモデル
 ├── services/
 │   ├── sync.py            # 物理ファイル同期・バックグラウンドタスク処理
+│   ├── note_editing.py    # 既存ノートの編集（Vault を正とした読み書き・衝突検知）
 │   └── images.py          # 画像・メディアファイルの解決
 ├── utils/
 │   ├── helpers.py         # 管理者判定・CSRF判定等のユーティリティ
@@ -121,8 +122,9 @@ docker-compose logs -f           # ログ確認
 - `static/images/*` - 画像ファイル (samples/除く)
 
 ## Testing
-- 自動テストフレームワークは未導入
-- `tests/` と `debug/` に手動検証スクリプトあり
+- `pytest`（`requirements-dev.txt`）。本番イメージには入れない
+- 実行: `docker cp tests/. obsidian-viewer-app:/app/tests/` → `docker exec -w /app -e PYTHONPATH=/app obsidian-viewer-app python -m pytest tests -q`（コンテナに pytest が無ければ先に `pip install pytest`）
+- `tests/test_note_editing.py` が既存ノート編集の契約テスト。`tests/` と `debug/` にはほかに手動検証スクリプトもある
 
 ## Common Pitfalls
 - Uvicornのワーカー数は1に固定すること (ログ重複防止)。起動は `python -m app.server`（2ポートを1プロセスで待ち受け）
