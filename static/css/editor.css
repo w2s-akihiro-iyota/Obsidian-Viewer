@@ -196,6 +196,11 @@ body.editor-resizing .editor-preview-pane {
 
 /* --- Mobile: Stack vertically --- */
 @media (max-width: 768px) {
+    /* スマホでは app-wrapper が flex でなく block になるため、width: 0 のままだと幅が 0 になって何も見えない */
+    main.editor-container {
+        width: 100%;
+    }
+
     .editor-panes {
         flex-direction: column;
     }
