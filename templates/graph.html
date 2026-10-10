@@ -3,7 +3,7 @@
 {% block title %}グラフ - Obsidian Viewer{% endblock %}
 
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+{% include "partials/_d3.html" %}
 {% endblock %}
 
 {% block body_class %}graph-page{% endblock %}
@@ -23,5 +23,5 @@
     </h1>
 </div>
 <div id="graph-canvas"></div>
-<script src="/static/js/modules/graph.js?v=20260223"></script>
+<script src="/static/js/modules/graph.js?v=20261010" defer></script>
 {% endblock %}

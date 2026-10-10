@@ -26,6 +26,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>hljs.highlightAll();</script>
 
+<!-- ローカルグラフ（つながり） -->
+{% include "partials/_d3.html" %}
+<script src="/static/js/modules/local-graph.js?v=20261010" defer></script>
+
 <!-- KaTeX for Math -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -262,9 +266,31 @@
 </section>
 {% endif %}
 
+<div class="view-body">
 <article class="markdown-body">
     {{ content | safe }}
 </article>
+
+{# つながり（F-8）: 広い画面では本文の右、狭い画面では本文の下（リンク元の上）。中身は local-graph.js が描く #}
+<aside class="local-graph" id="local-graph" aria-labelledby="local-graph-title"
+    data-center="{{ slug }}" data-title="{{ title }}" data-public="{{ 'true' if public_view else 'false' }}">
+    <div class="local-graph-head">
+        <h3 class="local-graph-title" id="local-graph-title">つながり</h3>
+        <div class="segmented-control local-graph-depth" role="radiogroup" aria-label="表示する範囲">
+            {% for depth in local_graph_depths %}
+            <input type="radio" name="local-graph-depth" value="{{ depth }}" id="local-graph-depth-{{ depth }}"{% if loop.first %} checked{% endif %}>
+            <label for="local-graph-depth-{{ depth }}">{{ depth }} 歩</label>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="local-graph-canvas"></div>
+    <p class="local-graph-note" hidden></p>
+    <div class="local-graph-foot">
+        <span>点を押すと移動</span>
+        <a href="/graph?focus={{ slug | urlencode }}">全体グラフで開く ↗</a>
+    </div>
+</aside>
+</div>
 
 {% if backlinks %}
 <section class="backlinks-section" id="backlinks">

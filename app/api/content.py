@@ -17,14 +17,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 # Local
 from app import cache
 from app.api import templates
-from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, PER_PAGE, SEARCH_LIMIT
+from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT
 from app.core.indexing import parse_frontmatter, is_published
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query
 from app.services.content import render_markdown
 from app.services.images import find_image_in_static
 from app.services.publish_check import check_publish
-from app.utils.helpers import is_admin_request
+from app.utils.helpers import is_admin_request, is_public_view
 from app.utils.messages import get_all_messages
 
 router = APIRouter()
@@ -192,10 +192,10 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
 
     mtime = full_path.stat().st_mtime
     is_localhost = is_admin_request(request)
-    # 管理者が外部の人の表示を確かめているとき
-    public_view = is_localhost and view_as == "public"
     # 本文・バックリンク・関連記事を公開ノートだけに絞るか（外部の人と、管理者の外部表示）
-    published_only = (not is_localhost) or public_view
+    published_only = is_public_view(request, view_as)
+    # 管理者が外部の人の表示を確かめているとき
+    public_view = is_localhost and published_only
 
     # Check cache
     # 外部向けは Dataview の結果が変わるため、閲覧者の種類ごとに別のキャッシュにする
@@ -323,7 +323,8 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         "og_url": og_url,
         "og_image": og_image,
         "backlinks": backlinks,
-        "related_articles": related_articles
+        "related_articles": related_articles,
+        "local_graph_depths": LOCAL_GRAPH_DEPTHS,
     })
 
 

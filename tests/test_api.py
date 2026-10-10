@@ -9,6 +9,7 @@
 - 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
 - ノート一覧（D-2 / D-10）: 並び替え・タグの件数（外部には公開ノートだけで数える）・条件のチップ・抜粋・非公開の印
 - ダッシュボード（F-6 / D-8）: 手入れが必要なノート（リンク切れ・孤立・タグなし）・ヒートマップ・0 件の表示
+- ローカルグラフ（F-8）: /api/graph?center=&depth= の点と距離・深さの不正値・404・外部には公開ノートだけ・上限
 """
 import copy
 import os
@@ -839,3 +840,103 @@ def test_ヒートマップは53列で月のラベルは月初の週の列に置
     _, labels = build_heatmap([], datetime(2026, 10, 17, 12, 0))
     assert labels[0]["label"] == "11月"
     assert all(1 <= label["column"] <= 53 and label["column"] + label["span"] - 1 <= 53 for label in labels)
+
+
+# ---------- F-8: ローカルグラフ ----------
+
+@pytest.fixture
+def graph_site(site):
+    """中心 → A → A2、中心 → 秘密B → B2、C → 中心。孤立はどこにもつながらない（親・子は別の島）"""
+    notes = {
+        "中心.md": "---\npublish: true\n---\n[[A]] と [[秘密B]]\n",
+        "A.md": "---\npublish: true\n---\n[[A2]]\n",
+        "A2.md": "---\npublish: true\n---\n二歩先\n",
+        "秘密B.md": "---\npublish: false\n---\n[[B2]]\n",
+        "B2.md": "---\npublish: true\n---\n非公開を経由した二歩先\n",
+        "C.md": "---\npublish: true\n---\n[[中心]]\n",
+        "孤立.md": "---\npublish: true\n---\nリンクなし\n",
+    }
+    for rel, text in notes.items():
+        (site / rel).write_text(text, encoding="utf-8")
+    indexing.refresh_global_caches()
+    return site
+
+
+def _local(client, center, **params):
+    return client.get("/api/graph", params={"center": center, **params})
+
+
+def _distances(res):
+    assert res.status_code == 200
+    return {n["id"]: n["distance"] for n in res.json()["nodes"]}
+
+
+def test_ローカルグラフは1歩と2歩の点と距離を返す(graph_site):
+    client = TestClient(app, base_url=ADMIN)
+    slug = cache.PATH_TO_SLUG["中心.md"]
+    assert _distances(_local(client, slug, depth=1)) == {"中心.md": 0, "A.md": 1, "秘密B.md": 1, "C.md": 1}
+    res = _local(client, slug, depth=2)
+    assert _distances(res) == {"中心.md": 0, "A.md": 1, "秘密B.md": 1, "C.md": 1, "A2.md": 2, "B2.md": 2}
+    links = {(l["source"], l["target"]) for l in res.json()["links"]}
+    assert links == {("中心.md", "A.md"), ("中心.md", "秘密B.md"), ("A.md", "A2.md"),
+                     ("秘密B.md", "B2.md"), ("C.md", "中心.md")}
+    assert res.json()["center"] == "中心.md" and res.json()["truncated"] is False
+
+
+def test_ローカルグラフの中心はパスでも指定できリンクが無ければ中心だけ(graph_site):
+    client = TestClient(app, base_url=ADMIN)
+    assert _distances(_local(client, "中心.md")) == {"中心.md": 0, "A.md": 1, "秘密B.md": 1, "C.md": 1}
+    res = _local(client, cache.PATH_TO_SLUG["孤立.md"], depth=2)
+    assert _distances(res) == {"孤立.md": 0} and res.json()["links"] == []
+
+
+@pytest.mark.parametrize("depth", ["0", "3", "abc", "-1", ""])
+def test_ローカルグラフの深さが1と2以外なら1(graph_site, depth):
+    client = TestClient(app, base_url=ADMIN)
+    assert set(_distances(_local(client, "中心.md", depth=depth)).values()) == {0, 1}
+
+
+def test_ローカルグラフの中心が無ければ404(graph_site):
+    assert _local(TestClient(app, base_url=ADMIN), "無いノート").status_code == 404
+
+
+def test_外部から非公開の中心を指定すると404(graph_site):
+    assert _local(TestClient(app, base_url=PUBLIC), cache.PATH_TO_SLUG["秘密B.md"]).status_code == 404
+    assert _local(TestClient(app, base_url=PUBLIC), "秘密B.md").status_code == 404
+    # 管理者の外部表示（?as=public）も外部と同じ
+    assert _local(TestClient(app, base_url=ADMIN), "秘密B.md", **{"as": "public"}).status_code == 404
+
+
+def test_外部のローカルグラフは非公開ノートを経由した2歩先を出さない(graph_site):
+    expected = {"中心.md": 0, "A.md": 1, "C.md": 1, "A2.md": 2}
+    assert _distances(_local(TestClient(app, base_url=PUBLIC), "中心.md", depth=2)) == expected
+    assert _distances(_local(TestClient(app, base_url=ADMIN), "中心.md", depth=2, **{"as": "public"})) == expected
+
+
+def test_外部の全体グラフは公開ノートだけで距離を付けない(graph_site):
+    data = TestClient(app, base_url=PUBLIC).get("/api/graph").json()
+    ids = {n["id"] for n in data["nodes"]}
+    assert "秘密B.md" not in ids and {"中心.md", "B2.md", "孤立.md"} <= ids
+    assert all("distance" not in n for n in data["nodes"])
+    assert all(l["source"] != "秘密B.md" and l["target"] != "秘密B.md" for l in data["links"])
+
+
+def test_ローカルグラフは上限で中心に近い点から残す(graph_site, monkeypatch):
+    from app.core import graph as graph_core
+    monkeypatch.setattr(graph_core, "LOCAL_GRAPH_MAX_NODES", 4)
+    res = _local(TestClient(app, base_url=ADMIN), "中心.md", depth=2)
+    assert _distances(res) == {"中心.md": 0, "A.md": 1, "秘密B.md": 1, "C.md": 1}
+    assert res.json()["truncated"] is True
+    assert all(l["source"] in _distances(res) and l["target"] in _distances(res) for l in res.json()["links"])
+
+
+def test_記事ページにつながりの欄と全体グラフへのリンクを出す(graph_site):
+    slug = cache.PATH_TO_SLUG["中心.md"]
+    html = _view(TestClient(app, base_url=ADMIN), "中心.md")
+    assert f'data-center="{slug}"' in html and 'data-public="false"' in html
+    assert f'href="/graph?focus={slug}"' in html
+    # 深さの切り替えは config の LOCAL_GRAPH_DEPTHS から作り、先頭を選んでおく
+    assert re.findall(r'name="local-graph-depth" value="(\d+)"', html) == ["1", "2"]
+    assert 'value="1" id="local-graph-depth-1" checked' in html
+    html = _get(TestClient(app, base_url=ADMIN), "中心.md", **{"as": "public"}).text
+    assert 'data-public="true"' in html

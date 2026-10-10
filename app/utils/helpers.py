@@ -31,6 +31,16 @@ def is_admin_request(request: Request) -> bool:
     return _host_name(request.headers.get("host", "")) in ADMIN_ALLOWED_HOSTS
 
 
+def is_public_view(request: Request, view_as: str = "") -> bool:
+    """
+    外部の人に見せる範囲（公開ノートだけ）で作るかを判定します。
+
+    外部の人と、管理者の「外部の人の表示」（?as=public）が対象です。
+    外部の人が ?as=public を付けても変わりません。
+    """
+    return (not is_admin_request(request)) or view_as == "public"
+
+
 def admin_guard(request: Request) -> JSONResponse | None:
     """
     管理者のリクエストでない場合、403 JSONResponseを返す。

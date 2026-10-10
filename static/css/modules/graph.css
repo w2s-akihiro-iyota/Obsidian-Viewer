@@ -35,3 +35,240 @@
     width: 100%;
     height: 100%;
 }
+
+/* グラフの点・線・ラベル（graph-render.js が描く。全体グラフとローカルグラフで共通） */
+.graph-link {
+    stroke: var(--graph-link);
+    stroke-width: 1;
+}
+
+.graph-link.is-active {
+    stroke: var(--accent-purple);
+    stroke-opacity: 0.9;
+}
+
+.graph-node {
+    fill: var(--accent-purple);
+    stroke: var(--bg-primary);
+    stroke-width: 1;
+    cursor: pointer;
+}
+
+.graph-node.is-hover,
+.graph-node.is-focus {
+    fill: var(--graph-highlight);
+}
+
+.graph-label {
+    fill: var(--text-normal);
+    font-size: 10px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.graph-label.is-focus,
+.graph-label.is-center {
+    font-weight: 700;
+}
+
+/* 全体を収めた小さい倍率では、ラベルを隠す（?focus で選んだ点・ローカルグラフの中心のラベルは残す） */
+.graph-svg.is-labels-hidden .graph-label:not(.is-focus):not(.is-center) {
+    display: none;
+}
+
+.graph-node.is-dimmed {
+    opacity: 0.15;
+}
+
+.graph-label.is-dimmed {
+    opacity: 0.1;
+}
+
+.graph-link.is-dimmed {
+    stroke-opacity: 0.1;
+}
+
+.graph-message {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   記事ページの「つながり」（ローカルグラフ）
+   ========================================= */
+
+/* 本文とつながりの欄を包む。狭いときは縦に並べ、つながりは本文の下（リンク元の上）に出る */
+.page-view main.container-wide {
+    container: view-main / inline-size;
+}
+
+.local-graph {
+    margin-top: 32px;
+    padding: 12px 14px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.local-graph-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.local-graph-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.local-graph .segmented-control {
+    width: auto;
+    padding: 2px;
+    border-radius: 7px;
+    box-shadow: none;
+}
+
+.local-graph .segmented-control label {
+    min-width: 0;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.local-graph .segmented-control input[type="radio"]:focus-visible+label {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 1px;
+}
+
+.local-graph-canvas {
+    height: 260px;
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+    overflow: hidden;
+}
+
+.local-graph-canvas svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* ローカルグラフの塗り分け: 中心は大きく --accent-purple、周りは --text-muted */
+.local-graph .graph-link {
+    stroke-width: 1.5;
+}
+
+.local-graph .graph-node {
+    fill: var(--text-muted);
+}
+
+.local-graph .graph-node.is-center {
+    fill: var(--accent-purple);
+}
+
+.local-graph .graph-node:hover {
+    fill: var(--accent-purple);
+}
+
+.local-graph .graph-label {
+    font-size: 11px;
+}
+
+.local-graph .graph-label.is-hop2 {
+    fill: var(--text-muted);
+}
+
+.local-graph-canvas:has(.local-graph-empty) {
+    height: auto;
+}
+
+.local-graph-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    margin: 0;
+    padding: 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* d3 を読み込めなかったときの代わりのリンク一覧 */
+.local-graph-list {
+    height: 100%;
+    margin: 0;
+    padding: 10px 14px;
+    overflow-y: auto;
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+.local-graph-list li {
+    padding: 3px 0;
+}
+
+.local-graph-hop {
+    margin-left: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.local-graph-note {
+    margin: 6px 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.local-graph-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.local-graph-foot a {
+    color: var(--accent-purple);
+    text-decoration: none;
+}
+
+.local-graph-foot a:hover {
+    text-decoration: underline;
+}
+
+/* 幅 1200px 以上で、本文の欄に余裕があるときだけ、つながりを本文の右に固定幅で出す */
+@media (min-width: 1200px) {
+    /* 読みやすい幅の設定でも、本文の幅（900px）は変えずにつながりの欄の分だけ広げる */
+    body.readable-width.page-view .container-wide {
+        max-width: calc(var(--readable-width) + var(--local-graph-width) + var(--local-graph-gap));
+    }
+
+    @container view-main (min-width: 860px) {
+        .view-body {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) var(--local-graph-width);
+            gap: var(--local-graph-gap);
+            align-items: start;
+        }
+
+        .local-graph {
+            position: sticky;
+            top: calc(var(--header-height) + 16px);
+            margin-top: 20px;
+        }
+
+        .local-graph-canvas {
+            height: 220px;
+        }
+    }
+}
