@@ -5,6 +5,7 @@
 - 新規ノートの保存は、Vault に書けなければビューア側にも書かない（B-2 の削除で消えないように）
 - 公開チェック（F-5）: 管理者は「外部の人の表示」（?as=public）で外部向けと同じ本文と、チェック結果を見られる
 - 記事ページのヘッダー（D-1）: パンくず・タイトル・メタ情報
+- ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
 """
 import copy
 import os
@@ -352,3 +353,41 @@ def test_先頭でないh1と埋め込みの中のh1は隠さない(site):
     (site / "見出し子.md").write_text("---\npublish: true\n---\n# 埋め込み親\n", encoding="utf-8")
     article = _view_note(site, "埋め込み親.md", "---\npublish: true\n---\n![[見出し子]]\n")
     assert "markdown-embed" in article and "view-title-duplicate" not in article
+
+
+HELP_TAB_RE = re.compile(r'<button class="help-tab[^"]*" data-tab="([\w-]+)">')
+ALL_HELP_TABS = ["about", "basic", "syntax", "keys", "admin", "display"]
+
+
+def _help_tabs(html):
+    return HELP_TAB_RE.findall(html)
+
+
+def test_管理者のヘルプは6タブで管理者向けとエディタのキーが出る(site):
+    html = TestClient(app, base_url=ADMIN).get("/").text
+    assert _help_tabs(html) == ALL_HELP_TABS
+    assert 'id="help-panel-admin"' in html
+    assert "エディタ（管理者のみ）" in html
+
+
+def test_外部ポートのヘルプは管理者向けタブとエディタのキーを出さない(site):
+    client = TestClient(app, base_url=PUBLIC)
+    for html in (client.get("/").text, _view(client)):
+        # 書き方と管理者向けは、Vault に書く・管理する人だけに出す
+        assert _help_tabs(html) == [t for t in ALL_HELP_TABS if t not in ("syntax", "admin")]
+        assert 'id="help-panel-syntax"' not in html
+        assert 'id="help-panel-admin"' not in html
+        assert "エディタ（管理者のみ）" not in html
+        assert "<strong>公開チェック</strong>" not in html
+        assert "ダッシュボード" not in html
+        # 外部の人は閲覧だけなので、編集・同期・公開設定の機能紹介も出さない
+        for feature in ("Markdown エディタ", "ファイル同期", "公開設定"):
+            assert f"<strong>{feature}</strong>" not in html
+
+
+def test_管理者の外部表示でもヘルプの管理者向けタブは出る(site):
+    html = TestClient(app, base_url=ADMIN).get(f"/view/{cache.PATH_TO_SLUG['親.md']}", params={"as": "public"}).text
+    assert 'class="public-view-banner"' in html   # 外部表示になっていること
+    assert "/editor?path=" not in html             # ページ側の出し分けは変えない
+    assert _help_tabs(html) == ALL_HELP_TABS
+    assert 'id="help-panel-admin"' in html and "エディタ（管理者のみ）" in html

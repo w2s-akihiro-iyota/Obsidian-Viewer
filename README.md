@@ -133,9 +133,8 @@ Obsidian Viewer は、公開用ポート（`8000`）からアクセスされた�
 Obsidian のコミュニティプラグイン「**Linter**」を使うと、保存時に Frontmatter を自動挿入・管理できます。
 
 1. Obsidian の **設定 > コミュニティプラグイン** から「Linter」をインストールして有効化する
-2. Linter の設定画面を開き、**YAML > Default Value for YAML Key** に以下を設定する
-   - Key: `publish`
-   - Value: `true`
+2. Linter の設定画面を開き、**YAML > Insert YAML Attributes** のトグルを ON にして、**Text to insert** に以下を設定する
+   - `publish: true`
 3. これにより、ファイル保存時に `publish: true` が Frontmatter に自動追加される
 
 > **ヒント:** 特定のファイルを非公開にしたい場合は、手動で `publish: false` に変更してください。Linter は既に値がある場合は上書きしません。
