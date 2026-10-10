@@ -10,7 +10,8 @@
     --accent-purple: #7b61ff;
     --border-color: #333;
     --header-height: 50px;
-    --font-family: 'Consolas', "Noto Sans JP", "BIZ UDPGothic", "Meiryo UI", 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Web フォントは読み込まない（Q-3。オフラインでも同じ見た目にする）。OS に入っている日本語フォントを順に使う */
+    --font-family: 'Consolas', "BIZ UDPGothic", "Yu Gothic UI", "Meiryo UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
     --code-font: 'Consolas', 'Monaco', 'Courier New', monospace;
     --sidebar-width: 280px;
     --activity-bar-width: 50px;

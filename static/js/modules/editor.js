@@ -52,6 +52,10 @@ function initEditor() {
 
     // プレビュー後処理: highlight.js / KaTeX / Mermaid の再適用
     function postProcessPreview() {
+        // Mermaid（mermaid.js）: 色付けより先に図の div へ置き換える（Mermaid のコードに色を付けない）。
+        // Mermaid 本体は図があるときだけ読み込み、読み込み中に何度呼ばれても 1 本しか読まない
+        renderMermaidIn(preview);
+
         // Highlight.js
         if (window.hljs) {
             preview.querySelectorAll('pre code').forEach(block => {
@@ -68,27 +72,10 @@ function initEditor() {
                     { left: '\\(', right: '\\)', display: false },
                     { left: '\\[', right: '\\]', display: true }
                 ],
+                // Mermaid の図（先に pre から div に置き換えている）の中の $ を数式にしない
+                ignoredClasses: ['mermaid'],
                 throwOnError: false
             });
-        }
-
-        // Mermaid
-        if (window.mermaid) {
-            const mermaidBlocks = preview.querySelectorAll('pre code.language-mermaid');
-            mermaidBlocks.forEach(block => {
-                const pre = block.parentElement;
-                const mermaidCode = block.textContent;
-                const mermaidDiv = document.createElement('div');
-                mermaidDiv.className = 'mermaid';
-                mermaidDiv.textContent = mermaidCode;
-                mermaidDiv.setAttribute('data-original-code', mermaidCode);
-                pre.replaceWith(mermaidDiv);
-            });
-
-            const mermaidDivs = preview.querySelectorAll('.mermaid');
-            if (mermaidDivs.length > 0) {
-                window.mermaid.run({ nodes: mermaidDivs }).catch(err => console.error('Mermaid render error:', err));
-            }
         }
     }
 

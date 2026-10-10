@@ -10,18 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
 
-    // Update highlight.js theme
-    const highlightThemeLink = document.getElementById('highlight-theme');
-    const updateHighlightTheme = (theme) => {
-        if (highlightThemeLink) {
-            if (theme === 'light') {
-                highlightThemeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
-            } else {
-                highlightThemeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
-            }
-        }
-    };
-    updateHighlightTheme(savedTheme);
+    // コードの配色（highlight.js のテーマ）は、base.html の head で localStorage の codeTheme から決めてある。
+    // 画面テーマとは連動しない（設定で選んだ codeTheme を保つ）
 
     // Expose for usage in settings
     window.updateMermaidConfig = updateMermaidConfig;
@@ -213,6 +203,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Initialize Highlight.js ---
+    // ページ内のコードの色付けはここで 1 回だけ行う。記事は通常のページ遷移で開くので、HTMX の差し替えでの再ハイライトは要らない
+    // （HTMX で差し替えるのはノート一覧だけ。エディタのプレビューは editor.js が hljs.highlightElement で付け直す）。
+    // Mermaid のコードブロックは、先に initMermaid が図の div に置き換えているので色付けの対象にならない
     if (window.hljs) {
         console.log('Highlight.js found, initializing...');
         hljs.highlightAll();
@@ -228,30 +221,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Highlight.js not found! Check network or script tag.');
     }
 
-    // Function to update Highlight.js theme (overrides the local one above with local file mapping)
+    // コードの配色を切り替える（設定の「コードテーマ」から呼ぶ）。
+    // テーマ名とファイルの対応は base.html の window.codeThemeHref に 1 か所だけ置く
     window.updateHighlightTheme = (themeName) => {
         const link = document.getElementById('highlight-theme');
         if (!link) {
             console.error('Highlight.js theme link not found!');
             return;
         }
-
-        // Map internal names to local files
-        const themeMap = {
-            'github-dark': 'github-dark.min.css',
-            'github': 'github.min.css',
-            'dracula': 'dracula.min.css',
-            'nord': 'nord.min.css',
-            'tokyo-night-dark': 'tokyo-night-dark.min.css',
-            'atom-one-dark': 'atom-one-dark.min.css'
-        };
-
-        const themeFile = themeMap[themeName] || 'github-dark.min.css';
-        const newUrl = `/static/css/themes/${themeFile}`;
-
-        console.log(`Switching code theme to: ${themeName}`);
-        console.log(`URL: ${newUrl}`);
-        link.href = newUrl;
+        link.href = window.codeThemeHref(themeName);
     };
 
     // --- Initialize modules ---
