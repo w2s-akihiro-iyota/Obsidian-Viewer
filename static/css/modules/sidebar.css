@@ -309,6 +309,13 @@ body.resizing iframe {
         min-height: calc(100vh - 60px);
     }
 
+    /* 記事ページ（D-11）: 上の padding-top: 60px と二重になって、固定ヘッダーの下に 60px の空きができていたので詰める。
+       ほかのページ（一覧・ダッシュボード・エディタ・グラフ）にも同じ空きがあるが、グラフ（calc(100vh - 120px)）など高さの計算と
+       合わせて見直す必要があるので、ここでは記事ページだけに当てる */
+    body.page-view .app-wrapper {
+        margin-top: 0;
+    }
+
     header {
         left: 0 !important;
         width: 100% !important;

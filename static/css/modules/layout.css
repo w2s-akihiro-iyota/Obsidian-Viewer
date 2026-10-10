@@ -394,6 +394,192 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
     padding-right: calc(var(--article-action-size) + var(--article-actions-gap));
 }
 
+/* ===== 768px 以下の右上の「＋」（D-11） ===== */
+/* 「＋」を押すと、その下に「つながり」と「メニュー（⋮）」がラベルつきで縦に出る。開閉は article-dial.js（.is-open）。
+   PC では「＋」・暗幕・ラベル・メニューの枠を出さず、つながりのボタンだけを今までどおり置く。
+   768px 以下でも、article-dial.js が準備を終えて <html> に .article-dial-ready を付けるまでは「＋」にまとめない
+   （JS が読めない・途中で止まったときは、記事ヘッダーの右の ⋮ と外部の人の表示がそのまま見える） */
+.article-dial {
+    position: relative;
+}
+
+.article-dial-toggle,
+.article-dial-backdrop,
+.article-dial-label,
+.article-dial-menu {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .article-dial-ready .article-dial-toggle {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: var(--article-action-size);
+        height: var(--article-action-size);
+        padding: 0;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        background-color: var(--bg-secondary);
+        color: var(--text-normal);
+        cursor: pointer;
+        box-shadow: var(--local-graph-shadow-small);
+    }
+
+    .article-dial-ready .article-dial-toggle svg {
+        transition: transform var(--article-dial-duration) ease;
+    }
+
+    .article-dial-ready .article-dial.is-open .article-dial-toggle {
+        border-color: var(--accent-purple);
+        color: var(--accent-purple);
+    }
+
+    /* 開くと 45° 回って「×」になる */
+    .article-dial-ready .article-dial.is-open .article-dial-toggle svg {
+        transform: rotate(45deg);
+    }
+
+    .article-dial-ready .article-dial-toggle:focus-visible {
+        outline: 2px solid var(--accent-purple);
+        outline-offset: 2px;
+    }
+
+    /* つながりのあるノートでは、しまっているときに右上へ小さな点（数は開いたときの「つながり」に出す） */
+    .article-dial-ready .article-dial-dot {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 10px;
+        height: 10px;
+        box-sizing: border-box;
+        border-radius: 50%;
+        border: 2px solid var(--bg-primary);
+        background-color: var(--accent-purple);
+        transition: opacity var(--article-dial-duration);
+    }
+
+    .article-dial-ready .article-dial.is-open .article-dial-dot {
+        opacity: 0;
+    }
+
+    /* まわりの薄い暗幕（押すと閉じる）。ヘッダーより下（.article-actions の z-index の中） */
+    .article-dial-ready .article-dial-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background-color: var(--article-dial-backdrop);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--article-dial-duration), visibility var(--article-dial-duration);
+    }
+
+    .article-dial-ready .article-dial.is-open .article-dial-backdrop {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* 出てくるボタンの列。しまっているあいだは下の本文を押せるように、列そのものは押せなくする */
+    .article-dial-ready .article-dial-items {
+        position: absolute;
+        top: calc(100% + var(--article-dial-gap));
+        right: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: var(--article-dial-gap);
+        pointer-events: none;
+    }
+
+    .article-dial-ready .article-dial-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .article-dial-ready .article-dial-label {
+        display: block;
+        padding: 3px 9px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: var(--bg-secondary);
+        color: var(--text-normal);
+        font-size: 0.76rem;
+        white-space: nowrap;
+        box-shadow: var(--local-graph-shadow-small);
+    }
+
+    /* つながりのボタンと ⋮（article-dial.js が移す）を、丸いボタンにそろえる */
+    .article-dial-ready .article-dial-item > .local-graph-toggle,
+    .article-dial-ready .article-dial-item .page-menu-btn {
+        border-radius: 50%;
+    }
+
+    .article-dial-ready .article-dial-item .page-menu-btn {
+        width: var(--article-action-size);
+        height: var(--article-action-size);
+        padding: 0;
+        background-color: var(--bg-secondary);
+        box-shadow: var(--local-graph-shadow-small);
+    }
+
+    /* しまっているあいだは隠して（Tab でも止まらない）、開くと上からスライドして出す。
+       つながりのシートは .local-graph-anchor の中にあるので、列や枠ではなくラベルとボタンだけを動かす
+       （親に transform や opacity を付けると、position: fixed のシートが崩れたり消えたりする） */
+    .article-dial-ready .article-dial-label,
+    .article-dial-ready .article-dial-item > .local-graph-toggle,
+    .article-dial-ready .article-dial-item .page-menu-btn {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-14px);
+        transition: opacity var(--article-dial-duration) ease, transform var(--article-dial-duration) ease,
+            visibility var(--article-dial-duration);
+    }
+
+    .article-dial-ready .article-dial.is-open .article-dial-label,
+    .article-dial-ready .article-dial.is-open .article-dial-item > .local-graph-toggle,
+    .article-dial-ready .article-dial.is-open .article-dial-item .page-menu-btn {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        pointer-events: auto;
+        /* 開くときは visibility をすぐ切り替える（開いた直後に最初の項目へフォーカスを移せるように） */
+        transition: opacity var(--article-dial-duration) ease, transform var(--article-dial-duration) ease, visibility 0s;
+    }
+
+    .article-dial-ready .article-dial.is-open .article-dial-menu > * {
+        transition-delay: 0.04s;
+    }
+
+    .article-dial-ready .article-dial .local-graph,
+    .article-dial-ready .article-dial .local-graph-backdrop,
+    .article-dial-ready .article-dial .page-menu-dropdown {
+        pointer-events: auto;
+    }
+
+    /* メニューはボタンの左に開く */
+    .article-dial-ready .article-dial .page-menu-dropdown {
+        top: 0;
+        right: calc(100% + 8px);
+        margin-top: 0;
+        min-width: 200px;
+        box-shadow: var(--local-graph-shadow);
+    }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+    .article-dial-ready .article-dial-toggle svg,
+    .article-dial-ready .article-dial-dot,
+    .article-dial-ready .article-dial-backdrop,
+    .article-dial-ready .article-dial-label,
+    .article-dial-ready .article-dial-item > .local-graph-toggle,
+    .article-dial-ready .article-dial-item .page-menu-btn {
+        transition: none;
+    }
+}
+
 /* ===== View Header & Breadcrumb ===== */
 /* 記事ページのヘッダー: パンくずと操作 → タイトル → メタ情報 → タグ */
 .view-header {
@@ -458,6 +644,67 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
     gap: 6px 16px;
     font-size: 0.8rem;
     color: var(--text-muted);
+}
+
+/* 768px 以下だけで使う部品（パンくずの「…」・外部の人の表示のチップ） */
+.breadcrumb-ellipsis,
+.view-public-chip-row {
+    display: none;
+}
+
+/* ===== 768px 以下の記事ヘッダー（D-11） ===== */
+/* 右上は「＋」1 つ（上の .article-dial）。外部の人の表示はメタ情報の下のチップにし、⋮ は「＋」の中へ移す
+   （この 2 つは .article-dial-ready のときだけ。JS が動かないときは今までの右上のボタンのまま）。
+   パンくずは「ホーム › 直前のフォルダ」の 1 行（深いときは「ホーム › … › 直前のフォルダ」）。
+   メタ情報はアイコンを外し、更新日は日付だけ・読了時間は「約N分」にする */
+@media (max-width: 768px) {
+    .view-header-top {
+        min-height: var(--article-action-size);
+    }
+
+    .article-dial-ready .view-header-actions {
+        display: none;
+    }
+
+    .breadcrumb {
+        display: block;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .breadcrumb-sep {
+        margin: 0 6px;
+    }
+
+    .breadcrumb-ellipsis {
+        display: inline;
+    }
+
+    .breadcrumb .is-middle,
+    .breadcrumb .is-current,
+    .breadcrumb-current {
+        display: none;
+    }
+
+    .view-title {
+        margin-top: 8px;
+    }
+
+    .view-meta {
+        gap: 4px 12px;
+    }
+
+    .view-meta svg,
+    .view-meta-long {
+        display: none;
+    }
+
+    .article-dial-ready .view-public-chip-row {
+        display: flex;
+        margin-top: 10px;
+    }
 }
 
 @media (max-width: 600px) {
