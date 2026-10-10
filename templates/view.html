@@ -20,12 +20,6 @@
 <meta name="twitter:title" content="{{ title }}">
 <meta name="twitter:description" content="{{ description }}">
 
-<!-- Highlight.js for syntax highlighting -->
-<link id="highlight-theme" rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script>hljs.highlightAll();</script>
-
 <!-- 右上のアクション置き場と、ローカルグラフ（つながり）、768px 以下の「＋」の開閉（article-dial.js）。d3 と graph-render.js は、初めて開いたときに local-graph.js が読み込む -->
 <script src="/static/js/modules/article-actions.js?v=20261011" defer></script>
 <script src="/static/js/modules/local-graph-panel.js?v=20261014" defer></script>
@@ -33,9 +27,9 @@
 <script src="/static/js/modules/article-dial.js?v=20261014" defer></script>
 
 <!-- KaTeX for Math -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="
+<link rel="stylesheet" href="/static/js/vendor/katex-0.16.9/katex.min.css">
+<script defer src="/static/js/vendor/katex-0.16.9/katex.min.js"></script>
+<script defer src="/static/js/vendor/katex-0.16.9/contrib/auto-render.min.js" onload="
         renderMathInElement(document.body, {
             delimiters: [
                 {left: '$$', right: '$$', display: true},

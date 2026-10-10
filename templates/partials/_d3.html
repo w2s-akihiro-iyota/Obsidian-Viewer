@@ -1,6 +1,7 @@
-{# d3（グラフの描画）と共通の描画処理の読み込み先。全体グラフと記事ページの「つながり」で同じものを使う（ローカル化は Q-3）
+{# d3（グラフの描画）と共通の描画処理の読み込み先。全体グラフと記事ページの「つながり」で同じものを使う。
+   d3 は static/js/vendor/ に版を固定して置いたもの（Q-3。CDN には頼らない）。
    全体グラフは scripts() でそのまま読み込み、記事ページは D3_SRC / GRAPH_RENDER_SRC を local-graph.js に渡して、初めて開いたときに読み込む #}
-{% set D3_SRC = "https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" %}
+{% set D3_SRC = "/static/js/vendor/d3-7.9.0/d3.min.js" %}
 {% set GRAPH_RENDER_SRC = "/static/js/modules/graph-render.js?v=20261010" %}
 {% macro scripts() -%}
 <script src="{{ D3_SRC }}" defer></script>

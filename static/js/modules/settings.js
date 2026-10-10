@@ -501,9 +501,7 @@ function initSettings() {
             const updateTheme = () => {
                 localStorage.setItem('theme', val);
                 document.documentElement.setAttribute('data-theme', val);
-
-                // Update highlight.js theme dynamically
-                if (typeof updateHighlightTheme === 'function') updateHighlightTheme(val);
+                // コードの配色（codeTheme）は画面テーマとは別の設定なので、ここでは変えない
             };
 
             // Use View Transitions API if supported

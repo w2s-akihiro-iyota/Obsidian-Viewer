@@ -6,10 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261026">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
-        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261028">
     <script>
         // Apply theme immediately to prevent flash
         (function () {
@@ -37,26 +34,43 @@
             document.documentElement.classList.add('font-' + (localStorage.getItem('fontSize') || 'medium'));
         })();
     </script>
-    <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-        window.mermaid = mermaid;
+    <!-- 外部ライブラリはすべて static/js/vendor/ に版を固定して置き、CDN には頼らない（Q-3） -->
+    <!-- Mermaid（約 3.5MB）はここでは読まない。図のあるページ・プレビューでだけ mermaid.js が読み込む（読み込み先はこの 1 か所） -->
+    <meta name="mermaid-src" content="/static/js/vendor/mermaid-11.17.2/mermaid.min.js">
+    <!-- Highlight.js (Local)。コードの配色は設定の codeTheme で決める（既定 github-dark）。
+         画面テーマ（dark/light など）とは連動しない。対応表は window.codeThemeHref に1か所だけ置き、main.js の切り替えも使う -->
+    <link id="highlight-theme" rel="stylesheet" href="/static/css/themes/github-dark.min.css">
+    <script>
+        (function () {
+            const files = {
+                'github-dark': 'github-dark.min.css',
+                'github': 'github.min.css',
+                'dracula': 'dracula.min.css',
+                'nord': 'nord.min.css',
+                'tokyo-night-dark': 'tokyo-night-dark.min.css',
+                'atom-one-dark': 'atom-one-dark.min.css'
+            };
+            window.codeThemeHref = function (name) {
+                return '/static/css/themes/' + (files[name] || files['github-dark']);
+            };
+            const link = document.getElementById('highlight-theme');
+            const saved = localStorage.getItem('codeTheme');
+            if (link && saved) link.href = window.codeThemeHref(saved);
+        })();
     </script>
-    <!-- Highlight.js (Local) -->
-    <link id="highlight-theme" rel="stylesheet"
-        href="/static/css/themes/github-dark.min.css?v=20260221-editor">
     <script src="/static/js/vendor/highlight.min.js?v=20260221-editor"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="/static/js/vendor/htmx-1.9.10/htmx.min.js"></script>
     <script src="/static/js/modules/core.js?v=20261022" defer></script>
     <script src="/static/js/modules/table-copy.js?v=20260223" defer></script>
-    <script src="/static/js/modules/mermaid.js?v=20260223" defer></script>
+    <script src="/static/js/modules/mermaid.js?v=20261028" defer></script>
     <script src="/static/js/modules/sidebar.js?v=20261013" defer></script>
     <script src="/static/js/modules/file-tree.js?v=20261018" defer></script>
     <script src="/static/js/modules/search.js?v=20261018" defer></script>
-    <script src="/static/js/modules/settings.js?v=20261026" defer></script>
+    <script src="/static/js/modules/settings.js?v=20261027" defer></script>
     <script src="/static/js/modules/history.js?v=20261011" defer></script>
-    <script src="/static/js/modules/editor.js?v=20261010" defer></script>
+    <script src="/static/js/modules/editor.js?v=20261027" defer></script>
     <script src="/static/js/modules/shortcuts.js?v=20261016" defer></script>
-    <script src="/static/js/modules/main.js?v=20261022" defer></script>
+    <script src="/static/js/modules/main.js?v=20261027" defer></script>
     {% block head %}{% endblock %}
 </head>
 

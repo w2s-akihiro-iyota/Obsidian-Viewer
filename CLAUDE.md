@@ -8,7 +8,7 @@ Docker上で動作し、FastAPI + Jinja2 + HTMX で構成される。
 - **Backend**: Python 3.11, FastAPI, Uvicorn, Jinja2
 - **Frontend**: Vanilla JS, HTMX (1.9.10), CSS Custom Properties
 - **Markdown**: markdown-it-py + カスタムプラグイン (callout, cardlink, mark)
-- **Client Libraries**: Mermaid.js, KaTeX, Highlight.js (CDN + ローカルフォールバック)
+- **Client Libraries**: Mermaid.js (11.17.2), KaTeX (0.16.9), Highlight.js (11.9.0), d3 (7.9.0)。すべてローカル配信（`static/js/vendor/<lib>-<version>/` に版を固定して Git 管理。CDN・Web フォントは使わない。Highlight.js だけは `static/js/vendor/highlight.min.js`、テーマは `static/css/themes/`）
 - **Infrastructure**: Docker, Docker Compose
 - **Database**: なし (インメモリキャッシュ + ファイルシステム)
 

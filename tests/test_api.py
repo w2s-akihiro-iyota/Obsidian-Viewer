@@ -936,8 +936,8 @@ def test_記事ページにつながりのパネルと全体グラフへのリ�
     assert re.search(r'<section class="local-graph" id="local-graph" role="dialog"[^>]*hidden', html)
     assert f'data-center="{slug}"' in html and 'data-public="false"' in html
     # d3 と描画処理は開いたときに読み込むので、ページの script には無く、読み込み先だけを渡す
-    assert 'data-d3-src="https://cdn.jsdelivr.net/npm/d3@7/' in html and 'data-render-src="/static/js/modules/graph-render.js' in html
-    assert not re.search(r'<script src="[^"]*(d3@7|graph-render\.js)', html)
+    assert re.search(r'data-d3-src="/static/js/vendor/d3-[\d.]+/d3\.min\.js"', html) and 'data-render-src="/static/js/modules/graph-render.js' in html
+    assert not re.search(r'<script src="[^"]*(d3\.min\.js|graph-render\.js)', html)
     assert f'href="/graph?focus={slug}"' in html
     # 深さの切り替えは config の LOCAL_GRAPH_DEPTHS から作り、先頭を選んでおく
     assert re.findall(r'name="local-graph-depth" value="(\d+)"', html) == ["1", "2"]
@@ -948,7 +948,7 @@ def test_記事ページにつながりのパネルと全体グラフへのリ�
 
 def test_全体グラフのページはd3と描画処理を読み込む(graph_site):
     html = TestClient(app, base_url=PUBLIC).get("/graph").text
-    assert re.search(r'<script src="https://cdn.jsdelivr.net/npm/d3@7/[^"]*" defer>', html)
+    assert re.search(r'<script src="/static/js/vendor/d3-[\d.]+/d3\.min\.js" defer>', html)
     assert re.search(r'<script src="/static/js/modules/graph-render\.js[^"]*" defer>', html)
 
 
