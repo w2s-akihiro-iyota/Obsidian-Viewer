@@ -261,9 +261,11 @@ def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict)
 
     リンクの拾い方（コードの中は数えない・見出しと別名の分け方）は描画と同じ iter_wikilinks を使う。
     埋め込み（![[ノート]]）もリンクとして数える。
+    あわせて、存在しないノートへのリンク先の名前を各ノートの "missing_links" に入れる
+    （ダッシュボードの「リンク切れ」用。判定は公開チェックと同じ is_missing_note）。
     """
     # wikilinks は indexing を読み込むため、循環しないようここで読み込む
-    from app.services.wikilinks import iter_wikilinks
+    from app.services.wikilinks import classify_link, is_missing_note, iter_wikilinks
 
     backlinks = {}   # {target_path: [{title, path}]}
     forward = {}     # {source_path: [target_path]}
@@ -285,12 +287,18 @@ def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict)
 
         _, body = parse_frontmatter(content)
         resolved_targets = []
+        missing_links: dict[str, None] = {}   # 出てきた順を保ったまま重複を除く
 
         for link in iter_wikilinks(body):
             if not link.name:   # [[#見出し]] は同じノート内
                 continue
             target_path = resolve_note_path(link.name, file_name_map, path_to_slug)
-            if target_path and target_path != source_path:
+            if target_path is None:
+                # 引けなかったリンクだけ、描画と同じ振り分けでリンク切れか（見つからない画像などでないか）を見る
+                if is_missing_note(link, classify_link(link, None, file_name_map, path_to_slug)):
+                    missing_links.setdefault(link.name)
+                continue
+            if target_path != source_path:
                 resolved_targets.append(target_path)
                 # バックリンクに追加
                 if target_path not in backlinks:
@@ -304,6 +312,7 @@ def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict)
                     })
 
         forward[source_path] = list(set(resolved_targets))
+        f["missing_links"] = list(missing_links)
 
     logger.info("Backlink cache built: %d files with backlinks.", len(backlinks))
     return backlinks, forward

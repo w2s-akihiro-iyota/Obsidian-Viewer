@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/_note_macros.html" as nm %}
 
 {% block title %}ダッシュボード - Obsidian Viewer{% endblock %}
 
@@ -24,7 +25,7 @@
             <div class="stat-label">ノート</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value stat-public">{{ public_files }}</div>
+            <div class="stat-value">{{ public_files }}</div>
             <div class="stat-label">公開</div>
         </div>
         <div class="stat-card">
@@ -37,32 +38,73 @@
         </div>
     </div>
 
-    <!-- 最終更新日の分布（ヒートマップ） -->
-    <section class="dashboard-section heatmap-section">
+    <!-- 手入れが必要なノート（F-6）。カードを押すと、その下に該当ノートの表を開く（dashboard.js） -->
+    <section class="dashboard-health" aria-label="手入れが必要なノート">
+        <div class="health-cards">
+            {% for check in health %}
+            <button type="button" class="health-card" id="health-card-{{ check.id }}"
+                    {% if check.count %}aria-expanded="false" aria-controls="health-panel-{{ check.id }}"{% else %}disabled{% endif %}>
+                <span class="health-card-head">
+                    <span class="health-card-value">{{ check.count if check.count else "なし" }}</span>
+                    <span class="health-card-label">{{ check.label }}</span>
+                </span>
+                <span class="health-card-desc">{{ check.description }}</span>
+            </button>
+            {% endfor %}
+        </div>
+        {% for check in health if check.count %}
+        <div class="dashboard-section health-panel" id="health-panel-{{ check.id }}" role="region"
+             aria-labelledby="health-card-{{ check.id }}" hidden>
+            <div class="health-table-wrap">
+                <table class="health-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">ノート</th>
+                            <th scope="col">原因</th>
+                            <th scope="col" class="health-updated">最終更新</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in check.shown_rows %}
+                        <tr>
+                            <td><a href="/view/{{ row.file.slug }}">{{ row.file.title }}</a>{% if not row.file.published %}{{ nm.private_mark() }}{% endif %}</td>
+                            <td class="health-cause">{{ row.cause }}</td>
+                            <td class="health-updated">{{ row.file.updated }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if check.hidden_count %}
+            <p class="health-more">ほか {{ check.hidden_count }} 件</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+
+    <!-- 最終更新日の分布（ヒートマップ）。53 週を枠の幅に収める。狭い画面ではマスの部分だけ横にスクロールする -->
+    <section class="dashboard-section heatmap-section" style="--heatmap-weeks: {{ heatmap_weeks }}">
         <h2 class="dashboard-section-title">最終更新日の分布</h2>
-        <div class="heatmap-wrapper">
-            <div class="heatmap-months">
-                {% for label in month_labels %}
-                <span>{{ label }}</span>
-                {% endfor %}
-            </div>
-            <div class="heatmap-grid">
-                {% for item in heatmap_data %}
-                <div class="heatmap-cell level-{{ item.level }}" 
-                     title="{{ item.date }}: {{ item.count }} 文字"></div>
-                {% endfor %}
-            </div>
-            <div class="heatmap-legend-container">
-                <div class="heatmap-legend">
-                    <span>少ない</span>
-                    <div class="heatmap-cell level-0"></div>
-                    <div class="heatmap-cell level-1"></div>
-                    <div class="heatmap-cell level-2"></div>
-                    <div class="heatmap-cell level-3"></div>
-                    <div class="heatmap-cell level-4"></div>
-                    <span>多い</span>
+        <div class="heatmap-scroll">
+            <div class="heatmap-wrapper">
+                <div class="heatmap-months" aria-hidden="true">
+                    {% for m in month_labels %}
+                    <span class="{% if m.at_end %}is-end{% endif %}" style="grid-column: {{ m.column }} / span {{ m.span }}" title="{{ m.title }}">{{ m.label }}</span>
+                    {% endfor %}
+                </div>
+                <div class="heatmap-grid" role="img" aria-label="過去 {{ heatmap_weeks }} 週の、日ごとに更新したノートの文字数">
+                    {% for item in heatmap_data %}
+                    <div class="heatmap-cell level-{{ item.level }}" title="{{ item.date }}: {{ item.count }} 文字"></div>
+                    {% endfor %}
                 </div>
             </div>
+        </div>
+        <div class="heatmap-legend" aria-hidden="true">
+            <span>少ない</span>
+            {% for level in range(heatmap_level_count) %}
+            <span class="heatmap-cell level-{{ level }}"></span>
+            {% endfor %}
+            <span>多い</span>
         </div>
     </section>
 
@@ -71,26 +113,29 @@
         <!-- 最近の更新 -->
         <section class="dashboard-section">
             <h2 class="dashboard-section-title">最近の更新</h2>
+            {% if recent_files %}
             <ul class="dashboard-recent-list">
                 {% for f in recent_files %}
                 <li class="dashboard-recent-item">
                     <a href="/view/{{ f.slug }}" class="dashboard-recent-link">
                         <span class="dashboard-recent-title">{{ f.title }}</span>
                         <span class="dashboard-recent-meta">
+                            {% if not f.published %}{{ nm.private_mark() }}{% endif %}
                             {{ f.updated }}
-                            {% if f.published %}
-                            <span class="file-status-badge">公開中</span>
-                            {% endif %}
                         </span>
                     </a>
                 </li>
                 {% endfor %}
             </ul>
+            {% else %}
+            <p class="dashboard-empty">まだありません</p>
+            {% endif %}
         </section>
 
         <!-- タグ分布 -->
         <section class="dashboard-section">
             <h2 class="dashboard-section-title">タグ分布（上位 20）</h2>
+            {% if top_tags %}
             <div class="dashboard-tag-bars">
                 {% for tag_name, tag_count in top_tags %}
                 <div class="tag-bar-row">
@@ -102,7 +147,11 @@
                 </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <p class="dashboard-empty">まだありません</p>
+            {% endif %}
         </section>
     </div>
 </div>
+<script src="/static/js/modules/dashboard.js?v=20261010"></script>
 {% endblock %}

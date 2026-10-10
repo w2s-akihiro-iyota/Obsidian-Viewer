@@ -50,10 +50,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-.stat-public {
-    color: #2ecc71;
-}
-
 .stat-private {
     color: var(--text-muted);
 }
@@ -69,7 +65,8 @@
 /* Two Column Layout */
 .dashboard-columns {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr): 長いタイトル（折り返さない）で列が画面より広がらないように */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
 }
 
@@ -116,7 +113,7 @@
 }
 
 .dashboard-recent-link:hover {
-    background-color: rgba(123, 97, 255, 0.08);
+    background-color: color-mix(in srgb, var(--accent-purple) 8%, transparent);
     text-decoration: none;
 }
 
@@ -172,7 +169,7 @@
 
 .tag-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent-purple), #9575ff);
+    background: linear-gradient(90deg, var(--accent-purple), color-mix(in srgb, var(--accent-purple) 60%, var(--text-normal)));
     border-radius: 4px;
     transition: width 0.5s ease;
     min-width: 4px;
@@ -187,91 +184,227 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Activity Heatmap */
+/* 0 件のときの表示（最近の更新・タグ分布） */
+.dashboard-empty {
+    margin: 0;
+    padding: 12px 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* 手入れが必要なノート（F-6）: 3 枚のカード。押すとその下に表を開く */
+.dashboard-health {
+    margin-bottom: 20px;
+}
+
+.health-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.health-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 14px;
+    text-align: left;
+    font: inherit;
+    color: var(--text-normal);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--badge-warning-bg);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.health-card:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--accent-purple) 8%, var(--bg-secondary));
+}
+
+.health-card:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
+}
+
+.health-card[aria-expanded="true"] {
+    border-color: var(--accent-purple);
+    border-left-color: var(--badge-warning-bg);
+    background-color: color-mix(in srgb, var(--accent-purple) 10%, var(--bg-secondary));
+}
+
+/* 0 件のカードは押せない。左の線も注意の色にしない */
+.health-card:disabled {
+    cursor: default;
+    border-left-color: var(--border-color);
+}
+
+.health-card-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.health-card-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.health-card:disabled .health-card-value {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.health-card-label {
+    font-weight: 600;
+}
+
+.health-card-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.health-panel {
+    margin-top: 12px;
+}
+
+.health-table-wrap {
+    overflow-x: auto;
+}
+
+.health-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.health-table th,
+.health-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.health-table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.health-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.health-table a {
+    color: var(--text-normal);
+}
+
+.health-table a:hover {
+    color: var(--accent-purple);
+}
+
+.health-cause {
+    color: var(--text-muted);
+}
+
+.health-updated {
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.health-more {
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* 最終更新日の分布（ヒートマップ）。列の数（--heatmap-weeks）で枠の幅を割り、マスは正方形にする */
 .heatmap-section {
     margin-bottom: 20px;
+}
+
+.heatmap-scroll {
     overflow-x: auto;
 }
 
 .heatmap-wrapper {
-    display: inline-flex;
+    display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 0;
-    min-width: max-content;
+    gap: 6px;
+    /* 狭い画面ではマスが小さくなりすぎないよう、この幅より狭ければ横にスクロールする */
+    min-width: calc(var(--heatmap-weeks) * 10px);
+    padding: 4px 0;
+}
+
+.heatmap-months,
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--heatmap-weeks), minmax(0, 1fr));
+    column-gap: 3px;
 }
 
 .heatmap-months {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
     font-weight: 500;
+}
+
+.heatmap-months span {
+    white-space: nowrap;
+}
+
+/* 右端に近い月は、列の右端にそろえて枠からはみ出さないようにする */
+.heatmap-months span.is-end {
+    justify-self: end;
 }
 
 .heatmap-grid {
-    display: grid;
-    grid-template-rows: repeat(7, 1fr);
+    grid-template-rows: repeat(7, auto);
     grid-auto-flow: column;
-    gap: 4px;
+    row-gap: 3px;
 }
 
 .heatmap-cell {
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    transition: transform 0.1s, box-shadow 0.1s;
-    cursor: pointer;
+    aspect-ratio: 1;
+    border-radius: 2px;
 }
 
-.heatmap-cell:hover {
-    transform: scale(1.3);
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
-    z-index: 10;
-    position: relative;
+.heatmap-grid .heatmap-cell:hover {
+    outline: 1px solid var(--text-normal);
 }
 
-/* Color levels for Emerald Green (Light Mode Default) */
-.level-0 { background-color: rgba(235, 237, 240, 0.2); }
-.level-1 { background-color: #9be9a8; border-color: #9be9a8; }
-.level-2 { background-color: #40c463; border-color: #40c463; }
-.level-3 { background-color: #30a14e; border-color: #30a14e; }
-.level-4 { background-color: #216e39; border-color: #216e39; }
-
-/* Dark Mode Overrides (if body uses dark mode class or media query) */
-@media (prefers-color-scheme: dark) {
-    .level-0 { background-color: rgba(255, 255, 255, 0.05); }
-    .level-1 { background-color: #0e4429; border-color: #0e4429; }
-    .level-2 { background-color: #006d32; border-color: #006d32; }
-    .level-3 { background-color: #26a641; border-color: #26a641; }
-    .level-4 { background-color: #39d353; border-color: #39d353; }
-}
-
-html[data-theme="dark"] .level-0 { background-color: rgba(255, 255, 255, 0.05); }
-html[data-theme="dark"] .level-1 { background-color: #0e4429; border-color: #0e4429; }
-html[data-theme="dark"] .level-2 { background-color: #006d32; border-color: #006d32; }
-html[data-theme="dark"] .level-3 { background-color: #26a641; border-color: #26a641; }
-html[data-theme="dark"] .level-4 { background-color: #39d353; border-color: #39d353; }
-
-.heatmap-legend-container {
-    display: flex;
-    justify-content: flex-end;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
+/* 色はテーマの --accent-purple の濃淡（どのテーマでもテーマの色に従う）。
+   段数は app/config.py の HEATMAP_LEVEL_LIMITS と合わせる（区切りの数 + 2。0 文字の段を含む） */
+.heatmap-cell.level-0 { background-color: color-mix(in srgb, var(--text-muted) 18%, transparent); }
+.heatmap-cell.level-1 { background-color: color-mix(in srgb, var(--accent-purple) 35%, transparent); }
+.heatmap-cell.level-2 { background-color: color-mix(in srgb, var(--accent-purple) 65%, transparent); }
+.heatmap-cell.level-3 { background-color: var(--accent-purple); }
 
 .heatmap-legend {
     display: flex;
+    justify-content: flex-end;
     align-items: center;
+    flex-wrap: wrap;
     gap: 4px;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
 }
 
-.heatmap-legend span {
-    margin: 0 6px;
-    font-weight: 500;
+.heatmap-legend .heatmap-cell {
+    width: 11px;
+}
+
+.heatmap-legend span:first-child {
+    margin-right: 4px;
+}
+
+.heatmap-legend span:last-child {
+    margin-left: 4px;
 }
 
 /* Responsive */
@@ -281,6 +414,10 @@ html[data-theme="dark"] .level-4 { background-color: #39d353; border-color: #39d
     }
 
     .dashboard-columns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .health-cards {
         grid-template-columns: 1fr;
     }
 }

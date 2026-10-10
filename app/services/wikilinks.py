@@ -203,11 +203,14 @@ class LinkTarget:
     image_url: str | None = None   # IMAGE の URL
 
 
-def classify_link(link: WikiLink, published_paths: set[str] | None) -> LinkTarget:
+def classify_link(link: WikiLink, published_paths: set[str] | None,
+                  file_name_map: dict | None = None, path_to_slug: dict | None = None) -> LinkTarget:
     """
     リンク 1 件を、描画で何になるかで振り分ける
 
     published_paths を渡すと、そこに無いノートを非公開ノートとする（外部向け）。None なら全ノートを表示できる扱い。
+    file_name_map / path_to_slug は名前からノートを引く表。省略時は今のキャッシュを使う
+    （索引の作り直しの途中では、差し替える前の新しい表を渡す）。
     """
     # 画像になるのは、見出しの無い埋め込みだけ（| の後ろは表示サイズ）
     if link.is_embed and link.name and not link.heading:
@@ -220,12 +223,23 @@ def classify_link(link: WikiLink, published_paths: set[str] | None) -> LinkTarge
     if not link.name and link.heading:
         return LinkTarget(LinkKind.HEADING)
 
-    path = resolve_note_path(link.name, cache.FILE_NAME_CACHE, cache.PATH_TO_SLUG)
+    path = resolve_note_path(link.name,
+                             cache.FILE_NAME_CACHE if file_name_map is None else file_name_map,
+                             cache.PATH_TO_SLUG if path_to_slug is None else path_to_slug)
     if path is None:
         return LinkTarget(LinkKind.MISSING_NOTE)
     if published_paths is not None and path not in published_paths:
         return LinkTarget(LinkKind.PRIVATE_NOTE, path=path)
     return LinkTarget(LinkKind.NOTE, path=path)
+
+
+def is_missing_note(link: WikiLink, target: LinkTarget) -> bool:
+    """
+    存在しないノートへのリンクか（公開チェックとダッシュボードの「リンク切れ」で共通の判定）
+
+    [[#]] のように名前も見出しも無いものは、描画でも何も出ないので数えない。
+    """
+    return target.kind is LinkKind.MISSING_NOTE and bool(link.name)
 
 
 def _extract_section(body: str, heading: str) -> str | None:

@@ -8,6 +8,7 @@
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
 - 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
 - ノート一覧（D-2 / D-10）: 並び替え・タグの件数（外部には公開ノートだけで数える）・条件のチップ・抜粋・非公開の印
+- ダッシュボード（F-6 / D-8）: 手入れが必要なノート（リンク切れ・孤立・タグなし）・ヒートマップ・0 件の表示
 """
 import copy
 import os
@@ -698,3 +699,143 @@ def test_ダッシュボードのタグ分布は件数の多い順に上位だ�
     html = TestClient(app, base_url=ADMIN).get("/dashboard").text
     assert "共通" in html
     assert "秘密タグ" not in html and "公開だけ" not in html
+
+
+
+# ---------- F-6 / D-8: ダッシュボード ----------
+
+@pytest.fixture
+def health_site(site):
+    """リンク切れ 2 件・孤立 2 件・タグなし 1 件になる Vault（親.md / 子.md は消す）"""
+    for name in ("親.md", "子.md"):
+        (site / name).unlink()
+    now = time.time()
+    notes = {
+        # ファイル名: (本文, 何秒前に更新したか)
+        "ハブ.md": ("---\npublish: true\ntags: [索引]\n---\n"
+                    "[[葉]] [[無いA]] [[無いB]] [[無いC]] [[無いD]] [[無いA]] [[ハブ]]\n", 300),
+        "葉.md": ("---\npublish: false\n---\n[[ハブ]] ![[消えた]]\n", 200),
+        "コードだけ.md": ("---\ntags: [メモ]\n---\n```\n[[コード内の無いノート]]\n```\n`[[インラインの無いノート]]`\n", 100),
+        "孤立.md": ("---\ntags: [メモ]\n---\n[[#見出し]] [[#]]\n", 0),
+    }
+    for name, (text, ago) in notes.items():
+        path = site / name
+        path.write_text(text, encoding="utf-8")
+        os.utime(path, (now - ago, now - ago))
+    indexing.refresh_global_caches()
+    return site
+
+
+def _health_card(html, id_):
+    m = re.search(rf'<button type="button" class="health-card" id="health-card-{id_}"(.*?)</button>', html, re.S)
+    assert m, id_
+    return m.group(1)
+
+
+def _health_rows(html, id_):
+    """表の行（ノート名, 原因）"""
+    m = re.search(rf'id="health-panel-{id_}".*?<tbody>(.*?)</tbody>', html, re.S)
+    assert m, id_
+    return [(title, cause.strip()) for title, cause in re.findall(
+        r'<a href="/view/[^"]+">([^<]+)</a>.*?<td class="health-cause">([^<]*)</td>', m.group(1), re.S)]
+
+
+def test_ダッシュボードはリンク切れ孤立タグなしを数える(health_site):
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    counts = {id_: re.search(r'class="health-card-value">([^<]+)<', _health_card(html, id_)).group(1)
+              for id_ in ("broken", "orphan", "untagged")}
+    assert counts == {"broken": "2", "orphan": "2", "untagged": "1"}
+
+
+def test_リンク切れの表は切れたリンク先を3件までと残りの件数を出す(health_site):
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    # 最終更新の新しい順。自分へのリンク・存在するノート・重複は数えない。埋め込みの ![[ノート]] も数える
+    assert _health_rows(html, "broken") == [("葉", "消えた"), ("ハブ", "無いA、無いB、無いC ほか1件")]
+    # 孤立: ハブ（葉から）・葉（ハブから）はリンクされている。自分へのリンクは数えない
+    assert [t for t, _ in _health_rows(html, "orphan")] == ["孤立", "コードだけ"]
+    assert [t for t, _ in _health_rows(html, "untagged")] == ["葉"]
+
+
+def test_コードの中のリンクはリンク切れに数えない(health_site):
+    files = {f["path"]: f for f in cache.GLOBAL_FILE_CACHE}
+    assert files["コードだけ.md"]["missing_links"] == []
+    assert files["孤立.md"]["missing_links"] == []      # [[#見出し]] と [[#]] も数えない
+    # 公開チェックと同じ判定（同じ本文なら同じ名前を挙げる）
+    for path in ("ハブ.md", "葉.md", "コードだけ.md"):
+        assert tuple(files[path]["missing_links"]) == check_publish(path, _body_of(path), True).missing_links
+
+
+def test_カードは表を開閉でき非公開ノートには印を付ける(health_site):
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    card = _health_card(html, "broken")
+    assert 'aria-expanded="false"' in card and 'aria-controls="health-panel-broken"' in card
+    assert re.search(r'id="health-panel-broken"[^>]*hidden', html)
+    panel = re.search(r'id="health-panel-untagged".*?</table>', html, re.S).group(0)
+    assert re.search(r'>葉</a><span class="private-mark" title="非公開">', panel)
+
+
+def test_0件のカードは押せずなしと出し表を作らない(site):
+    # 親 ⇄ 子 にリンクを張り、タグも付けて 0 件にする
+    (site / "親.md").write_text("---\npublish: true\ntags: [a]\n---\n![[子]]\n", encoding="utf-8")
+    (site / "子.md").write_text("---\npublish: true\ntags: [a]\n---\n[[親]]\n", encoding="utf-8")
+    indexing.refresh_global_caches()
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    for id_ in ("broken", "orphan", "untagged"):
+        card = _health_card(html, id_)
+        assert "disabled" in card and "aria-controls" not in card
+        assert 'class="health-card-value">なし<' in card
+        assert f'id="health-panel-{id_}"' not in html
+
+
+def test_表は上限までで残りはほかN件(site, monkeypatch):
+    from app.api import dashboard as dashboard_api
+    monkeypatch.setattr(dashboard_api, "DASHBOARD_HEALTH_ROW_LIMIT", 1)
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    # 親・子ともにタグなし。表は 1 件で、残りは「ほか 1 件」
+    assert len(_health_rows(html, "untagged")) == 1
+    assert "ほか 1 件" in html
+
+
+def test_ノートが無いときは最近の更新とタグ分布にまだありませんと出す(site):
+    for name in ("親.md", "子.md"):
+        (site / name).unlink()
+    indexing.refresh_global_caches()
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    assert html.count('<p class="dashboard-empty">まだありません</p>') == 2
+    assert "dashboard-recent-list" not in html and "dashboard-tag-bars" not in html
+
+
+def test_最近の更新は非公開ノートにだけ印を付け公開中バッジは出さない(health_site):
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    recent = re.search(r'<ul class="dashboard-recent-list">(.*?)</ul>', html, re.S).group(1)
+    # 公開はハブだけ。ほかの 3 件（publish を書いていないノートも）に印を付ける
+    assert recent.count('class="private-mark"') == 3
+    assert re.search(r'葉</span>\s*<span class="dashboard-recent-meta">\s*<span class="private-mark"', recent)
+    assert re.search(r'ハブ</span>\s*<span class="dashboard-recent-meta">\s*\d', recent)
+    assert "file-status-badge" not in html and "公開中" not in html
+
+
+def test_外部ポートからダッシュボードは403(health_site):
+    assert TestClient(app, base_url=PUBLIC).get("/dashboard").status_code == 403
+
+
+def test_ヒートマップは53列で月のラベルは月初の週の列に置く():
+    from datetime import datetime
+    from app.core.heatmap import build_heatmap
+    files = [{"updated": "2026-10-08 10:00", "char_count": 6000}, {"updated": "2026-10-08 11:00", "char_count": 10},
+             {"updated": "2026-10-01 09:00", "char_count": 500}]
+    cells, labels = build_heatmap(files, datetime(2026, 10, 10, 12, 0))   # 土曜
+    assert len(cells) == 53 * 7                       # 今週の土曜で終わるので 53 列ちょうど
+    assert cells[0]["date"] == "2025-10-05"           # 日曜始まり
+    by_date = {c["date"]: c for c in cells}
+    assert by_date["2026-10-08"]["count"] == 6010 and by_date["2026-10-08"]["level"] == 3
+    assert by_date["2026-10-01"]["level"] == 1 and by_date["2026-10-02"]["level"] == 0
+    # 2025-11-01（土）は 4 列目。最初の月とは 3 列空いているので両方出す
+    assert [(label["label"], label["column"]) for label in labels[:2]] == [("10月", 1), ("11月", 4)]
+    # 2026-10-01 は 52 列目。右端に近いので列の右端にそろえる
+    last = labels[-1]
+    assert last["label"] == "10月" and last["column"] == 52 and last["at_end"]
+    # 最初の月の列が 2 列しか無ければ、最初の月は出さない（2025-10-12 始まりで、10 月の列は 2 列）
+    _, labels = build_heatmap([], datetime(2026, 10, 17, 12, 0))
+    assert labels[0]["label"] == "11月"
+    assert all(1 <= label["column"] <= 53 and label["column"] + label["span"] - 1 <= 53 for label in labels)
