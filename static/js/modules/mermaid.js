@@ -6,11 +6,34 @@
 // 読み込み先は base.html の <meta name="mermaid-src">（テンプレート側の 1 か所に置く）
 // 読み込みをあきらめるまでの時間（ms）。過ぎたら図はコードのまま表示し、次に呼ばれたら読み直す
 const MERMAID_SCRIPT_TIMEOUT = 15000;
-// 読み込み中・読み込み済みの Promise。何度呼ばれても script は 1 本だけにする
+// 読み込み中の Promise。何度呼ばれても script は 1 本だけにする
 let mermaidLoading = null;
+// 設定（startOnLoad: false・テーマ・securityLevel など）を当て終えた Mermaid 本体。
+// 以後はこれだけを使い、window.mermaid は直接見ない
+// （ページに id="mermaid" の見出しなどがあると、window.mermaid がその要素を指すため）
+let mermaidLib = null;
+
+// Mermaid 本体なら返す。見出しなどの要素や未定義なら null
+function asMermaidLib(candidate) {
+    return candidate && typeof candidate.run === 'function' && typeof candidate.initialize === 'function'
+        ? candidate
+        : null;
+}
+
+// 本体に設定を当ててから覚える。設定を当てていない本体は返さない
+function useMermaid(lib) {
+    if (mermaidLib !== lib) {
+        mermaidLib = lib;
+        applyMermaidConfig();
+    }
+    return mermaidLib;
+}
 
 function loadMermaid() {
-    if (typeof window.mermaid !== 'undefined') return Promise.resolve(window.mermaid);
+    if (mermaidLib) return Promise.resolve(mermaidLib);
+    // 時間切れの後に遅れて読み終わっていた場合は、設定を当ててから使う
+    const lateLib = asMermaidLib(window.mermaid);
+    if (lateLib) return Promise.resolve(useMermaid(lateLib));
     if (mermaidLoading) return mermaidLoading;
 
     const meta = document.querySelector('meta[name="mermaid-src"]');
@@ -22,18 +45,22 @@ function loadMermaid() {
         const timer = setTimeout(() => reject(new Error('timeout')), MERMAID_SCRIPT_TIMEOUT);
         script.onload = () => {
             clearTimeout(timer);
-            if (typeof window.mermaid === 'undefined') {
-                reject(new Error('window.mermaid が無い'));
+            const lib = asMermaidLib(window.mermaid);
+            if (!lib) {
+                reject(new Error('Mermaid 本体が無い'));
                 return;
             }
             // 読み込んだらすぐ startOnLoad を切る（window の load で勝手に描かせない）。テーマなどの設定もここで付ける
-            applyMermaidConfig();
-            resolve(window.mermaid);
+            resolve(useMermaid(lib));
         };
         script.onerror = () => { clearTimeout(timer); reject(new Error('error')); };
     }).catch(error => {
         mermaidLoading = null;
-        script.onload = null;
+        // 時間切れの後に遅れて読み終わったときも、すぐ設定を当てておく（既定の設定のまま描かせない）
+        script.onload = () => {
+            const lib = asMermaidLib(window.mermaid);
+            if (lib) useMermaid(lib);
+        };
         script.remove();
         throw error;
     });
@@ -106,7 +133,7 @@ function getMermaidTheme() {
 }
 
 function applyMermaidConfig() {
-    window.mermaid.initialize({
+    mermaidLib.initialize({
         startOnLoad: false,
         theme: getMermaidTheme(),
         securityLevel: 'loose',
@@ -122,7 +149,7 @@ function applyMermaidConfig() {
 }
 
 function updateMermaidConfig() {
-    if (typeof window.mermaid === 'undefined') return;
+    if (!mermaidLib) return;
 
     // テーマを変えたときに、ページ内の図を描き直す（Mermaid をまだ読んでいない＝図が無いページでは何もしない）
     try {
@@ -140,7 +167,7 @@ function updateMermaidConfig() {
         });
 
         if (mermaidDivs.length > 0) {
-            window.mermaid.run().catch(err => console.error('Mermaid render error:', err));
+            mermaidLib.run().catch(err => console.error('Mermaid render error:', err));
         }
     } catch (e) {
         console.error('Mermaid update error:', e);

@@ -3,7 +3,7 @@
    Split into modular CSS files
    ========================================= */
 
-@import url('modules/variables.css');
+@import url('modules/variables.css?v=20261028');
 @import url('modules/base.css');
 @import url('modules/layout.css');
 @import url('modules/sidebar.css');
