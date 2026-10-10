@@ -6,8 +6,9 @@ import os
 import logging
 import threading
 
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from app.config import CONTENT_DIR, READING_SPEED_JP
+from app.config import CONTENT_DIR, MEDIA_DIR, READING_SPEED_JP
 from app import cache
 from app.utils.slug import slugify_path
 
@@ -111,73 +112,101 @@ def make_preview(body: str, limit: int = PREVIEW_LENGTH) -> str:
     return text[:limit]
 
 
-def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
-    files_list = []
-    
-    # Simple recursive walk
+@dataclass(frozen=True)
+class NoteRecord:
+    """
+    索引の作り直しで 1 回だけ読んだノート 1 件（Q-1）
+
+    一覧・ツリー・リンクの表・添付の許可リストは、すべてこれから作る（ノートを何度も読み直さない）。
+    本文（body）は作り直しの間だけ使い、キャッシュには載せない。
+    """
+    rel_path: str           # CONTENT_DIR からの相対パス（/ 区切り）
+    name: str               # ファイル名（拡張子つき）
+    mtime: datetime
+    frontmatter: dict
+    body: str               # frontmatter を除いた本文
+
+    @property
+    def title(self) -> str:
+        # title: 2024 のような数値でも文字列として扱う（検索・並び替えで例外にしない）
+        return str(self.frontmatter.get('title') or Path(self.rel_path).stem)
+
+    @property
+    def published(self) -> bool:
+        return is_published(self.frontmatter)
+
+
+def scan_notes(directory: Path, relative_to: Path) -> list[NoteRecord]:
+    """directory 配下の .md を 1 回ずつ読み、frontmatter と本文に分けて返す"""
+    notes = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith('.md'):
-                full_path = Path(root) / file
-                rel_path = full_path.relative_to(relative_to)
-                
-                mtime = datetime.fromtimestamp(full_path.stat().st_mtime)
-                
-                with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                    content = f.read()
-                
-                frontmatter, body = parse_frontmatter(content)
-                
-                # 一覧の抜粋（Markdown の記号を除いた本文）
-                preview = make_preview(body)
-                
-                # title: 2024 のような数値でも文字列として扱う（検索・並び替えで例外にしない）
-                title = str(frontmatter.get('title') or rel_path.stem)
-                tags = frontmatter.get('tags')
-                if tags is None:
-                    tags = []
-                elif isinstance(tags, str):
-                    tags = [tags]
-                
-                # Cleanup tags: remove leading '#' and whitespace
-                tags = [t.strip().lstrip('#') for t in tags if t and str(t).strip()]
-                
-                # Check Visibility
-                published = is_published(frontmatter)
+            if not file.endswith('.md'):
+                continue
+            full_path = Path(root) / file
+            rel_path = full_path.relative_to(relative_to)
+            mtime = datetime.fromtimestamp(full_path.stat().st_mtime)
+            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+            frontmatter, body = parse_frontmatter(content)
+            notes.append(NoteRecord(rel_path=rel_path.as_posix(), name=file, mtime=mtime,
+                                    frontmatter=frontmatter, body=body))
+    return notes
 
-                # マークアップ除去したプレーンテキスト（全文検索・読了時間用）
-                body_text = re.sub(r'<[^>]+>', '', body)
-                body_text = re.sub(r'!\[.*?\]\(.*?\)', '', body_text)
-                body_text = re.sub(r'\[([^\]]*)\]\(.*?\)', r'\1', body_text)
-                body_text = re.sub(r'[#*_~`>\-\|]', '', body_text)
-                body_text = body_text.strip()
 
-                # 読了時間の算出
-                char_count = len(body_text)
-                reading_time = max(1, math.ceil(char_count / READING_SPEED_JP))
+def _file_entry(note: NoteRecord) -> dict:
+    """一覧（GLOBAL_FILE_CACHE）の 1 件"""
+    tags = note.frontmatter.get('tags')
+    if tags is None:
+        tags = []
+    elif isinstance(tags, str):
+        tags = [tags]
+    # Cleanup tags: remove leading '#' and whitespace
+    tags = [t.strip().lstrip('#') for t in tags if t and str(t).strip()]
 
-                files_list.append({
-                    "name": file,
-                    "path": str(rel_path).replace('\\', '/'),
-                    "title": title,
-                    "mtime": mtime,
-                    "updated": mtime.strftime("%Y-%m-%d %H:%M"),
-                    "tags": tags,
-                    "published": published,
-                    "frontmatter": frontmatter,
-                    "preview": preview,
-                    "body_text": body_text,
-                    "char_count": char_count,
-                    "reading_time": reading_time
-                })
-    
-    # Sort by mtime descending
+    # マークアップ除去したプレーンテキスト（全文検索・読了時間用）
+    body_text = re.sub(r'<[^>]+>', '', note.body)
+    body_text = re.sub(r'!\[.*?\]\(.*?\)', '', body_text)
+    body_text = re.sub(r'\[([^\]]*)\]\(.*?\)', r'\1', body_text)
+    body_text = re.sub(r'[#*_~`>\-\|]', '', body_text)
+    body_text = body_text.strip()
+
+    # 読了時間の算出
+    char_count = len(body_text)
+    reading_time = max(1, math.ceil(char_count / READING_SPEED_JP))
+
+    return {
+        "name": note.name,
+        "path": note.rel_path,
+        "title": note.title,
+        "mtime": note.mtime,
+        "updated": note.mtime.strftime("%Y-%m-%d %H:%M"),
+        "tags": tags,
+        "published": note.published,
+        "frontmatter": note.frontmatter,
+        # 一覧の抜粋（Markdown の記号を除いた本文）
+        "preview": make_preview(note.body),
+        "body_text": body_text,
+        "char_count": char_count,
+        "reading_time": reading_time
+    }
+
+
+def build_file_list(notes: list[NoteRecord]) -> list[dict]:
+    """一覧（更新日時の新しい順）を作る"""
+    files_list = [_file_entry(n) for n in notes]
     files_list.sort(key=lambda x: x['mtime'], reverse=True)
     return files_list
 
-def get_file_tree(directory: Path, relative_to: Path, published_only: bool = False) -> list[dict]:
+
+def build_file_tree(files: list[dict], published_only: bool = False) -> list[dict]:
+    """
+    一覧の path / name / title / published からファイルツリーを作る
+
+    フォルダはノートを含むものだけ出す（公開用の木に、非公開ノートしか無いフォルダの名前を出さないため）。
+    """
     tree = []
-    
+
     # Helper to find or create folder in tree
     def get_folder(parent_list, folder_name, folder_path):
         for item in parent_list:
@@ -187,49 +216,21 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
         parent_list.append(new_folder)
         return new_folder
 
-    for root, dirs, files in os.walk(directory):
-        rel_root = Path(root).relative_to(relative_to)
-
-        # Build path to this folder in our tree
+    for f in files:
+        if published_only and not f["published"]:
+            continue
         current_level = tree
-        if str(rel_root) != '.':
-            parts = rel_root.parts
-            for i, part in enumerate(parts):
-                folder = get_folder(current_level, part, '/'.join(parts[:i + 1]))
-                current_level = folder['children']
-        
-        for file in files:
-            if file.endswith('.md'):
-                full_path = Path(root) / file
-                rel_path = full_path.relative_to(relative_to)
-                
-                # Check metadata for title/published
-                with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                    content = f.read()
-                
-                frontmatter, _ = parse_frontmatter(content)
-                
-                # Filter if published_only
-                if published_only and not is_published(frontmatter):
-                    continue
-
-                # title: 2024 のような数値でも文字列として扱う（検索・並び替えで例外にしない）
-                title = str(frontmatter.get('title') or rel_path.stem)
-                current_level.append({
-                    "name": file,
-                    "title": title,
-                    "path": str(rel_path).replace('\\', '/'),
-                    "type": "file",
-                    "published": is_published(frontmatter),
-                })
-
-    # ノートを1つも含まないフォルダは消す（公開用の木に、非公開ノートしか無いフォルダの名前を出さないため）
-    def prune_empty(node_list):
-        node_list[:] = [
-            item for item in node_list
-            if item['type'] != 'directory' or prune_empty(item['children'])
-        ]
-        return node_list
+        parts = f["path"].split('/')[:-1]
+        for i, part in enumerate(parts):
+            folder = get_folder(current_level, part, '/'.join(parts[:i + 1]))
+            current_level = folder['children']
+        current_level.append({
+            "name": f["name"],
+            "title": f["title"],
+            "path": f["path"],
+            "type": "file",
+            "published": f["published"],
+        })
 
     # Sort tree (folders first, then by file name like Obsidian)
     def sort_tree(node_list):
@@ -238,9 +239,19 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
             if item['type'] == 'directory':
                 sort_tree(item['children'])
 
-    prune_empty(tree)
     sort_tree(tree)
     return tree
+
+
+def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
+    """directory 配下のノートの一覧（scan_notes の薄いラッパー。テスト・単発の確認用。索引の作り直しは使わない）"""
+    return build_file_list(scan_notes(directory, relative_to))
+
+
+def get_file_tree(directory: Path, relative_to: Path, published_only: bool = False) -> list[dict]:
+    """directory 配下のノートのツリー（scan_notes の薄いラッパー。テスト・単発の確認用。索引の作り直しは使わない）"""
+    return build_file_tree(get_all_files(directory, relative_to), published_only)
+
 
 def resolve_note_path(name: str, file_name_map: dict, path_to_slug: dict) -> str | None:
     """
@@ -255,10 +266,13 @@ def resolve_note_path(name: str, file_name_map: dict, path_to_slug: dict) -> str
     return path
 
 
-def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict) -> tuple[dict, dict]:
+def _build_link_maps(files: list[dict], bodies: dict[str, str], file_name_map: dict, path_to_slug: dict,
+                     media_index=None) -> tuple[dict, dict]:
     """
     全ファイルの[[wikilink]]を解析し、(バックリンク, フォワードリンク) のマップを作る
 
+    bodies は {ノートの相対パス: 本文}（scan_notes で読んだもの。ここではファイルを読み直さない）。
+    media_index は添付の索引（作り直しの途中の新しいもの。見つからない画像とリンク切れを分けるのに使う）。
     リンクの拾い方（コードの中は数えない・見出しと別名の分け方）は描画と同じ iter_wikilinks を使う。
     埋め込み（![[ノート]]）もリンクとして数える。
     あわせて、存在しないノートへのリンク先の名前を各ノートの "missing_links" に入れる
@@ -273,19 +287,10 @@ def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict)
     for f in files:
         source_path = f["path"]
         source_title = f["title"]
-
-        # ファイルを読み込んでwikilinkを抽出
-        full_path = CONTENT_DIR / source_path
-        if not full_path.exists():
+        body = bodies.get(source_path)
+        if body is None:
             continue
 
-        try:
-            with open(full_path, 'r', encoding='utf-8', errors='replace') as fh:
-                content = fh.read()
-        except Exception:
-            continue
-
-        _, body = parse_frontmatter(content)
         resolved_targets = []
         missing_links: dict[str, None] = {}   # 出てきた順を保ったまま重複を除く
 
@@ -295,7 +300,8 @@ def _build_link_maps(files: list[dict], file_name_map: dict, path_to_slug: dict)
             target_path = resolve_note_path(link.name, file_name_map, path_to_slug)
             if target_path is None:
                 # 引けなかったリンクだけ、描画と同じ振り分けでリンク切れか（見つからない画像などでないか）を見る
-                if is_missing_note(link, classify_link(link, None, file_name_map, path_to_slug)):
+                target = classify_link(link, None, file_name_map, path_to_slug, media_index)
+                if is_missing_note(link, target):
                     missing_links.setdefault(link.name)
                 continue
             if target_path != source_path:
@@ -330,15 +336,32 @@ def refresh_global_caches() -> None:
     作り直しの途中で、ほかのリクエストが中途半端な状態（一覧は新しく、スラッグは古い等）を見ないようにするため。
     """
     with _refresh_lock:
-        _refresh_global_caches()
+        try:
+            _refresh_global_caches()
+        except Exception:
+            # 失敗したら外部に見せる添付の許可リストを空にする（fail-closed）。
+            # 古い許可リストが残ると、非公開にしたノートの添付が見え続けるため。次の作り直しで戻る
+            cache.PUBLIC_MEDIA_PATHS = frozenset()
+            logger.exception("Global cache refresh failed; cleared the public media list.")
+            raise
 
 
 def _refresh_global_caches() -> None:
-    # Refresh all files metadata
-    files = get_all_files(CONTENT_DIR, CONTENT_DIR)
+    # 循環しないようここで読み込む（どちらも wikilinks 経由で indexing を読み込む）
+    from app.services.images import build_media_index
+    from app.services.media_access import collect_public_media
+
+    # 各ノートを 1 回だけ読み、一覧・ツリー・リンクの表・添付の許可リストを全部ここから作る（Q-1）
+    notes = scan_notes(CONTENT_DIR, CONTENT_DIR)
+    files = build_file_list(notes)
+    # 本文は作り直しの間だけ使う（キャッシュには載せない）
+    bodies = {n.rel_path: n.body for n in notes}
     # Refresh tree views (Admin: all, Public: published only)
-    tree = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=False)
-    tree_public = get_file_tree(CONTENT_DIR, CONTENT_DIR, published_only=True)
+    tree = build_file_tree(files, published_only=False)
+    tree_public = build_file_tree(files, published_only=True)
+
+    # 添付の索引（名前 → MEDIA_DIR からの相対パス）
+    media_index = build_media_index(MEDIA_DIR)
 
     # ファイル名(stem) → パスの逆引きマッピングを構築
     file_name_map = {}
@@ -373,7 +396,11 @@ def _refresh_global_caches() -> None:
     _apply_slug_to_tree(tree_public)
 
     # バックリンクキャッシュの構築
-    backlinks, forward = _build_link_maps(files, file_name_map, path_to_slug)
+    backlinks, forward = _build_link_maps(files, bodies, file_name_map, path_to_slug, media_index)
+
+    # 外部の人に見せてよい添付（公開ノートが参照するもの）
+    public_media = collect_public_media(
+        [(n.frontmatter, n.body) for n in notes if n.published], media_index)
 
     # TF-IDF検索インデックスの構築
     from app.core.search import SearchIndex
@@ -381,7 +408,8 @@ def _refresh_global_caches() -> None:
     idx.build(files)
 
     # ここで一気に差し替える
-    cache.IMAGE_PATH_CACHE = {}
+    cache.MEDIA_INDEX = media_index
+    cache.PUBLIC_MEDIA_PATHS = public_media
     cache.MARKDOWN_CACHE = {}
     cache.GLOBAL_FILE_CACHE = files
     cache.GLOBAL_FILE_TREE_CACHE = tree
@@ -393,4 +421,5 @@ def _refresh_global_caches() -> None:
     cache.FORWARD_LINK_CACHE = forward
     cache.SEARCH_INDEX = idx
 
-    logger.info("Global cache refreshed: %d files indexed.", len(files))
+    logger.info("Global cache refreshed: %d files indexed, %d media (%d public).",
+                len(files), len(media_index.paths), len(public_media))

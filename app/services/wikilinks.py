@@ -10,7 +10,7 @@ from app import cache
 from app.config import CONTENT_DIR, MAX_EMBED_DEPTH
 from app.core.indexing import is_published, parse_frontmatter, resolve_note_path
 from app.core.markdown import heading_anchor
-from app.services.images import find_image_in_static, image_html, is_image_name
+from app.services.images import MediaIndex, image_html, is_image_name, media_url
 
 _WIKILINK_RE = re.compile(r'(!?)\[\[([^\]|]+)(?:\|([^\]]+))?\]\]')
 _FENCE_RE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
@@ -135,17 +135,18 @@ def _walk_lines(content: str) -> Iterator[tuple[str, str, _LineRole, str]]:
         yield line, unquoted, role, fence.info
 
 
-def _link_segments(content: str) -> Iterator[tuple[str, bool]]:
+def _link_segments(content: str, marker: str = '[[') -> Iterator[tuple[str, bool]]:
     """
     本文を「リンクを探す部分」と「探さない部分」に分けて順に返す（つなげると元の本文に戻る）
 
     探さないのは、コードブロック（コールアウトの中も含む）・インラインコード・行の区切り。
     描画（process_wikilinks）とリンクの走査（iter_wikilinks）が同じ判定を使うための共通部分。
+    marker を含まない行は探さない（速くするため。空文字ならすべての行を探す）。
     """
     for i, (line, _, role, _) in enumerate(_walk_lines(content)):
         if i:
             yield '\n', False
-        if role is not _LineRole.TEXT or '[[' not in line:
+        if role is not _LineRole.TEXT or marker not in line:
             yield line, False
             continue
         pos = 0
@@ -162,6 +163,19 @@ def iter_wikilinks(content: str) -> Iterator[WikiLink]:
         if searchable:
             for m in _WIKILINK_RE.finditer(text):
                 yield WikiLink.from_match(m)
+
+
+def iter_searchable_text(content: str) -> Iterator[str]:
+    """コードブロックとインラインコードを除いた本文を、出てくる順に切れ目ごとに返す（添付の参照を拾う用）"""
+    for text, searchable in _link_segments(content, marker=''):
+        if searchable:
+            yield text
+
+
+def wikilinks_in_text(text: str) -> Iterator[tuple[int, WikiLink]]:
+    """コードを除いた文字列から、[[...]] / ![[...]] を (位置, リンク) で返す"""
+    for m in _WIKILINK_RE.finditer(text):
+        yield m.start(), WikiLink.from_match(m)
 
 
 def iter_fenced_blocks(content: str) -> Iterator[tuple[str, str]]:
@@ -203,22 +217,36 @@ class LinkTarget:
     image_url: str | None = None   # IMAGE の URL
 
 
+def embed_media_rel(link: WikiLink, index: MediaIndex | None = None) -> str | None:
+    """
+    埋め込み 1 件が指す添付の相対パス（MEDIA_DIR から）。添付でなければ None
+
+    添付になるのは見出しの無い埋め込みだけ（| の後ろは表示サイズ）。描画（classify_link）と
+    外部に見せる添付の許可リスト（media_access）の両方がこれを使い、引き方を食い違わせない。
+    index を省略すると、いまのキャッシュの索引を使う。
+    """
+    if not (link.is_embed and link.name and not link.heading):
+        return None
+    index = cache.MEDIA_INDEX if index is None else index
+    return index.resolve(link.name) if index is not None else None
+
+
 def classify_link(link: WikiLink, published_paths: set[str] | None,
-                  file_name_map: dict | None = None, path_to_slug: dict | None = None) -> LinkTarget:
+                  file_name_map: dict | None = None, path_to_slug: dict | None = None,
+                  media_index: MediaIndex | None = None) -> LinkTarget:
     """
     リンク 1 件を、描画で何になるかで振り分ける
 
     published_paths を渡すと、そこに無いノートを非公開ノートとする（外部向け）。None なら全ノートを表示できる扱い。
-    file_name_map / path_to_slug は名前からノートを引く表。省略時は今のキャッシュを使う
+    file_name_map / path_to_slug / media_index は名前からノート・添付を引く表。省略時は今のキャッシュを使う
     （索引の作り直しの途中では、差し替える前の新しい表を渡す）。
     """
-    # 画像になるのは、見出しの無い埋め込みだけ（| の後ろは表示サイズ）
-    if link.is_embed and link.name and not link.heading:
-        image_url = find_image_in_static(link.name)
-        if image_url:
-            return LinkTarget(LinkKind.IMAGE, image_url=image_url)
-        if is_image_name(link.name):
-            return LinkTarget(LinkKind.MISSING_IMAGE)
+    rel = embed_media_rel(link, media_index)
+    if rel:
+        return LinkTarget(LinkKind.IMAGE, image_url=media_url(rel))
+    # 見出しの無い画像名の埋め込みで、添付が見つからないもの
+    if link.is_embed and not link.heading and is_image_name(link.name):
+        return LinkTarget(LinkKind.MISSING_IMAGE)
 
     if not link.name and link.heading:
         return LinkTarget(LinkKind.HEADING)

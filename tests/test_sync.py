@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from app.config import PROTECTED_IMAGE_ITEMS
+from app.config import MEDIA_SAMPLES_DIR_NAME, PROTECTED_MEDIA_ITEMS
 from app.services import sync
 
 
@@ -121,8 +121,10 @@ def test_保護対象は消さない(dirs, protected_path):
     assert (dst / protected_path).exists()
 
 
-def test_画像の保護対象にlogoが入っている():
-    assert "logo.png" in PROTECTED_IMAGE_ITEMS and "samples" in PROTECTED_IMAGE_ITEMS
+def test_添付の保護対象は同梱サンプルだけ():
+    # 添付の同期先（MEDIA_DIR）にはアプリの部品（logo.png）を置かないので、保護するのは同梱サンプルの置き場だけ
+    # （Vault 側の samples/ などは同期元に合わせて消す）
+    assert PROTECTED_MEDIA_ITEMS == [MEDIA_SAMPLES_DIR_NAME] and MEDIA_SAMPLES_DIR_NAME != "samples"
 
 
 def test_空になったフォルダも消す(dirs):

@@ -23,7 +23,7 @@ from app.core.indexing import parse_frontmatter, is_published
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query
 from app.services.content import render_markdown
-from app.services.images import find_image_in_static
+from app.services.media_access import first_image_href
 from app.services.publish_check import check_publish
 from app.utils.helpers import is_admin_request, is_public_view
 from app.utils.messages import get_all_messages
@@ -70,6 +70,16 @@ def _breadcrumbs(file_path: str) -> list[dict]:
     ]
 
 
+def _og_description(frontmatter: dict, body: str) -> str:
+    """OGP の description。frontmatter に無ければ本文の先頭からプレーンテキスト 150 文字"""
+    description = frontmatter.get("description", "")
+    if description:
+        return description
+    plain = re.sub(r'<[^>]+>', '', body)
+    plain = re.sub(r'[#*_~`>\-\|\[\]!()]', '', plain)
+    return plain.replace('\n', ' ').strip()[:150]
+
+
 def _get_related_articles(file_path: str, tags: list, published_only: bool, limit: int = 5) -> list[dict]:
     """タグの共通度に基づいて関連記事を取得（published_only なら公開ノートだけ）"""
     if not tags:
@@ -113,18 +123,16 @@ async def preview_file(request: Request, path: str):
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
 
-    with open(full_path, "r", encoding="utf-8") as f:
+    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
         content = f.read()
+    frontmatter, body = parse_frontmatter(content)
 
     # Validation for non-localhost
     is_localhost = is_admin_request(request)
-    if not is_localhost:
-        frontmatter, _ = parse_frontmatter(content)
-        if not is_published(frontmatter):
-            raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
+    if not is_localhost and not is_published(frontmatter):
+        raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
 
     # frontmatterからタイトルを取得
-    frontmatter, body = parse_frontmatter(content)
     title = frontmatter.get("title") or Path(path).stem
 
     html = render_markdown(body, published_only=not is_localhost, source_path=path)
@@ -203,27 +211,29 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
     cache_key = (str(file_path), published_only)
     entry = cache.MARKDOWN_CACHE.get(cache_key)
     # 自分の更新日時に加えて、埋め込んだノートの更新日時も変わっていなければキャッシュを使う
-    if entry and entry['mtime'] == mtime and _mtimes(set(entry.get('deps', {}))) == entry.get('deps', {}):
-        html = entry['html']
-        title = entry['title']
-        frontmatter = entry.get('frontmatter', {})
-    else:
-        with open(full_path, "r", encoding="utf-8") as f:
+    if not (entry and entry['mtime'] == mtime and _mtimes(set(entry['deps'])) == entry['deps']):
+        with open(full_path, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
         frontmatter, body = parse_frontmatter(content)
-        title = frontmatter.get('title') or Path(file_path).stem
-
         deps: set[str] = set()
-        html = render_markdown(body, published_only=published_only, deps=deps, source_path=file_path)
-        # Update cache
-        cache.MARKDOWN_CACHE[cache_key] = {
-            'html': html,
-            'title': title,
+        # 公開チェック（本文）と OGP（description・画像の元）に要るものも一緒に覚え、表示のたびに読み直さない
+        entry = {
+            'html': render_markdown(body, published_only=published_only, deps=deps, source_path=file_path),
+            'title': frontmatter.get('title') or Path(file_path).stem,
             'mtime': mtime,
             'frontmatter': frontmatter,
             'deps': _mtimes(deps),
+            'body': body,
+            'description': _og_description(frontmatter, body),
+            # 許可リストと同じ抽出で選ぶ（外部の人に 404 になる画像を OGP にしない）
+            'og_image': first_image_href(frontmatter, body, cache.MEDIA_INDEX),
         }
+        cache.MARKDOWN_CACHE[cache_key] = entry
+
+    html = entry['html']
+    title = entry['title']
+    frontmatter = entry['frontmatter']
 
     is_pub = is_published(frontmatter)
 
@@ -234,8 +244,7 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
     # 公開チェックは管理者にだけ行う（外部の人には計算もしない）
     publish_check = None
     if is_localhost:
-        _, note_body = parse_frontmatter(full_path.read_text(encoding="utf-8"))
-        publish_check = check_publish(file_path, note_body, is_pub)
+        publish_check = check_publish(file_path, entry['body'], is_pub)
 
     # キャッシュから読了時間を取得
     reading_time = 1
@@ -244,44 +253,11 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
             reading_time = f.get("reading_time", 1)
             break
 
-    # OGP用のdescription生成
-    description = frontmatter.get("description", "")
-    raw_body = ""
-    og_image_from_fm = frontmatter.get("image") or frontmatter.get("thumbnail")
-    if not description or not og_image_from_fm:
-        with open(full_path, "r", encoding="utf-8") as f:
-            raw_content = f.read()
-        _, raw_body = parse_frontmatter(raw_content)
-
-    if not description:
-        # body先頭からプレーンテキスト150文字を抽出
-        plain = re.sub(r'<[^>]+>', '', raw_body)
-        plain = re.sub(r'[#*_~`>\-\|\[\]!()]', '', plain)
-        plain = plain.replace('\n', ' ').strip()[:150]
-        description = plain
-
+    # OGP（description と画像の元は描画のときに作ってキャッシュに入れてある）
+    description = entry['description']
+    og_image = entry['og_image']
     og_url = str(request.url)
     base_url = str(request.base_url).rstrip('/')
-
-    # OGP画像の抽出
-    og_image = og_image_from_fm
-    if not og_image and raw_body:
-        # Obsidianの画像記法 ![[image.png]] または ![[image.png|300]] を探す
-        obs_match = re.search(r'!\[\[([^|\]]+?)(?:\|[^\]]*)?\]\]', raw_body)
-        if obs_match:
-            resolved = find_image_in_static(obs_match.group(1).strip())
-            if resolved:
-                og_image = resolved
-        if not og_image:
-            # Markdownの画像構文 ![alt](url) を探す
-            img_match = re.search(r'!\[.*?\]\((.*?)\)', raw_body)
-            if img_match:
-                og_image = img_match.group(1)
-            else:
-                # HTMLのimgタグ構文 <img src="url"> を探す
-                img_html_match = re.search(r'<img[^>]+src=["\'](.*?)["\']', raw_body)
-                if img_html_match:
-                    og_image = img_html_match.group(1)
 
     # og_imageが相対パス(local)の場合は絶対URLに変換
     if og_image and not og_image.startswith(('http://', 'https://')):

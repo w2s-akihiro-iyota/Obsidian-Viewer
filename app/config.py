@@ -8,7 +8,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Content and Statics directories
 CONTENT_DIR = BASE_DIR / "content"
 STATICS_DIR = BASE_DIR / "static"
-IMAGES_DIR = STATICS_DIR / "images"
+# アプリの部品の画像（ロゴ・ヘルプの画像）。/static でだれにでも配信するので、Vault の添付は置かない
+APP_IMAGES_DIR = STATICS_DIR / "images"
+# Vault の添付（画像など）の置き場。/media で配信し、外部の人には公開ノートが参照するものだけを見せる（S-5）
+MEDIA_DIR = BASE_DIR / "media"
 TEMPLATES_DIR = BASE_DIR / "templates"
 
 # Cache files
@@ -67,7 +70,16 @@ READING_SPEED_JP = 500
 
 # 同期時に削除しない保護対象（コピー先の直下の名前で判定）
 PROTECTED_ITEMS = ["samples", "demo.md", ".git", ".gitignore"]
-PROTECTED_IMAGE_ITEMS = PROTECTED_ITEMS + ["logo.png"]
+# アプリ同梱のサンプルの添付を置く MEDIA_DIR 直下のフォルダ名（Git 管理）。
+# 外部の人にも参照に関係なく見せるので、Vault の添付フォルダと名前がぶつかりにくい名前にしている
+MEDIA_SAMPLES_DIR_NAME = "_viewer-samples"
+
+# 添付の同期（MEDIA_DIR）で削除しない保護対象。同梱のサンプルだけ
+PROTECTED_MEDIA_ITEMS = [MEDIA_SAMPLES_DIR_NAME]
+
+# 添付の配信（/media）で、画面に埋め込んで表示する拡張子。これ以外（svg を除く）はダウンロードとして返す
+# svg は <img> で表示できるよう inline のまま返す（CSP sandbox と nosniff で、直接開いてもスクリプトを動かさない）
+MEDIA_INLINE_EXTS = frozenset({"png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico", "svg"})
 
 # 1回の同期でこの割合以上のファイルが消える場合は、削除を保留して確認を待つ
 SYNC_DELETE_HOLD_RATIO = 0.5
@@ -82,6 +94,6 @@ SYNC_HISTORY_FILE_LIMIT = 200
 MAX_EMBED_DEPTH = 2
 
 # Ensure directories exist
-for d in [CONTENT_DIR, STATICS_DIR, IMAGES_DIR, TEMPLATES_DIR]:
+for d in [CONTENT_DIR, STATICS_DIR, APP_IMAGES_DIR, MEDIA_DIR, TEMPLATES_DIR]:
     if not d.exists():
         d.mkdir(parents=True)

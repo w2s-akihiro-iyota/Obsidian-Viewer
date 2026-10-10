@@ -10,9 +10,12 @@
 - ノート一覧（D-2 / D-10）: 並び替え・タグの件数（外部には公開ノートだけで数える）・条件のチップ・抜粋・非公開の印
 - ダッシュボード（F-6 / D-8）: 手入れが必要なノート（リンク切れ・孤立・タグなし）・ヒートマップ・0 件の表示
 - ローカルグラフ（F-8）: /api/graph?center=&depth= の点と距離・深さの不正値・404・外部には公開ノートだけ・上限
+- ノートを読む回数（Q-1）: 索引の作り直しは各ノートを 1 回だけ読む。記事ページは描画キャッシュが効いていれば読み直さない
 """
+import builtins
 import copy
 import os
+import pathlib
 import re
 import time
 
@@ -27,6 +30,7 @@ from app.main import app
 from app.models.sync import SyncConfig
 from app.services import sync, wikilinks
 from app.services.content import render_markdown
+from app.services.images import MediaIndex
 from app.services.publish_check import check_publish
 
 ADMIN = "http://localhost:8001"     # 管理用ポート（is_admin_request が管理者とみなす）
@@ -35,12 +39,14 @@ PUBLIC = "http://localhost:8000"
 
 @pytest.fixture
 def site(tmp_path, monkeypatch):
-    for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "IMAGE_PATH_CACHE",
-                 "MARKDOWN_CACHE", "FILE_NAME_CACHE", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
+    for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
+                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "FILE_NAME_CACHE", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
                  "SLUG_TO_PATH", "PATH_TO_SLUG"):
         monkeypatch.setattr(cache, name, getattr(cache, name))
     for module in (content_api, editor_api, indexing, wikilinks):
         monkeypatch.setattr(module, "CONTENT_DIR", tmp_path)
+    # 添付の置き場はノートと別のフォルダ（本物の media/ を索引に入れない）
+    monkeypatch.setattr(indexing, "MEDIA_DIR", tmp_path.parent / f"{tmp_path.name}-media")
     (tmp_path / "親.md").write_text("---\npublish: true\n---\n本文 ![[子]]\n", encoding="utf-8")
     (tmp_path / "子.md").write_text("---\npublish: true\n---\n子の本文v1\n", encoding="utf-8")
     indexing.refresh_global_caches()
@@ -163,8 +169,8 @@ def test_公開チェックは存在しないノートへのリンクを挙げ�
 
 
 def test_公開チェックは見つからない画像を挙げる(check_site, monkeypatch):
-    monkeypatch.setattr(wikilinks, "find_image_in_static",
-                        lambda name: "/static/images/ある画像.png" if name == "ある画像.png" else None)
+    monkeypatch.setattr(cache, "MEDIA_INDEX", MediaIndex(paths=frozenset({"ある画像.png"}),
+                                                        by_name={"ある画像.png": "ある画像.png"}))
     result = check_publish("x.md", "![[無い画像.png]] ![[ある画像.png]] ![[無い画像.png|300]]", True)
     assert result.missing_images == ("無い画像.png",)
     assert result.missing_links == ()
@@ -209,8 +215,8 @@ def test_公開チェックはノート自身が非公開なことと合計件�
     ("[[公開先]]", False, None),
 ])
 def test_描画と公開チェックでリンクの分類が一致する(check_site, monkeypatch, src, broken, field):
-    monkeypatch.setattr(wikilinks, "find_image_in_static",
-                        lambda name: "/static/images/ある画像.png" if name == "ある画像.png" else None)
+    monkeypatch.setattr(cache, "MEDIA_INDEX", MediaIndex(paths=frozenset({"ある画像.png"}),
+                                                        by_name={"ある画像.png": "ある画像.png"}))
     html = render_markdown(src, published_only=True)
     result = check_publish("x.md", src, True)
     assert ("internal-link-broken" in html) == broken
@@ -229,8 +235,8 @@ def test_描画と公開チェックでリンクの分類が一致する(check_s
     ("[[公開先]]", "NOTE"),
 ])
 def test_リンクの振り分けは1か所で決まる(check_site, monkeypatch, src, kind):
-    monkeypatch.setattr(wikilinks, "find_image_in_static",
-                        lambda name: "/static/images/ある画像.png" if name == "ある画像.png" else None)
+    monkeypatch.setattr(cache, "MEDIA_INDEX", MediaIndex(paths=frozenset({"ある画像.png"}),
+                                                        by_name={"ある画像.png": "ある画像.png"}))
     published = {f["path"] for f in cache.GLOBAL_FILE_CACHE if f.get("published")}
     link = next(wikilinks.iter_wikilinks(src))
     target = wikilinks.classify_link(link, published)
@@ -246,7 +252,6 @@ _CACHES_KEPT_BY_CHECK = ("GLOBAL_FILE_CACHE", "BACKLINK_CACHE", "FORWARD_LINK_CA
 
 def test_公開チェックはキャッシュを書き換えない(check_site):
     # 要素の中身（各ノートの dict など）を書き換えても気づけるよう、深いコピーで比べる
-    # IMAGE_PATH_CACHE は描画と同じく、見つかった画像の URL を覚えるだけなので対象外
     before = {name: copy.deepcopy(getattr(cache, name)) for name in _CACHES_KEPT_BY_CHECK}
     check_publish("公開ページ.md", _body_of("公開ページ.md"), True)
     check_publish("公開ページ.md", _body_of("公開ページ.md"), False)
@@ -1111,3 +1116,47 @@ def test_メタ情報は時刻と読了の文字を短い表示で隠せる形�
     html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md").text
     assert re.search(r'<span>更新 \d{4}-\d{2}-\d{2}<span class="view-meta-long"> \d{2}:\d{2}</span></span>', html)
     assert re.search(r'<span>約\d+分<span class="view-meta-long">で読了</span></span>', html)
+
+
+# ---------- Q-1: ノートを読む回数 ----------
+
+@pytest.fixture
+def md_opens(monkeypatch):
+    """.md を開いた回数を {ファイル名: 回数} で数える（open と Path.open。Path.read_text も Path.open を通る）"""
+    counts: dict[str, int] = {}
+    real_open, real_path_open = builtins.open, pathlib.Path.open
+
+    def count(file):
+        name = os.fspath(file) if isinstance(file, (str, os.PathLike)) else ""
+        if name.endswith(".md"):
+            counts[os.path.basename(name)] = counts.get(os.path.basename(name), 0) + 1
+
+    def counting_open(file, *args, **kwargs):
+        count(file)
+        return real_open(file, *args, **kwargs)
+
+    def counting_path_open(self, *args, **kwargs):
+        count(self)
+        return real_path_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", counting_open)
+    monkeypatch.setattr(pathlib.Path, "open", counting_path_open)
+    return counts
+
+
+def test_索引の作り直しは各ノートを1回だけ読む(check_site, md_opens):
+    notes = sorted(p.name for p in check_site.rglob("*.md"))
+    indexing.refresh_global_caches()
+    assert md_opens == {name: 1 for name in notes}
+
+
+def test_管理者の記事ページは描画キャッシュが効いていれば本文を読み直さない(check_site, md_opens):
+    client = TestClient(app, base_url=ADMIN)
+    first = _get(client, "公開ページ.md")
+    assert first.status_code == 200 and md_opens.get("公開ページ.md") == 1
+    md_opens.clear()
+    second = _get(client, "公開ページ.md")
+    assert second.status_code == 200
+    assert md_opens == {}
+    # 公開チェックの結果も OGP も、キャッシュから同じものを出す
+    assert second.text == first.text
