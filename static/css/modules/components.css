@@ -557,7 +557,7 @@ body.font-large {
 /* We need to target .container when body has .readable-width */
 body.readable-width .container,
 body.readable-width .container-wide {
-    max-width: 900px;
+    max-width: var(--readable-width);
     margin: 0 auto;
     /* Center it */
 }

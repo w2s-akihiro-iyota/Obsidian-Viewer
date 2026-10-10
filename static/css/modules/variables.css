@@ -14,6 +14,26 @@
     --code-font: 'Consolas', 'Monaco', 'Courier New', monospace;
     --sidebar-width: 280px;
     --activity-bar-width: 50px;
+    /* 記事ページの右上のアクション置き場（layout.css の .article-actions）: ボタンの大きさ、
+       スクロールしたときの上端（ヘッダーの実際の高さ 60px ＋ 12px。--header-height は実際より低いので使わない）、
+       本文の端・ヘッダーの行との間、外側に置くときに画面の右端に残す余白（article-actions.js も読む） */
+    --article-action-size: 40px;
+    --article-actions-top: 72px;
+    --article-actions-gap: 12px;
+    --article-actions-edge-margin: 12px;
+    /* 記事ページの「つながり」（F-8）: パネルの幅とグラフの高さ、768px 以下のシートの高さ、影と暗幕 */
+    --local-graph-panel-width: 340px;
+    --local-graph-canvas-height: 240px;
+    --local-graph-sheet-height: 60vh;
+    --local-graph-shadow-small: 0 4px 14px rgba(0, 0, 0, 0.25);
+    --local-graph-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    --local-graph-backdrop: rgba(0, 0, 0, 0.35);
+    /* 読みやすい幅の設定（readableWidth）での本文の最大幅 */
+    --readable-width: 900px;
+    /* グラフの線（地の色を問わず見えるよう、薄い文字色を半透明にする）と、
+       ホバー中・?focus で選んだ点の色（明るい地では濃くする） */
+    --graph-link: color-mix(in srgb, var(--text-muted) 45%, transparent);
+    --graph-highlight: #ff6b6b;
     /* 見出しの色は地の明るさに合わせてテーマごとに持つ（色相の並びは全テーマ共通）。
        暗い地では明るめにし、背景とのコントラスト比 4.5:1 以上を保つ */
     --heading-h1: #C98A5B;
@@ -23,6 +43,8 @@
     --heading-h5: #B98AE0;
     --heading-h6: #7FB35A;
     --z-sidebar: 100;
+    /* 記事ページの右上のアクション置き場（つながりのパネルを含む）。ヘッダー（--z-header）とスマホのサイドバーより下 */
+    --z-article-actions: 50;
     --z-header: 100;
     --z-dropdown: 1000;
     --z-overlay: 2000;
@@ -41,6 +63,7 @@
 
 /* Light Theme */
 :root[data-theme="light"] {
+    --graph-highlight: #e03131;
     --bg-primary: #ffffff;
     --bg-secondary: #f5f5f5;
     --text-normal: #2e3338;
@@ -58,6 +81,7 @@
 
 /* Letter Theme (Warm/Paper-like) */
 :root[data-theme="letter"] {
+    --graph-highlight: #e03131;
     --bg-primary: #fdfbf7;
     /* Warm Paper White */
     --bg-secondary: #f4f1ea;

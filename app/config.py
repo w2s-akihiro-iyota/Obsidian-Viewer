@@ -51,6 +51,12 @@ HEATMAP_MONTH_LABEL_MIN_GAP = 3
 # ダッシュボードの「リンク切れ」の原因の列に出す、リンク先の名前の数（残りは「ほか N 件」）
 DASHBOARD_CAUSE_NAME_COUNT = 3
 
+# 記事ページのローカルグラフ（/api/graph?center=）に出す点の最大数。超えた分は中心から遠い点から切る
+LOCAL_GRAPH_MAX_NODES = 80
+
+# ローカルグラフで選べる深さ（何歩先まで出すか）。先頭が既定で、ほかの値は既定にする。記事ページの切り替えもこれから作る
+LOCAL_GRAPH_DEPTHS = (1, 2)
+
 # 検索（/api/search）で返す最大件数
 SEARCH_LIMIT = 20
 

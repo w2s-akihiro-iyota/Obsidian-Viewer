@@ -25,8 +25,12 @@ app/
 │   └── sync.py            # ファイル同期・設定管理API
 ├── core/
 │   ├── dataview.py        # Obsidian Dataviewライクなクエリ処理
+│   ├── graph.py           # グラフ（全体・ローカル）の組み立て。外部向けは公開ノートだけで作る
+│   ├── heatmap.py         # ダッシュボードのヒートマップ（最終更新日の分布）
 │   ├── indexing.py        # ファイルインデックス作成・ツリー構築
 │   ├── markdown.py        # Markdownレンダリング・カスタムプラグイン
+│   ├── note_health.py     # ダッシュボードの「手入れが必要なノート」（リンク切れ・孤立・タグなし）
+│   ├── note_list.py       # ノート一覧の条件（ListQuery）・絞り込み・並び替え・タグ集計
 │   └── search.py          # 全文検索ロジック
 ├── models/sync.py         # Request/Response用Pydanticモデル
 ├── services/

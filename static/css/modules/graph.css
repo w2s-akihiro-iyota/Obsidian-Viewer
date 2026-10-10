@@ -35,3 +35,356 @@
     width: 100%;
     height: 100%;
 }
+
+/* グラフの点・線・ラベル（graph-render.js が描く。全体グラフとローカルグラフで共通） */
+.graph-link {
+    stroke: var(--graph-link);
+    stroke-width: 1;
+}
+
+.graph-link.is-active {
+    stroke: var(--accent-purple);
+    stroke-opacity: 0.9;
+}
+
+.graph-node {
+    fill: var(--accent-purple);
+    stroke: var(--bg-primary);
+    stroke-width: 1;
+    cursor: pointer;
+}
+
+.graph-node.is-hover,
+.graph-node.is-focus {
+    fill: var(--graph-highlight);
+}
+
+.graph-label {
+    fill: var(--text-normal);
+    font-size: 10px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.graph-label.is-focus,
+.graph-label.is-center {
+    font-weight: 700;
+}
+
+/* 全体を収めた小さい倍率では、ラベルを隠す（?focus で選んだ点・ローカルグラフの中心のラベルは残す） */
+.graph-svg.is-labels-hidden .graph-label:not(.is-focus):not(.is-center) {
+    display: none;
+}
+
+.graph-node.is-dimmed {
+    opacity: 0.15;
+}
+
+.graph-label.is-dimmed {
+    opacity: 0.1;
+}
+
+.graph-link.is-dimmed {
+    stroke-opacity: 0.1;
+}
+
+.graph-message {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   記事ページの「つながり」（ローカルグラフ）
+   右上のボタンと、押すと出るパネル（768px 以下では下からのシート）の見た目。
+   置き場所（右上に固定・本文の列の外側）は layout.css の .article-actions
+   ========================================= */
+
+.local-graph-anchor {
+    position: relative;
+}
+
+.local-graph-toggle {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--article-action-size);
+    height: var(--article-action-size);
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--bg-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+    box-shadow: var(--local-graph-shadow-small);
+}
+
+.local-graph-toggle:hover,
+.local-graph-toggle[aria-expanded="true"] {
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+}
+
+.local-graph-toggle:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
+}
+
+/* つながりが無いノートでは薄くする（数字も出さない） */
+.local-graph-toggle.is-empty {
+    color: var(--text-muted);
+}
+
+/* 1 歩でつながっているノートの数 */
+.local-graph-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background-color: var(--accent-purple);
+    color: var(--badge-text);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* パネル: ボタンのすぐ下に本文の上へ重ねて出す（ポップオーバー） */
+.local-graph {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: var(--local-graph-panel-width);
+    max-width: calc(100vw - 32px);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--local-graph-shadow);
+    overflow: hidden;
+}
+
+.local-graph[hidden],
+.local-graph-backdrop[hidden] {
+    display: none;
+}
+
+.local-graph:focus {
+    outline: none;
+}
+
+/* 暗幕はシート（768px 以下）のときだけ */
+.local-graph-backdrop {
+    display: none;
+}
+
+.local-graph-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.local-graph-title {
+    margin: 0 auto 0 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.local-graph .segmented-control {
+    width: auto;
+    padding: 2px;
+    border-radius: 7px;
+    box-shadow: none;
+}
+
+.local-graph .segmented-control label {
+    min-width: 0;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.local-graph .segmented-control input[type="radio"]:focus-visible+label {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 1px;
+}
+
+.local-graph-close {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.local-graph-close:hover {
+    border-color: var(--border-color);
+    color: var(--text-normal);
+}
+
+.local-graph-close:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 1px;
+}
+
+.local-graph-canvas {
+    height: var(--local-graph-canvas-height);
+    background-color: var(--bg-primary);
+    overflow: hidden;
+}
+
+.local-graph-canvas svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* ローカルグラフの塗り分け: 中心は大きく --accent-purple、周りは --text-muted */
+.local-graph .graph-link {
+    stroke-width: 1.5;
+}
+
+.local-graph .graph-node {
+    fill: var(--text-muted);
+}
+
+.local-graph .graph-node.is-center {
+    fill: var(--accent-purple);
+}
+
+.local-graph .graph-node:hover {
+    fill: var(--accent-purple);
+}
+
+.local-graph .graph-label {
+    font-size: 11px;
+}
+
+.local-graph .graph-label.is-hop2 {
+    fill: var(--text-muted);
+}
+
+.local-graph-canvas:has(.local-graph-empty) {
+    height: auto;
+}
+
+.local-graph-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    margin: 0;
+    padding: 24px 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* d3 を読み込めなかったときの代わりのリンク一覧 */
+.local-graph-list {
+    height: 100%;
+    margin: 0;
+    padding: 10px 14px;
+    overflow-y: auto;
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+.local-graph-list li {
+    padding: 3px 0;
+}
+
+.local-graph-hop {
+    margin-left: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.local-graph-note {
+    margin: 0;
+    padding: 6px 12px 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.local-graph-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 12px 10px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.local-graph-foot a {
+    color: var(--accent-purple);
+    text-decoration: none;
+}
+
+.local-graph-foot a:hover {
+    text-decoration: underline;
+}
+
+/* 768px 以下: 下から出るシート（画面の高さの 6 割）。外側は半透明の暗幕で、押すと閉じる */
+@media (max-width: 768px) {
+    .local-graph-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background-color: var(--local-graph-backdrop);
+    }
+
+    .local-graph {
+        position: fixed;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        max-width: none;
+        height: var(--local-graph-sheet-height);
+        border-width: 1px 0 0;
+        border-radius: 16px 16px 0 0;
+    }
+
+    /* つまみ（見た目だけ。引っぱって閉じる操作は付けない） */
+    .local-graph::before {
+        content: "";
+        flex-shrink: 0;
+        width: 40px;
+        height: 4px;
+        margin: 8px auto 0;
+        border-radius: 2px;
+        background-color: var(--border-color);
+    }
+
+    .local-graph-canvas {
+        flex: 1;
+        min-height: 0;
+        height: auto;
+    }
+
+    /* シートを開いているあいだは、右下の「トップに戻る」をシートの上に出さない */
+    body:has(#local-graph:not([hidden])) .scroll-to-top {
+        visibility: hidden;
+    }
+}

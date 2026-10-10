@@ -26,6 +26,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>hljs.highlightAll();</script>
 
+<!-- 右上のアクション置き場と、ローカルグラフ（つながり）。d3 と graph-render.js は、初めて開いたときに local-graph.js が読み込む -->
+<script src="/static/js/modules/article-actions.js?v=20261011" defer></script>
+<script src="/static/js/modules/local-graph-panel.js?v=20261011" defer></script>
+<script src="/static/js/modules/local-graph.js?v=20261012" defer></script>
+
 <!-- KaTeX for Math -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -49,6 +54,57 @@
 {% block container_class %}container-wide{% endblock %}
 
 {% block content %}
+{% import "partials/_d3.html" as d3lib %}
+{% set local_graph_key = shortcuts.find_shortcut("view", ("G",)) %}
+{% set local_graph_label = local_graph_key.short ~ " (" ~ local_graph_key.keys[0]|join("+") ~ ")" %}
+{# 右上のアクション置き場（layout.css の .article-actions。置き場所は article-actions.js が決める）
+   つながり（F-8）: ボタンと、押すと出るパネル（狭い画面では下からのシート）。開閉は local-graph-panel.js、中身は local-graph.js が描く
+   G キーは app/shortcuts.py の定義から data-shortcut-key で渡す #}
+<div class="article-actions" id="article-actions">
+    <div class="local-graph-anchor">
+        <button type="button" class="local-graph-toggle{% if not local_graph_count %} is-empty{% endif %}" id="local-graph-toggle"
+            title="{{ local_graph_label }}" aria-label="{{ local_graph_label }}" aria-expanded="false" aria-controls="local-graph"
+            data-shortcut-key="{{ local_graph_key.keys[0][0] }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            {% if local_graph_count %}<span class="local-graph-count" aria-hidden="true">{{ local_graph_count }}</span>{% endif %}
+        </button>
+        <div class="local-graph-backdrop" hidden></div>
+        <section class="local-graph" id="local-graph" role="dialog" aria-labelledby="local-graph-title" tabindex="-1" hidden
+            data-center="{{ slug }}" data-title="{{ title }}" data-public="{{ 'true' if public_view else 'false' }}"
+            data-d3-src="{{ d3lib.D3_SRC }}" data-render-src="{{ d3lib.GRAPH_RENDER_SRC }}">
+            <div class="local-graph-head">
+                <h3 class="local-graph-title" id="local-graph-title">つながり</h3>
+                <div class="segmented-control local-graph-depth" role="radiogroup" aria-label="表示する範囲">
+                    {% for depth in local_graph_depths %}
+                    <input type="radio" name="local-graph-depth" value="{{ depth }}" id="local-graph-depth-{{ depth }}"{% if loop.first %} checked{% endif %}>
+                    <label for="local-graph-depth-{{ depth }}">{{ depth }} 歩</label>
+                    {% endfor %}
+                </div>
+                <button type="button" class="local-graph-close" title="閉じる (Esc)" aria-label="閉じる (Esc)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="local-graph-canvas"></div>
+            <p class="local-graph-note" hidden></p>
+            <div class="local-graph-foot">
+                <span>点を押すと移動</span>
+                <a href="/graph?focus={{ slug | urlencode }}">全体グラフで開く ↗</a>
+            </div>
+        </section>
+    </div>
+</div>
+
 {% macro check_row(label, count) %}
 <li class="publish-check-item{% if count %} has-issue{% endif %}">
     <div class="publish-check-row">

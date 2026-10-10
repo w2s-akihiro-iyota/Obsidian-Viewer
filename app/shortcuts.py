@@ -88,7 +88,15 @@ SHORTCUT_GROUPS: tuple[ShortcutGroup, ...] = (
         shortcuts=(
             Shortcut((("Ctrl", "K"),), "クイックスイッチャーを開く・閉じる", "クイックスイッチャー"),
             Shortcut((("?",),), "ショートカット一覧を開く", "ショートカット一覧"),
-            Shortcut((("Esc",),), "ヘルプ・ショートカット一覧・クイックスイッチャー・画像の拡大を閉じる", "閉じる"),
+            Shortcut((("Esc",),), "ヘルプ・ショートカット一覧・クイックスイッチャー・画像の拡大・つながりを閉じる", "閉じる"),
+        ),
+    ),
+    ShortcutGroup(
+        id="view",
+        label="記事ページ",
+        contexts=frozenset({"view"}),
+        shortcuts=(
+            Shortcut((("G",),), "つながりを開く・閉じる", "つながり"),
         ),
     ),
     ShortcutGroup(

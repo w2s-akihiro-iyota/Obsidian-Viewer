@@ -48,7 +48,8 @@
     .publish-check-panel,
     .markdown-body h1.view-title-duplicate,
     .backlinks-section,
-    .related-section {
+    .related-section,
+    .article-actions {
         display: none !important;
     }
 
