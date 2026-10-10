@@ -1,0 +1,116 @@
+[
+ {
+  "started_at": "2026-10-10 17:19:47",
+  "duration_sec": 20.9,
+  "trigger": "auto",
+  "ok": true,
+  "error": "",
+  "kinds": {
+   "content": {
+    "added": {
+     "count": 0,
+     "files": []
+    },
+    "updated": {
+     "count": 0,
+     "files": []
+    },
+    "deleted": {
+     "count": 0,
+     "files": []
+    }
+   },
+   "images": {
+    "added": {
+     "count": 0,
+     "files": []
+    },
+    "updated": {
+     "count": 0,
+     "files": []
+    },
+    "deleted": {
+     "count": 0,
+     "files": []
+    }
+   }
+  },
+  "held": []
+ },
+ {
+  "started_at": "2026-10-10 17:19:27",
+  "duration_sec": 20.4,
+  "trigger": "manual",
+  "ok": true,
+  "error": "",
+  "kinds": {
+   "content": {
+    "added": {
+     "count": 0,
+     "files": []
+    },
+    "updated": {
+     "count": 0,
+     "files": []
+    },
+    "deleted": {
+     "count": 0,
+     "files": []
+    }
+   },
+   "images": {
+    "added": {
+     "count": 0,
+     "files": []
+    },
+    "updated": {
+     "count": 0,
+     "files": []
+    },
+    "deleted": {
+     "count": 0,
+     "files": []
+    }
+   }
+  },
+  "held": []
+ },
+ {
+  "started_at": "2026-10-10 17:12:13",
+  "duration_sec": 33.1,
+  "trigger": "auto",
+  "ok": true,
+  "error": "",
+  "kinds": {
+   "content": {
+    "added": {
+     "count": 0,
+     "files": []
+    },
+    "updated": {
+     "count": 0,
+     "files": []
+    },
+    "deleted": {
+     "count": 0,
+     "files": []
+    }
+   },
+   "images": {
+    "added": {
+     "count": 0,
+     "files": []
+    },
+    "updated": {
+     "count": 0,
+     "files": []
+    },
+    "deleted": {
+     "count": 0,
+     "files": []
+    }
+   }
+  },
+  "held": []
+ }
+]
