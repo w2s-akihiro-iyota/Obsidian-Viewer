@@ -1,7 +1,5 @@
     <!-- Help Modal -->
-    {# 管理者向けの説明を出すか。記事ページの「外部の人の表示」（?as=public）では is_localhost が False になるが、
-       ヘルプは管理者なら出す（is_admin は記事ページだけが渡す。ほかのページは is_localhost で判定する） #}
-    {% set help_is_admin = is_admin if is_admin is defined else is_localhost %}
+    {# 管理者向けの説明を出すか（viewer_is_admin）とキー表記のマクロ（sc）は base.html で用意する。チートシートと同じ判定を使う #}
     <div id="help-modal" class="settings-modal">
         <div class="settings-modal-container">
             <div class="settings-header line-bottom">
@@ -18,11 +16,11 @@
                 <div class="help-tabs line-bottom">
                     <button class="help-tab active" data-tab="about">アプリについて</button>
                     <button class="help-tab" data-tab="basic">基本操作</button>
-                    {% if help_is_admin %}
+                    {% if viewer_is_admin %}
                     <button class="help-tab" data-tab="syntax">書き方</button>
                     {% endif %}
                     <button class="help-tab" data-tab="keys">ショートカット</button>
-                    {% if help_is_admin %}
+                    {% if viewer_is_admin %}
                     <button class="help-tab" data-tab="admin">管理者向け</button>
                     {% endif %}
                     <button class="help-tab" data-tab="display">表示機能</button>
@@ -149,7 +147,7 @@
                                             </svg>
                                         </span>
                                         <div class="feature-text">
-                                            {% if help_is_admin %}
+                                            {% if viewer_is_admin %}
                                             <strong>グラフビューとダッシュボード</strong><br>
                                             ノート同士のつながりを図で見られます。ダッシュボードでは更新の推移やタグの集計を確認できます
                                             {% else %}
@@ -158,7 +156,7 @@
                                             {% endif %}
                                         </div>
                                     </li>
-                                    {% if help_is_admin %}
+                                    {% if viewer_is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -175,7 +173,7 @@
                                     </li>
                                     {% endif %}
                                     {# エディタは管理者だけが使える（外部の人は閲覧のみ） #}
-                                    {% if help_is_admin %}
+                                    {% if viewer_is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -236,7 +234,7 @@
                                         </div>
                                     </li>
                                     {# 同期と公開設定は管理者だけが使う機能なので、外部の人には出さない #}
-                                    {% if help_is_admin %}
+                                    {% if viewer_is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -301,7 +299,7 @@
                                         </svg> ファイルツリー</h5>
                                     <p>サイドバーの<b>Files</b>タブに、Vault のフォルダ構成がそのまま表示されます。<br />
                                         開いているノートまで自動で展開し、閉じたフォルダには中のノート数が出ます。上の入力欄でファイル名を絞り込めます。
-                                        {% if help_is_admin %}<br />非公開ノートには「非公開」の印が付きます。{% endif %}</p>
+                                        {% if viewer_is_admin %}<br />非公開ノートには「非公開」の印が付きます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -346,7 +344,7 @@
                                             <line x1="3" y1="18" x2="3.01" y2="18"></line>
                                         </svg> ノート一覧</h5>
                                     <p>トップページの一覧は、右上のアイコンで<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。<br />
-                                        タグで絞り込めます。{% if help_is_admin %}公開・非公開でも絞り込めます。{% endif %}</p>
+                                        タグで絞り込めます。{% if viewer_is_admin %}公開・非公開でも絞り込めます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -387,7 +385,7 @@
                     </div>
 
                     {# 書き方は Vault に書く人（管理者）向け。外部の人は閲覧だけなので出さない #}
-                    {% if help_is_admin %}
+                    {% if viewer_is_admin %}
                     <!-- Syntax Panel -->
                     <div id="help-panel-syntax" class="help-panel">
                         <section class="settings-section">
@@ -461,49 +459,28 @@
                     <div id="help-panel-keys" class="help-panel">
                         <section class="settings-section">
                             <h4>キーボードショートカット</h4>
-                            <p>Mac では <kbd>Ctrl</kbd> の代わりに <kbd>⌘</kbd> を使います。</p>
+                            <p>どの画面でも <kbd>?</kbd> を押すと、この画面で使えるショートカットを出せます。<br />
+                               Mac では <kbd>Ctrl</kbd> の代わりに <kbd>⌘</kbd> を使います。</p>
                             <div class="help-table-wrap">
                                 <table class="help-table help-keys">
                                     <thead>
                                         <tr><th scope="col">キー</th><th scope="col">動作</th></tr>
                                     </thead>
+                                    {# 行は app/shortcuts.py の定義から描く（管理者だけのグループは外部の人には出さない） #}
+                                    {% for group in shortcuts.visible_groups(viewer_is_admin) %}
                                     <tbody>
-                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">どの画面でも</th></tr>
-                                        <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>クイックスイッチャーを開く・閉じる</td></tr>
-                                        <tr><td><kbd>Esc</kbd></td><td>ヘルプ・クイックスイッチャー・画像の拡大を閉じる</td></tr>
+                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">{{ group.label }}</th></tr>
+                                        {% for shortcut in group.shortcuts %}
+                                        <tr><td>{{ sc.keys(shortcut.keys) }}</td><td>{{ shortcut.description_html }}</td></tr>
+                                        {% endfor %}
                                     </tbody>
-                                    <tbody>
-                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">クイックスイッチャー</th></tr>
-                                        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>候補を選ぶ</td></tr>
-                                        <tr><td><kbd>Enter</kbd></td><td>開く</td></tr>
-                                        <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>新しいタブで開く</td></tr>
-                                    </tbody>
-                                    <tbody>
-                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">ファイルツリーの絞り込み欄</th></tr>
-                                        <tr><td><kbd>↓</kbd></td><td>ツリーへ移る</td></tr>
-                                        <tr><td><kbd>Enter</kbd></td><td>最初のノートを開く</td></tr>
-                                        <tr><td><kbd>Esc</kbd></td><td>絞り込みを消す</td></tr>
-                                    </tbody>
-                                    <tbody>
-                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">ファイルツリー</th></tr>
-                                        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>上下に移る（先頭で <kbd>↑</kbd> を押すと絞り込み欄へ）</td></tr>
-                                        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>フォルダを閉じる・開く</td></tr>
-                                        <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>先頭・末尾へ</td></tr>
-                                        <tr><td><kbd>Enter</kbd></td><td>ノートを開く・フォルダを開閉する</td></tr>
-                                    </tbody>
-                                    {% if help_is_admin %}
-                                    <tbody>
-                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">エディタ（管理者のみ）</th></tr>
-                                        <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存する</td></tr>
-                                        <tr><td><kbd>Tab</kbd></td><td>字下げ（スペース4つ）</td></tr>
-                                    </tbody>
-                                    {% endif %}
+                                    {% endfor %}
                                 </table>
                             </div>
                         </section>
                     </div>
 
-                    {% if help_is_admin %}
+                    {% if viewer_is_admin %}
                     <!-- Admin Panel（同期・公開・公開チェック・編集・ダッシュボード） -->
                     <div id="help-panel-admin" class="help-panel">
                         <section class="settings-section">

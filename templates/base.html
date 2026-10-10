@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261014">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261016">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -43,15 +43,23 @@
     <script src="/static/js/modules/table-copy.js?v=20260223" defer></script>
     <script src="/static/js/modules/mermaid.js?v=20260223" defer></script>
     <script src="/static/js/modules/sidebar.js?v=20261013" defer></script>
-    <script src="/static/js/modules/file-tree.js?v=20261012" defer></script>
+    <script src="/static/js/modules/file-tree.js?v=20261015" defer></script>
     <script src="/static/js/modules/search.js?v=20261012" defer></script>
-    <script src="/static/js/modules/settings.js?v=20261010" defer></script>
+    <script src="/static/js/modules/settings.js?v=20261015" defer></script>
     <script src="/static/js/modules/history.js?v=20261011" defer></script>
     <script src="/static/js/modules/editor.js?v=20261010" defer></script>
-    <script src="/static/js/modules/main.js?v=20261011" defer></script>
+    <script src="/static/js/modules/shortcuts.js?v=20261015" defer></script>
+    <script src="/static/js/modules/main.js?v=20261015" defer></script>
     {% block head %}{% endblock %}
 </head>
 
+{# 管理者向けの表示を出すか（ヘルプとショートカット一覧で共通）。記事ページの「外部の人の表示」（?as=public）では
+   is_localhost が False になるが、管理者には出す（is_admin は記事ページだけが渡す。ほかのページは is_localhost で判定する） #}
+{% set viewer_is_admin = is_admin if is_admin is defined else is_localhost %}
+{# いまの画面（ショートカット一覧で、この画面で使えるグループを上に出すのに使う） #}
+{% set shortcut_page_now = shortcuts.find_page(self.body_class()) %}
+{# キー表記のマクロ。include した部品（ヘルプ・チートシート・検索）からも見える #}
+{% import 'partials/_shortcut_macros.html' as sc %}
 <body class="{% block body_class %}{% endblock %}">
     {% include 'partials/_activity_bar.html' %}
 
@@ -90,9 +98,9 @@
             <div class="sidebar-content">
                 <div id="sidebar-files" class="sidebar-panel active">
                     <div class="file-tree-filter-bar">
-                        <input type="text" id="file-tree-filter" class="file-tree-filter" placeholder="ファイル名で絞り込み…" autocomplete="off">
+                        <input type="text" id="file-tree-filter" data-shortcut-place="{{ shortcuts.FOCUS_TREE_FILTER }}" class="file-tree-filter" placeholder="ファイル名で絞り込み…" autocomplete="off">
                     </div>
-                    <div id="file-tree" class="file-tree">
+                    <div id="file-tree" data-shortcut-place="{{ shortcuts.FOCUS_TREE }}" class="file-tree">
                         <div class="tree-empty">読み込み中…</div>
                     </div>
                 </div>
@@ -102,6 +110,13 @@
                 <div id="sidebar-history" class="sidebar-panel">
                     <div class="history-empty">閲覧履歴はありません</div>
                 </div>
+            </div>
+            <!-- ファイルツリーの操作ヒント（ツリーか絞り込み欄にフォーカスがある間だけ file-tree.js が出す。F-9） -->
+            <div id="file-tree-hints" class="key-hint-bar file-tree-hints" hidden>
+                {% for group_id in ("tree-filter", "tree") %}
+                {% set group = shortcuts.group(group_id) %}
+                <div class="key-hint-set" {{ sc.contexts_attr(group) }} hidden>{{ sc.hint_items(group) }}</div>
+                {% endfor %}
             </div>
             <!-- Sidebar Footer (Empty for now) -->
             <div class="sidebar-footer">
@@ -130,6 +145,8 @@
     {% include 'partials/_modal_search.html' %}
     {% include 'partials/_modal_welcome.html' %}
     {% include 'partials/_modal_help.html' %}
+    {# 設定モーダルの部品は閉じタグが1つ足りず、後ろに置くと設定モーダルの中に入ってしまうので、その前に置く #}
+    {% include 'partials/_modal_shortcuts.html' %}
     {% include 'partials/_modal_settings.html' %}
 </body>
 

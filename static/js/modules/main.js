@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initHistory();
     initSettingsModule();
     initEditor();
+    initShortcutSheet();
 
     // --- Celebration check ---
     if (localStorage.getItem('showCelebration') === 'true') {

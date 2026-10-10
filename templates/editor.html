@@ -32,7 +32,7 @@
             <span class="editor-filename-ext">.md</span>
         </div>
         {% endif %}
-        <button id="editor-save-btn" class="primary-btn">
+        <button id="editor-save-btn" class="primary-btn" title="保存 (Ctrl+S)" aria-label="保存 (Ctrl+S)">
             <span class="btn-text">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -70,4 +70,6 @@
         <div id="editor-preview" class="markdown-body"></div>
     </div>
 </div>
+{# 保存のキーが常に見えるように、エディタの下の段にキーを出す（定義は app/shortcuts.py。F-9） #}
+<div class="key-hint-bar editor-key-hints" aria-label="エディタのショートカット">{{ sc.hint_items(shortcuts.group("editor")) }}</div>
 {% endblock %}

@@ -38,10 +38,7 @@ function initHelpModal() {
         ].filter(btn => btn !== null);
 
         helpBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                helpModal.classList.add('active');
-                document.body.classList.add('no-scroll');
-            });
+            btn.addEventListener('click', () => openHelpModal());
         });
 
         const closeHelp = () => {
@@ -67,25 +64,31 @@ function initHelpModal() {
         });
 
         // Help Modal Tabs logic
-        const helpTabs = document.querySelectorAll('.help-tab');
-        const helpPanels = document.querySelectorAll('.help-panel');
-
-        if (helpTabs.length > 0 && helpPanels.length > 0) {
-            helpTabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const targetTab = tab.dataset.tab;
-
-                    // Update tabs
-                    helpTabs.forEach(t => t.classList.toggle('active', t === tab));
-
-                    // Update panels
-                    helpPanels.forEach(panel => {
-                        panel.classList.toggle('active', panel.id === `help-panel-${targetTab}`);
-                    });
-                });
-            });
-        }
+        document.querySelectorAll('.help-tab').forEach(tab => {
+            tab.addEventListener('click', () => selectHelpTab(tab.dataset.tab));
+        });
     }
+}
+
+/**
+ * ヘルプを開く。tabName を渡すとそのタブを選んで開く（例: ショートカット一覧から 'keys'）
+ */
+function openHelpModal(tabName) {
+    const helpModal = document.getElementById('help-modal');
+    if (!helpModal) return;
+    if (tabName) selectHelpTab(tabName);
+    helpModal.classList.add('active');
+    document.body.classList.add('no-scroll');
+}
+
+/**
+ * ヘルプのタブを切り替える
+ */
+function selectHelpTab(tabName) {
+    document.querySelectorAll('.help-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+    document.querySelectorAll('.help-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `help-panel-${tabName}`);
+    });
 }
 
 // --- Welcome Modal Logic (localhost only, first visit) ---

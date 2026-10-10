@@ -174,7 +174,8 @@
     justify-content: center;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    /* 全画面の要素なので、見た目の切り替えに要るものだけをアニメーションさせる */
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .settings-modal.active {
@@ -1620,17 +1621,29 @@ input:checked+.slider:before {
     color: rgba(255, 255, 255, 0.85);
 }
 
-.search-modal-footer {
+/* 下の段のキーのヒント（クイックスイッチャー・ファイルツリー・エディタで共通。F-9） */
+.key-hint-bar,
+.key-hint-set {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 4px 16px;
+}
+
+.key-hint-bar {
     padding: 8px 16px;
     border-top: 1px solid var(--border-color);
     font-size: 0.75rem;
     color: var(--text-muted);
 }
 
-.search-modal-footer kbd {
+/* display: flex が hidden 属性を上書きしないように */
+.key-hint-bar[hidden],
+.key-hint-set[hidden] {
+    display: none;
+}
+
+.key-hint-bar kbd,
+.shortcut-sheet kbd {
     display: inline-block;
     margin-right: 2px;
     padding: 1px 4px;
@@ -1640,11 +1653,114 @@ input:checked+.slider:before {
     font-family: var(--code-font);
     font-size: 0.85em;
     line-height: 1.2;
+    white-space: nowrap;
+}
+
+.shortcut-sheet kbd {
+    color: var(--text-normal);
+}
+
+/* ファイルツリーの下の段は、サイドバーの幅に合わせて詰める */
+.file-tree-hints {
+    padding: 7px 12px;
+    gap: 4px 12px;
 }
 
 /* スマホはキーボード操作をしないので操作ヒントを出さない */
 @media (max-width: 768px) {
-    .search-modal-footer {
+    .key-hint-bar {
         display: none;
     }
+}
+
+/* ショートカット一覧（? で開く小さなモーダル。F-9） */
+.shortcut-sheet {
+    width: 360px;
+    max-width: 92vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    color: var(--text-normal);
+    font-size: 0.85rem;
+    overflow: hidden;
+    outline: none;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.shortcut-sheet-modal.active .shortcut-sheet {
+    transform: translateY(0);
+}
+
+.shortcut-sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.shortcut-sheet-page {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.shortcut-sheet-body {
+    overflow-y: auto;
+    padding-bottom: 6px;
+}
+
+.shortcut-sheet-sec {
+    margin: 0;
+    padding: 10px 14px 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.shortcut-sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    /* 節ごとに表が分かれていても、キーの列の幅をそろえる */
+    table-layout: fixed;
+}
+
+.shortcut-sheet-table td {
+    padding: 4px 14px;
+    vertical-align: top;
+}
+
+.shortcut-sheet-table td:first-child {
+    width: 9em;
+    white-space: nowrap;
+}
+
+.shortcut-sheet-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.shortcut-sheet-link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent-purple);
+    font: inherit;
+    cursor: pointer;
+}
+
+.shortcut-sheet-link:hover,
+.shortcut-sheet-link:focus-visible {
+    text-decoration: underline;
 }
