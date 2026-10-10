@@ -320,14 +320,14 @@ function initSettings() {
 
     const applySettings = (settings) => {
         // Font Size
-        document.body.classList.remove('font-small', 'font-medium', 'font-large');
-        document.body.classList.add(`font-${settings.fontSize}`);
+        document.documentElement.classList.remove('font-small', 'font-medium', 'font-large');
+        document.documentElement.classList.add(`font-${settings.fontSize}`);
 
         // Readable Width
         if (settings.readableWidth) {
-            document.body.classList.add('readable-width');
+            document.documentElement.classList.add('readable-width');
         } else {
-            document.body.classList.remove('readable-width');
+            document.documentElement.classList.remove('readable-width');
         }
 
         // Line Numbers
@@ -429,8 +429,8 @@ function initSettings() {
         fontSizeSelect.addEventListener('change', (e) => {
             const val = e.target.value;
             localStorage.setItem('fontSize', val);
-            document.body.classList.remove('font-small', 'font-medium', 'font-large');
-            document.body.classList.add(`font-${val}`);
+            document.documentElement.classList.remove('font-small', 'font-medium', 'font-large');
+            document.documentElement.classList.add(`font-${val}`);
         });
     }
 
@@ -438,8 +438,8 @@ function initSettings() {
         readableWidthCheck.addEventListener('change', (e) => {
             const val = e.target.checked;
             localStorage.setItem('readableWidth', val);
-            if (val) document.body.classList.add('readable-width');
-            else document.body.classList.remove('readable-width');
+            if (val) document.documentElement.classList.add('readable-width');
+            else document.documentElement.classList.remove('readable-width');
         });
     }
 
