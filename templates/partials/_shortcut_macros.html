@@ -1,0 +1,17 @@
+{# ショートカットの描き方（F-9）。定義は app/shortcuts.py。
+   keys: キーの表記。押し方の中は + でつなぎ、押し方どうしは sep で区切る（例: Ctrl+K、↑ ↓）
+   hint_items: 下の段のヒント（キー＋短い説明）。見た目は .key-hint-bar。extra はグループの後ろに足すショートカット
+   contexts_attr: グループの使える場所（data-contexts。shortcuts.js がフォーカスの場所と突き合わせる）
+   base.html で sc として import する。include した部品からも親の import が見えるので、部品側では import しない #}
+{% macro keys(shortcut_keys, sep=" ") -%}
+{%- for chord in shortcut_keys -%}
+{%- if not loop.first %}{{ sep }}{% endif -%}
+{%- for key in chord %}{% if not loop.first %}+{% endif %}<kbd>{{ key }}</kbd>{% endfor -%}
+{%- endfor -%}
+{%- endmacro %}
+
+{% macro hint_items(group, extra=()) -%}
+{%- for shortcut in group.shortcuts|list + extra|list %}<span>{{ keys(shortcut.keys, "") }} {{ shortcut.short }}</span>{% endfor -%}
+{%- endmacro %}
+
+{% macro contexts_attr(group) %}data-contexts="{{ group.contexts|sort|join(' ') }}"{% endmacro %}

@@ -9,6 +9,8 @@ function initFileTree() {
     const filterInput = document.getElementById('file-tree-filter');
     if (!container) return;
 
+    initFileTreeHints();
+
     let tree = [];
     // ユーザーが開いたフォルダ（localStorage に保存する）
     const openFolders = new Set(loadOpenFolders());
@@ -225,6 +227,33 @@ function initFileTree() {
         const offset = active.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         scroller.scrollTop += offset - scroller.clientHeight / 3;
     }
+}
+
+/**
+ * ツリーか絞り込み欄にフォーカスがある間だけ、サイドバーの下の段にキーのヒントを出す（F-9）
+ * フォーカスの場所（shortcutPlaceOf）で使えるグループのヒントに切り替える。
+ * マウスで押したときは出さない（キーボードで動かしているときだけ。:focus-visible で見分ける。入力欄は常に当てはまる）
+ */
+function initFileTreeHints() {
+    const bar = document.getElementById('file-tree-hints');
+    if (!bar) return;
+    const sets = Array.from(bar.querySelectorAll('[data-contexts]'));
+
+    const show = (el) => {
+        const place = el instanceof Element && el.matches(':focus-visible') ? shortcutPlaceOf(el) : null;
+        let shown = false;
+        sets.forEach(set => {
+            set.hidden = !groupUsableAt(set, place);
+            shown = shown || !set.hidden;
+        });
+        bar.hidden = !shown;
+    };
+
+    document.addEventListener('focusin', (e) => show(e.target));
+    document.addEventListener('focusout', (e) => {
+        // 次のフォーカス先が無い（ページの外・何もない所を押した）ときも消す
+        if (!e.relatedTarget) show(null);
+    });
 }
 
 /**

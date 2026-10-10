@@ -1,0 +1,31 @@
+    <!-- Shortcut Sheet（? で開くショートカット一覧。F-9） -->
+    {# グループは app/shortcuts.py の定義から、いまの画面（shortcut_page_now）で使えるものを上にして描く。
+       フォーカスのあった場所（data-shortcut-place）を data-contexts に持つグループは、shortcuts.js が先頭へ移す #}
+    <div id="shortcut-sheet" class="settings-modal shortcut-sheet-modal" role="dialog" aria-modal="true"
+        aria-labelledby="shortcut-sheet-title">
+        <div class="shortcut-sheet" tabindex="-1">
+            <div class="shortcut-sheet-head">
+                <b id="shortcut-sheet-title">ショートカット</b>
+                {% if shortcut_page_now %}<span class="shortcut-sheet-page">いまの画面: {{ shortcut_page_now.label }}</span>{% endif %}
+            </div>
+            <div class="shortcut-sheet-body">
+                {% for group in shortcuts.groups_for_page(shortcut_page_now, viewer_is_admin) %}
+                <section class="shortcut-sheet-group" data-group="{{ group.id }}" {{ sc.contexts_attr(group) }}>
+                    <h4 class="shortcut-sheet-sec">{{ group.label }}</h4>
+                    <table class="shortcut-sheet-table">
+                        <tbody>
+                            {% for shortcut in group.shortcuts %}
+                            <tr><td>{{ sc.keys(shortcut.keys) }}</td><td>{{ shortcut.short }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+                {% endfor %}
+            </div>
+            <div class="shortcut-sheet-foot">
+                <span><kbd>Esc</kbd> 閉じる</span>
+                <button type="button" id="shortcut-sheet-help" class="shortcut-sheet-link">すべてのショートカット → ヘルプ</button>
+            </div>
+        </div>
+    </div>
+    <!-- /shortcut-sheet -->

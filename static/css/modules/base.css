@@ -37,6 +37,12 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* モーダルを開くとき body.no-scroll でスクロールバーが消えても、ページの幅が変わらないように
+   スクロールバーの分の幅を常に確保する（背景が横にずれて、かくつくのを防ぐ） */
+html {
+    scrollbar-gutter: stable;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 10px;

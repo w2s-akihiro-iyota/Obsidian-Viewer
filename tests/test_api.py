@@ -6,6 +6,7 @@
 - 公開チェック（F-5）: 管理者は「外部の人の表示」（?as=public）で外部向けと同じ本文と、チェック結果を見られる
 - 記事ページのヘッダー（D-1）: パンくず・タイトル・メタ情報
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
+- 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
 """
 import copy
 import os
@@ -15,7 +16,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from app import cache
+from app import cache, shortcuts
 from app.api import content as content_api
 from app.api import editor as editor_api
 from app.core import indexing
@@ -391,3 +392,126 @@ def test_管理者の外部表示でもヘルプの管理者向けタブは出�
     assert "/editor?path=" not in html             # ページ側の出し分けは変えない
     assert _help_tabs(html) == ALL_HELP_TABS
     assert 'id="help-panel-admin"' in html and "エディタ（管理者のみ）" in html
+
+
+# ---------- F-9: 画面上のショートカット表示 ----------
+
+HELP_KEYS_RE = re.compile(r'<table class="help-table help-keys">(.*?)</table>', re.S)
+HELP_KEY_ROW_RE = re.compile(r"<tr><td>(.*?)</td><td>(.*?)</td></tr>", re.S)
+SHEET_RE = re.compile(r'<div id="shortcut-sheet".*?<!-- /shortcut-sheet -->', re.S)
+SHEET_GROUP_RE = re.compile(r'<section class="shortcut-sheet-group" data-group="([\w-]+)"')
+
+
+def _keys_html(keys, sep=" "):
+    """定義のキーを、ヘルプと同じ表記（<kbd>Ctrl</kbd>+<kbd>K</kbd>）にする"""
+    return sep.join("+".join(f"<kbd>{key}</kbd>" for key in chord) for chord in keys)
+
+
+def _help_key_rows(html):
+    return [(keys.strip(), desc.strip()) for keys, desc in HELP_KEY_ROW_RE.findall(HELP_KEYS_RE.search(html).group(1))]
+
+
+def _sheet(html):
+    match = SHEET_RE.search(html)
+    assert match, "チートシートのモーダルが無い"
+    return match.group(0)
+
+
+def _admin_pages(client):
+    slug = cache.PATH_TO_SLUG["親.md"]
+    return {path: client.get(path).text for path in ("/", f"/view/{slug}", "/graph", "/dashboard", "/editor")}
+
+
+def test_ヘルプのショートカット表は定義の行だけを定義の順に出す(site):
+    html = TestClient(app, base_url=ADMIN).get("/").text
+    expected = [(_keys_html(s.keys), str(s.description_html)) for g in shortcuts.SHORTCUT_GROUPS for s in g.shortcuts]
+    assert _help_key_rows(html) == expected
+    for group in shortcuts.SHORTCUT_GROUPS:
+        assert f'<th colspan="2" scope="colgroup">{group.label}</th>' in html
+
+
+def test_外部ポートのヘルプ表に管理者だけの行は出ない(site):
+    html = TestClient(app, base_url=PUBLIC).get("/").text
+    expected = [(_keys_html(s.keys), str(s.description_html))
+                for g in shortcuts.visible_groups(False) for s in g.shortcuts]
+    assert _help_key_rows(html) == expected
+    for shortcut in shortcuts.group("editor").shortcuts:
+        assert (_keys_html(shortcut.keys), shortcut.description) not in _help_key_rows(html)
+
+
+def test_ヘルプにハテナの行と説明文が出る(site):
+    for base_url in (ADMIN, PUBLIC):
+        html = TestClient(app, base_url=base_url).get("/").text
+        assert ("<kbd>?</kbd>", "ショートカット一覧を開く") in _help_key_rows(html)
+        assert "どの画面でも <kbd>?</kbd> を押すと、この画面で使えるショートカットを出せます" in html
+
+
+def test_チートシートは管理者の全ページに出てエディタのグループを含む(site):
+    for path, html in _admin_pages(TestClient(app, base_url=ADMIN)).items():
+        groups = SHEET_GROUP_RE.findall(_sheet(html))
+        assert sorted(groups) == sorted(g.id for g in shortcuts.SHORTCUT_GROUPS), path
+
+
+def test_チートシートは外部ポートではエディタのグループを含まない(site):
+    client = TestClient(app, base_url=PUBLIC)
+    for html in (client.get("/").text, _view(client), client.get("/graph").text):
+        sheet = _sheet(html)
+        assert "editor" not in SHEET_GROUP_RE.findall(sheet)
+        assert "エディタ" not in sheet
+
+
+def test_チートシートはいまの画面を示しその画面のグループを先頭に出す(site):
+    pages = _admin_pages(TestClient(app, base_url=ADMIN))
+    editor_sheet = _sheet(pages["/editor"])
+    assert "いまの画面: エディタ" in editor_sheet
+    assert SHEET_GROUP_RE.findall(editor_sheet)[:2] == ["editor", "global"]
+    view_sheet = _sheet(pages[f"/view/{cache.PATH_TO_SLUG['親.md']}"])
+    assert "いまの画面: 記事ページ" in view_sheet
+    assert SHEET_GROUP_RE.findall(view_sheet)[0] == "global"
+    assert "いまの画面: ノート一覧" in _sheet(pages["/"])
+
+
+def test_ファイルツリーの下の段に絞り込み欄とツリーのヒントがある(site):
+    html = TestClient(app, base_url=PUBLIC).get("/").text
+    assert 'id="file-tree-hints"' in html
+    for group_id in ("tree-filter", "tree"):
+        for shortcut in shortcuts.group(group_id).shortcuts:
+            assert f"{_keys_html(shortcut.keys, '')} {shortcut.short}</span>" in html
+
+
+def test_エディタ画面の下の段に保存と字下げのキーがある(site):
+    html = TestClient(app, base_url=ADMIN).get("/editor").text
+    hints = re.search(r'<div class="key-hint-bar editor-key-hints"[^>]*>(.*?)</div>', html, re.S).group(1)
+    assert "<kbd>Ctrl</kbd>+<kbd>S</kbd> 保存" in hints
+    assert "<kbd>Tab</kbd> 字下げ" in hints
+
+
+def test_ボタンのツールチップにキーを添える(site):
+    editor = TestClient(app, base_url=ADMIN).get("/editor").text
+    assert re.search(r'<button id="editor-save-btn"[^>]*title="保存 \(Ctrl\+S\)"[^>]*aria-label="保存 \(Ctrl\+S\)"', editor)
+    html = TestClient(app, base_url=PUBLIC).get("/").text
+    for button_id in ("help-open-btn", "help-open-btn-mobile"):
+        assert re.search(rf'<button id="{button_id}"[^>]*title="ヘルプ・ショートカット一覧 \(\?\)"'
+                         rf'[^>]*aria-label="ヘルプ・ショートカット一覧 \(\?\)"', html), button_id
+
+
+def test_チートシートの各グループに定義の使える場所を出す(site):
+    sheet = _sheet(TestClient(app, base_url=ADMIN).get("/").text)
+    for group in shortcuts.SHORTCUT_GROUPS:
+        contexts = " ".join(sorted(group.contexts))
+        assert f'data-group="{group.id}" data-contexts="{contexts}"' in sheet, group.id
+
+
+def test_フォーカスの場所の目印は定義のidで出す(site):
+    html = TestClient(app, base_url=PUBLIC).get("/").text
+    assert re.search(rf'id="file-tree-filter"[^>]*data-shortcut-place="{shortcuts.FOCUS_TREE_FILTER}"', html)
+    assert re.search(rf'id="file-tree"[^>]*data-shortcut-place="{shortcuts.FOCUS_TREE}"', html)
+    assert re.search(rf'class="search-modal-content" data-shortcut-place="{shortcuts.FOCUS_QUICK_SWITCHER}"', html)
+
+
+def test_クイックスイッチャーの下の段は定義から描く(site):
+    html = TestClient(app, base_url=PUBLIC).get("/").text
+    footer = re.search(r'<div class="search-modal-footer key-hint-bar">(.*?)</div>', html, re.S).group(1)
+    expected = [s for s in shortcuts.group("quick-switcher").shortcuts] + [shortcuts.find_shortcut("global", ("Esc",))]
+    assert re.findall(r"<span>(.*?)</span>", footer) == [f"{_keys_html(s.keys, '')} {s.short}" for s in expected]
+    assert [s.short for s in expected] == ["選択", "開く", "新しいタブ", "閉じる"]   # 今の文言のまま

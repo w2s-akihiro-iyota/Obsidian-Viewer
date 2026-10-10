@@ -1,6 +1,6 @@
     <!-- Search Modal -->
     <div id="search-modal" class="search-modal">
-        <div class="search-modal-content">
+        <div class="search-modal-content" data-shortcut-place="{{ shortcuts.FOCUS_QUICK_SWITCHER }}">
             <div class="search-modal-header">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -18,11 +18,7 @@
                 </button>
             </div>
             <div id="modal-search-results" class="search-modal-results" role="listbox" aria-label="検索結果"></div>
-            <div class="search-modal-footer">
-                <span><kbd>↑</kbd><kbd>↓</kbd> 選択</span>
-                <span><kbd>Enter</kbd> 開く</span>
-                <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 新しいタブ</span>
-                <span><kbd>Esc</kbd> 閉じる</span>
-            </div>
+            {# 下の段は定義から描く（クイックスイッチャーのキー＋どの画面でも使える Esc） #}
+            <div class="search-modal-footer key-hint-bar">{{ sc.hint_items(shortcuts.group("quick-switcher"), [shortcuts.find_shortcut("global", ("Esc",))]) }}</div>
         </div>
     </div>
