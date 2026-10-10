@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/_note_macros.html" as nm %}
 
 {% block title %}ノート一覧 - Obsidian Viewer{% endblock %}
 
@@ -45,103 +46,101 @@
             </div>
         </div>
 
-        <div id="search-interactive-area">
+        {# 中の操作はすべてこの領域を差し替える（hx-target などは子孫に引き継がれる） #}
+        <div id="search-interactive-area" hx-target="#search-interactive-area" hx-select="#search-interactive-area"
+            hx-swap="outerHTML" hx-push-url="true">
 
             <div class="search-container">
-                <!-- Search Form -->
-                <form action="/" method="get" class="search-form" hx-get="/" hx-target="#search-interactive-area"
-                    hx-select="#search-interactive-area" hx-push-url="true" hx-trigger="submit">
+                <!-- 検索欄と、その下のツールバー（公開状態・並び替え）。切り替えると form ごと送る -->
+                <form action="/" method="get" class="search-form" hx-get="/"
+                    hx-trigger="submit, change[target.hasAttribute('data-autosubmit')]">
                     <div class="search-input-wrapper">
-                        <input type="text" name="q" value="{{ q }}" placeholder="ノートを検索…" class="search-input">
-                        {% if selected_tag %}<input type="hidden" name="tag" value="{{ selected_tag }}">{% endif %}
+                        <input type="text" name="q" value="{{ query.q }}" placeholder="ノートを検索…" class="search-input"
+                            aria-label="ノートを検索">
+                        {% if query.tag %}<input type="hidden" name="tag" value="{{ query.tag }}">{% endif %}
                         <button type="submit" class="search-button" aria-label="検索">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
+                                stroke-linejoin="round" aria-hidden="true">
                                 <circle cx="11" cy="11" r="8" />
                                 <path d="m21 21-4.3-4.3" />
                             </svg>
                         </button>
                     </div>
 
-                    <!-- Options Accordion -->
-                    <details class="search-accordion">
-                        <summary class="search-summary">
-                            <span class="accordion-hint">絞り込み（公開状態・タグ）
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" class="accordion-icon">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </span>
-                        </summary>
-
+                    <div class="list-toolbar">
                         {% if is_localhost %}
-                        <div class="visibility-filter">
-                            <span class="v-label">公開状態:</span>
-                            <div class="segmented-control">
-                                <input type="radio" name="visibility" value="all" id="v-all" {% if visibility=='all'
-                                    %}checked{% endif %} hx-get="/" hx-target="#search-interactive-area"
-                                    hx-select="#search-interactive-area" hx-push-url="true">
-                                <label for="v-all">すべて</label>
-
-                                <input type="radio" name="visibility" value="public" id="v-public" {% if
-                                    visibility=='public' %}checked{% endif %} hx-get="/"
-                                    hx-target="#search-interactive-area" hx-select="#search-interactive-area"
-                                    hx-push-url="true">
-                                <label for="v-public">公開</label>
-
-                                <input type="radio" name="visibility" value="private" id="v-private" {% if
-                                    visibility=='private' %}checked{% endif %} hx-get="/"
-                                    hx-target="#search-interactive-area" hx-select="#search-interactive-area"
-                                    hx-push-url="true">
-                                <label for="v-private">非公開</label>
-                            </div>
+                        <div class="segmented-control" role="radiogroup" aria-label="公開状態">
+                            {% for value, label in visibility_options.items() %}
+                            <input type="radio" name="visibility" value="{{ value }}" id="v-{{ value }}" data-autosubmit
+                                {% if query.visibility == value %}checked{% endif %}>
+                            <label for="v-{{ value }}">{{ label }}<span class="seg-count">{{ note_list.visibility_counts[value] }}</span></label>
+                            {% endfor %}
                         </div>
                         {% endif %}
 
-                        <div class="tag-filter-container">
-                            <input type="text" id="tag-filter-input" class="tag-filter-input" placeholder="タグを絞り込み…">
+                        <div class="list-sort">
+                            {# 検索中は検索の順を優先するので選べない。選んでいた並びは hidden で引き継ぐ #}
+                            <select name="sort" class="list-sort-select" aria-label="並び替え" data-autosubmit
+                                {% if query.q %}disabled title="検索中は並び替えできません"{% endif %}>
+                                {% for value, label in sort_options.items() %}
+                                <option value="{{ value }}" {% if query.sort == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if query.q %}<input type="hidden" name="sort" value="{{ query.sort }}">{% endif %}
                         </div>
-                        <script>
-                            document.getElementById('tag-filter-input').addEventListener('input', function (e) {
-                                const term = e.target.value.toLowerCase();
-                                const tags = document.querySelectorAll('.tag-chip');
-                                tags.forEach(tag => {
-                                    const text = tag.textContent.trim().replace('#', '').toLowerCase();
-                                    // 「すべて」のチップは絞り込みの対象外（表示文言ではなく data 属性で見分ける）
-                                    if (text.includes(term) || tag.hasAttribute('data-tag-all')) {
-                                        tag.style.display = 'inline-block';
-                                    } else {
-                                        tag.style.display = 'none';
-                                    }
-                                });
-                            });
-                        </script>
-                        <div class="tag-cloud">
-                            <a href="/?q={{ q }}&visibility={{ visibility }}"
-                                class="tag-chip {% if not selected_tag %}active{% endif %}" data-tag-all
-                                hx-get="/?q={{ q }}&visibility={{ visibility }}" hx-target="#search-interactive-area"
-                                hx-select="#search-interactive-area" hx-push-url="true">
-                                すべて
-                            </a>
-                            {% for t in all_tags %}
-                            <a href="/?q={{ q }}&tag={{ t }}&visibility={{ visibility }}"
-                                class="tag-chip {% if selected_tag|string|trim == t|string|trim %}active{% endif %}"
-                                hx-get="/?q={{ q }}&tag={{ t }}&visibility={{ visibility }}"
-                                hx-target="#search-interactive-area" hx-select="#search-interactive-area"
-                                hx-push-url="true">
-                                #{{ t }}
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </details>
+                    </div>
                 </form>
+
+                {% if note_list.top_tags %}
+                <div class="tag-row">
+                    {% for t in note_list.top_tags %}
+                    {% set is_active = query.tag == t %}
+                    {% set tag_url = query.url(tag='' if is_active else t) %}
+                    <a href="{{ tag_url }}" hx-get="{{ tag_url }}" class="tag-chip{% if is_active %} active{% endif %}"
+                        {% if is_active %}aria-current="true" title="タグの絞り込みを外す"{% endif %}>
+                        #{{ t }}<span class="tag-count">{{ note_list.tag_counts.get(t, 0) }}</span>
+                    </a>
+                    {% endfor %}
+                    {% if note_list.hidden_tag_count > 0 %}
+                    <button type="button" class="tag-chip tag-more-btn" aria-expanded="false"
+                        aria-controls="tag-all-panel">＋ほか {{ note_list.hidden_tag_count }}</button>
+                    {% endif %}
+                </div>
+                {% if note_list.hidden_tag_count > 0 %}
+                <div id="tag-all-panel" class="tag-all-panel" hidden>
+                    <div class="tag-filter-container">
+                        <input type="text" id="tag-filter-input" class="tag-filter-input" placeholder="タグを絞り込み…"
+                            aria-label="タグを絞り込み">
+                    </div>
+                    <div class="tag-cloud">
+                        {% for t in note_list.all_tags %}
+                        {% set is_active = query.tag == t %}
+                        {% set tag_url = query.url(tag='' if is_active else t) %}
+                        <a href="{{ tag_url }}" hx-get="{{ tag_url }}" data-tag="{{ t }}"
+                            class="tag-chip{% if is_active %} active{% endif %}"
+                            {% if is_active %}aria-current="true"{% endif %}>
+                            #{{ t }}<span class="tag-count">{{ note_list.tag_counts[t] }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
             </div>
 
+            {% set active_filters = query.active_filters() %}
             <div id="search-results-area">
                 <div class="search-stats">
-                    {{ total_items }} 件
+                    <span class="search-count"><b>{{ total_items }} 件</b>{% if active_filters %}（全 {{ note_list.visible_total }} 件中）{% endif %}</span>
+                    {% for f in active_filters %}
+                    <a href="{{ f.url }}" hx-get="{{ f.url }}" class="filter-chip" aria-label="{{ f.remove_label }}"
+                        title="{{ f.remove_label }}">{{ f.label }}<span class="filter-chip-x" aria-hidden="true">×</span></a>
+                    {% endfor %}
+                    {% if active_filters %}
+                    {% set clear_url = query.clear_url() %}
+                    <a href="{{ clear_url }}" hx-get="{{ clear_url }}" class="filter-clear">条件を外す</a>
+                    {% endif %}
                 </div>
 
                 <div class="file-list-container">
@@ -149,16 +148,23 @@
                         {% for file in files %}
                         <li class="file-item">
                             <a href="/view/{{ file.slug }}" class="file-link">
-                                <div class="file-preview">
-                                    <p>{{ file.preview }}</p>
-                                </div>
                                 <div class="file-content">
-                                    <div class="file-name">
-                                        {{ file.title }}
-                                        {% if file.published %}
-                                        <span class="file-status-badge">公開中</span>
-                                        {% endif %}
+                                    <div class="file-head">
+                                        <div class="file-name">
+                                            {{ file.title }}
+                                            {# 管理者には非公開ノートにだけ印を付ける。外部の人には非公開ノート自体が一覧に来ない（全部公開）ので出さない。
+                                               is_localhost の判定は、その前提が崩れても外部に印を出さないための念押し #}
+                                            {% if is_localhost and not file.published %}{{ nm.private_mark() }}{% endif %}
+                                        </div>
+                                        <div class="file-meta">
+                                            <span class="file-updated">更新 {{ file.updated }}</span>
+                                            <span class="reading-time-badge">約{{ file.reading_time }}分</span>
+                                        </div>
                                     </div>
+                                    {# 抜粋。リストではタイトルの下に2行、グリッドでは上の箱。空なら出さない #}
+                                    {% if file.preview %}
+                                    <p class="file-excerpt">{{ file.preview }}</p>
+                                    {% endif %}
                                     {% if file.tags %}
                                     <div class="file-tags">
                                         {% for tag in file.tags %}
@@ -166,10 +172,6 @@
                                         {% endfor %}
                                     </div>
                                     {% endif %}
-                                    <div class="file-meta">
-                                        <span class="reading-time-badge">約{{ file.reading_time }}分</span>
-                                        <div class="file-updated">更新 {{ file.updated }}</div>
-                                    </div>
                                 </div>
                             </a>
                         </li>
@@ -182,34 +184,26 @@
                 </div>
 
                 {% if total_pages > 1 %}
-                <div class="pagination">
-                    {% if current_page > 1 %}
-                    <a href="/?page={{ current_page - 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                        class="page-link"
-                        hx-get="/?page={{ current_page - 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                        hx-target="#search-interactive-area" hx-select="#search-interactive-area"
-                        hx-push-url="true">前へ</a>
+                <nav class="pagination" aria-label="ページ送り">
+                    {% if query.page > 1 %}
+                    {% set prev_url = query.url(page=query.page - 1) %}
+                    <a href="{{ prev_url }}" class="page-link" hx-get="{{ prev_url }}">前へ</a>
                     {% else %}
                     <span class="page-link disabled">前へ</span>
                     {% endif %}
 
-                    <span class="page-info">{{ current_page }} / {{ total_pages }} ページ</span>
+                    <span class="page-info">{{ query.page }} / {{ total_pages }} ページ</span>
 
-                    {% if current_page < total_pages %} <a
-                        href="/?page={{ current_page + 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                        class="page-link"
-                        hx-get="/?page={{ current_page + 1 }}&q={{ q }}&tag={{ selected_tag }}&visibility={{ visibility }}"
-                        hx-target="#search-interactive-area" hx-select="#search-interactive-area" hx-push-url="true">
-                        次へ</a>
-                        {% else %}
-                        <span class="page-link disabled">次へ</span>
-                        {% endif %}
-                </div>
+                    {% if query.page < total_pages %}
+                    {% set next_url = query.url(page=query.page + 1) %}
+                    <a href="{{ next_url }}" class="page-link" hx-get="{{ next_url }}">次へ</a>
+                    {% else %}
+                    <span class="page-link disabled">次へ</span>
+                    {% endif %}
+                </nav>
                 {% endif %}
             </div>
         </div>
-
-
-
-
-        {% endblock %}
+    </div>
+</div>
+{% endblock %}

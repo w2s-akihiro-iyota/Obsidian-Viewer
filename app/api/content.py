@@ -3,6 +3,7 @@
 import math
 import re
 import time
+from dataclasses import replace
 from datetime import datetime
 from html import unescape
 from pathlib import Path
@@ -16,8 +17,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 # Local
 from app import cache
 from app.api import templates
-from app.config import CONTENT_DIR, JST, PER_PAGE, SEARCH_LIMIT
+from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, PER_PAGE, SEARCH_LIMIT
 from app.core.indexing import parse_frontmatter, is_published
+from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query
 from app.services.content import render_markdown
 from app.services.images import find_image_in_static
@@ -129,54 +131,34 @@ async def preview_file(request: Request, path: str):
 
 
 @router.get("/", response_class=HTMLResponse)
-async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "", visibility: str = "all"):
-    # Filter files
-    filtered = cache.GLOBAL_FILE_CACHE
+async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "", visibility: str = "all",
+                    sort: str = DEFAULT_SORT):
+    """
+    トップのノート一覧
 
-    if q:
-        q_lower = q.lower()
-        filtered = [f for f in filtered if q_lower in f['title'].lower() or q_lower in f['path'].lower()]
-
-    if tag:
-        filtered = [f for f in filtered if tag in (f.get('tags') or [])]
-
+    検索語 q・タグ・公開状態（管理者だけ）で絞り込み、sort で並べ替える（app/core/note_list.py）。
+    """
     is_localhost = is_admin_request(request)
+    query = ListQuery.from_params(q=q, tag=tag, visibility=visibility, sort=sort, page=page, is_admin=is_localhost)
+    note_list = build_note_list(cache.GLOBAL_FILE_CACHE, query, is_admin=is_localhost,
+                                top_tag_count=LIST_TOP_TAG_COUNT)
 
-    if not is_localhost:
-        # Force public visibility for external requests
-        filtered = [f for f in filtered if f.get('published')]
-    else:
-        if visibility == "public":
-            filtered = [f for f in filtered if f.get('published')]
-        elif visibility == "private":
-            filtered = [f for f in filtered if not f.get('published')]
-
-    # Tags for cloud
-    # 外部の閲覧者には、公開ノートに付いたタグだけを見せる（非公開ノートのタグ名を漏らさない）
-    tag_source = cache.GLOBAL_FILE_CACHE if is_localhost else [f for f in cache.GLOBAL_FILE_CACHE if f.get('published')]
-    all_tags = set()
-    for f in tag_source:
-        for t in (f.get('tags') or []):
-            all_tags.add(t)
-    all_tags = sorted(list(all_tags))
-
-    # Pagination
-    total = len(filtered)
+    # ページ送り。総ページ数を超えたら最後のページに丸める（0件なら1）
+    total = len(note_list.files)
     pages = math.ceil(total / PER_PAGE)
-    start = (page - 1) * PER_PAGE
-    end = start + PER_PAGE
-    paginated_files = filtered[start:end]
+    query = replace(query, page=min(query.page, max(pages, 1)))
+    start = (query.page - 1) * PER_PAGE
+    paginated_files = note_list.files[start:start + PER_PAGE]
 
     return templates.TemplateResponse(request=request, name="index.html", context={
         "request": request,
         "files": paginated_files,
         "total_items": total,
-        "current_page": page,
         "total_pages": pages,
-        "selected_tag": tag,
-        "all_tags": all_tags,
-        "visibility": visibility,
-        "q": q,
+        "query": query,
+        "note_list": note_list,
+        "visibility_options": LIST_VISIBILITIES,
+        "sort_options": {k: v[0] for k, v in LIST_SORTS.items()},
         "is_localhost": is_localhost,
         "og_url": str(request.url)
     })

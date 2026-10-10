@@ -206,10 +206,7 @@ function initFileTree() {
                 link.appendChild(name);
 
                 if (node.published === false) {
-                    const badge = document.createElement('span');
-                    badge.className = 'tree-private-badge';
-                    badge.textContent = '非公開';
-                    link.appendChild(badge);
+                    link.appendChild(createPrivateMark());
                 }
 
                 li.appendChild(link);
@@ -320,4 +317,16 @@ function loadOpenFolders() {
 
 function saveOpenFolders(openFolders) {
     localStorage.setItem(FILE_TREE_OPEN_KEY, JSON.stringify([...openFolders]));
+}
+
+/**
+ * 非公開の印（錠前＋「非公開」）。base.html の <template id="private-mark-template"> を複製する
+ * （ノート一覧と同じマクロ partials/_note_macros.html から描いている）
+ * 幅が狭いときは CSS で文字を隠し、錠前だけにする（title で「非公開」と分かる）
+ */
+function createPrivateMark() {
+    const template = document.getElementById('private-mark-template');
+    // 外部の人の画面には template を置かない（非公開ノートがツリーに来ないので使わない）
+    if (!template) return document.createDocumentFragment();
+    return template.content.firstElementChild.cloneNode(true);
 }

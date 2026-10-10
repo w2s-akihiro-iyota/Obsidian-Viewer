@@ -1,5 +1,4 @@
 """ダッシュボード エンドポイント（localhost限定）"""
-from collections import Counter
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Request, HTTPException
@@ -7,6 +6,8 @@ from fastapi.responses import HTMLResponse
 
 from app import cache
 from app.api import templates
+from app.config import DASHBOARD_TOP_TAG_COUNT
+from app.core.note_list import count_tags
 from app.utils.helpers import is_admin_request
 
 router = APIRouter()
@@ -26,12 +27,8 @@ async def dashboard_page(request: Request):
     private_files = total_files - public_files
     total_chars = sum(f.get("char_count", 0) for f in files)
 
-    # タグ分布 (top 20)
-    tag_counter = Counter()
-    for f in files:
-        for t in (f.get("tags") or []):
-            tag_counter[t] += 1
-    top_tags = tag_counter.most_common(20)
+    # タグ分布（件数の多い順に上位だけ）
+    top_tags = count_tags(files).most_common(DASHBOARD_TOP_TAG_COUNT)
     max_tag_count = top_tags[0][1] if top_tags else 1
 
     # 最近更新されたファイル (top 10)

@@ -1,0 +1,5 @@
+{# ノートの印（D-10）。一覧・ダッシュボードで使う。ファイルツリーは base.html の <template id="private-mark-template"> を複製する
+   private_mark: 非公開の印（錠前＋「非公開」）。見た目は components.css の .private-mark。extra_class で場所ごとの調整用クラスを足す #}
+{% macro private_mark(extra_class="") -%}
+<span class="private-mark{% if extra_class %} {{ extra_class }}{% endif %}" title="非公開"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="private-mark-label">非公開</span></span>
+{%- endmacro %}

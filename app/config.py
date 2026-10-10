@@ -29,6 +29,12 @@ JST = timezone(timedelta(hours=9))
 # Pagination
 PER_PAGE = 12
 
+# ノート一覧の上に出すタグの数（件数の多い順）
+LIST_TOP_TAG_COUNT = 8
+
+# ダッシュボードのタグ分布に出すタグの数（件数の多い順）
+DASHBOARD_TOP_TAG_COUNT = 20
+
 # 検索（/api/search）で返す最大件数
 SEARCH_LIMIT = 20
 
