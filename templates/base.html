@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261025">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261026">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -28,6 +28,13 @@
             if (savedWidth && window.innerWidth > 768) {
                 document.documentElement.style.setProperty('--sidebar-width', savedWidth + 'px');
             }
+
+            // 読みやすい幅と文字サイズも描画前に付ける（後から付けると、全幅で一度描いてから縮んでかくつく）。
+            // 既定値と付け替えは settings.js と同じ
+            if (localStorage.getItem('readableWidth') !== 'false') {
+                document.documentElement.classList.add('readable-width');
+            }
+            document.documentElement.classList.add('font-' + (localStorage.getItem('fontSize') || 'medium'));
         })();
     </script>
     <script type="module">
@@ -45,7 +52,7 @@
     <script src="/static/js/modules/sidebar.js?v=20261013" defer></script>
     <script src="/static/js/modules/file-tree.js?v=20261018" defer></script>
     <script src="/static/js/modules/search.js?v=20261018" defer></script>
-    <script src="/static/js/modules/settings.js?v=20261023" defer></script>
+    <script src="/static/js/modules/settings.js?v=20261026" defer></script>
     <script src="/static/js/modules/history.js?v=20261011" defer></script>
     <script src="/static/js/modules/editor.js?v=20261010" defer></script>
     <script src="/static/js/modules/shortcuts.js?v=20261016" defer></script>

@@ -14,7 +14,7 @@ main.editor-container {
 }
 
 /* readable-width設定時もエディタは全幅を維持 */
-body.readable-width main.editor-container {
+html.readable-width main.editor-container {
     max-width: 100% !important;
 }
 

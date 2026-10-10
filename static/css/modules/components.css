@@ -580,24 +580,24 @@ input:checked+.slider:before {
 }
 
 /* Basic Settings Utilities */
-/* Font Size */
-body.font-small {
+/* Font Size（クラスは描画前に <html> へ付ける。base.html の head と settings.js） */
+html.font-small body {
     font-size: 14px;
 }
 
-body.font-medium {
+html.font-medium body {
     font-size: 16px;
 }
 
-body.font-large {
+html.font-large body {
     font-size: 18px;
 }
 
 /* Readable Width */
 /* Default .container is width: 0 (flex trick) and max-width: 100% */
-/* We need to target .container when body has .readable-width */
-body.readable-width .container,
-body.readable-width .container-wide {
+/* クラスは描画前に <html> へ付ける（base.html の head と settings.js） */
+html.readable-width .container,
+html.readable-width .container-wide {
     max-width: var(--readable-width);
     margin: 0 auto;
     /* Center it */
