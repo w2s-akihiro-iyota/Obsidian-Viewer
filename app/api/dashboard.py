@@ -1,17 +1,18 @@
 """ダッシュボード エンドポイント（localhost限定）"""
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 
 from app import cache
 from app.api import templates
-from app.config import DASHBOARD_TOP_TAG_COUNT
+from app.config import DASHBOARD_HEALTH_ROW_LIMIT, DASHBOARD_HEATMAP_WEEKS, DASHBOARD_TOP_TAG_COUNT
+from app.core.heatmap import HEATMAP_LEVEL_COUNT, build_heatmap
+from app.core.note_health import build_note_health
 from app.core.note_list import count_tags
 from app.utils.helpers import is_admin_request
 
 router = APIRouter()
-
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
@@ -34,59 +35,10 @@ async def dashboard_page(request: Request):
     # 最近更新されたファイル (top 10)
     recent_files = files[:10]
 
-    # ヒートマップ用のデータ生成
-    now = datetime.now()
-    start_date = now - timedelta(days=365)
-    # 日曜始まりに調整
-    days_since_sunday = (start_date.weekday() + 1) % 7
-    start_date = start_date - timedelta(days=days_since_sunday)
-    start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    # 手入れが必要なノート（F-6）。索引の作り直しで作ったキャッシュだけから数える
+    health = build_note_health(files, cache.BACKLINK_CACHE, DASHBOARD_HEALTH_ROW_LIMIT)
 
-    daily_chars = {}
-    for f in files:
-        updated_str = f.get("updated")
-        if updated_str:
-            try:
-                # "2026-04-14 10:17" や "2026-04-14 10:17:00" などに対応するためスライス
-                date_str = updated_str[:10]
-                daily_chars[date_str] = daily_chars.get(date_str, 0) + f.get("char_count", 0)
-            except Exception:
-                pass
-
-    heatmap_data = []
-    month_labels = []
-    last_month = None
-
-    current_date = start_date
-    days_count = (now - start_date).days + 1
-
-    for i in range(days_count):
-        d_str = current_date.strftime("%Y-%m-%d")
-        
-        # 月が変わったタイミング（または最初）でラベルに追加
-        if current_date.month != last_month:
-            month_labels.append(current_date.strftime("%Y/%m"))
-            last_month = current_date.month
-
-        chars = daily_chars.get(d_str, 0)
-        
-        if chars == 0:
-            level = 0
-        elif chars <= 1000:
-            level = 1
-        elif chars <= 3000:
-            level = 2
-        elif chars <= 5000:
-            level = 3
-        else:
-            level = 4
-            
-        heatmap_data.append({
-            "date": d_str,
-            "count": chars,
-            "level": level
-        })
-        current_date += timedelta(days=1)
+    heatmap_data, month_labels = build_heatmap(files, datetime.now())
 
     return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "request": request,
@@ -98,6 +50,9 @@ async def dashboard_page(request: Request):
         "top_tags": top_tags,
         "max_tag_count": max_tag_count,
         "recent_files": recent_files,
+        "health": health,
         "heatmap_data": heatmap_data,
-        "month_labels": month_labels
+        "heatmap_weeks": DASHBOARD_HEATMAP_WEEKS,
+        "heatmap_level_count": HEATMAP_LEVEL_COUNT,
+        "month_labels": month_labels,
     })

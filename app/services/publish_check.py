@@ -10,7 +10,7 @@ from pathlib import Path
 
 from app import cache
 from app.core.dataview import execute_query, parse_query
-from app.services.wikilinks import LinkKind, classify_link, iter_fenced_blocks, iter_wikilinks
+from app.services.wikilinks import LinkKind, classify_link, is_missing_note, iter_fenced_blocks, iter_wikilinks
 
 logger = logging.getLogger("app.publish_check")
 
@@ -77,9 +77,8 @@ def check_publish(source_path: str, body: str, is_published: bool) -> PublishChe
         target = classify_link(link, published_paths)
         if target.kind is LinkKind.MISSING_IMAGE:
             missing_images.setdefault(link.name)
-        elif target.kind is LinkKind.MISSING_NOTE:
-            if link.name:   # [[#]] のように名前も見出しも無いものは、描画でも何も出ないので挙げない
-                missing_links.setdefault(link.name)
+        elif is_missing_note(link, target):   # ダッシュボードの「リンク切れ」と同じ判定
+            missing_links.setdefault(link.name)
         elif target.kind is LinkKind.PRIVATE_NOTE and target.path != source_path:
             (private_embeds if link.is_embed else private_links).setdefault(target.path, note_ref(target.path))
 

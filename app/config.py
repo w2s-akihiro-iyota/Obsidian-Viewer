@@ -35,6 +35,22 @@ LIST_TOP_TAG_COUNT = 8
 # ダッシュボードのタグ分布に出すタグの数（件数の多い順）
 DASHBOARD_TOP_TAG_COUNT = 20
 
+# ダッシュボードの「手入れが必要なノート」の表に出す最大件数（残りは「ほか N 件」）
+DASHBOARD_HEALTH_ROW_LIMIT = 50
+
+# ダッシュボードのヒートマップの週数（今週を含めて 53 週。列の数になる）
+DASHBOARD_HEATMAP_WEEKS = 53
+
+# ヒートマップの濃さの区切り（その日に更新したノートの文字数の合計）。
+# 0 文字は 0、1000 以下は 1、5000 以下は 2、超えれば 3。段数を変えたら dashboard.css の .level-N も合わせる
+HEATMAP_LEVEL_LIMITS = (1000, 5000)
+
+# ヒートマップの月のラベルの間がこの列数より狭ければ、前のラベルを出さない（最初の月が数日しか無いときに重ならないように）
+HEATMAP_MONTH_LABEL_MIN_GAP = 3
+
+# ダッシュボードの「リンク切れ」の原因の列に出す、リンク先の名前の数（残りは「ほか N 件」）
+DASHBOARD_CAUSE_NAME_COUNT = 3
+
 # 検索（/api/search）で返す最大件数
 SEARCH_LIMIT = 20
 
