@@ -1,3 +1,4 @@
+from datetime import timedelta, timezone
 from pathlib import Path
 import os
 
@@ -21,6 +22,9 @@ ADMIN_PORT = int(os.environ.get("ADMIN_PORT", "8001"))
 
 # 管理用ポートで受け付ける Host 名（DNS リバインディング対策）
 ADMIN_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
+# 画面に出す日時のタイムゾーン（JST）
+JST = timezone(timedelta(hours=9))
 
 # Pagination
 PER_PAGE = 12

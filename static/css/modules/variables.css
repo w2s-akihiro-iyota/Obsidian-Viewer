@@ -26,6 +26,15 @@
     --z-overlay: 2000;
     --z-modal: 3000;
     --z-toast: 9999;
+    /* 公開チェック（F-5）のバッジと注意書き。どのテーマの地でも読めるよう、
+       バッジは濃い塗り＋白文字、注意書きは半透明の地（文字は --text-normal）にして全テーマ共通で使う */
+    --badge-text: #ffffff;
+    --badge-warning-bg: #b45309;
+    --badge-ok-bg: #15803d;
+    --notice-warning-border: #d97706;
+    --notice-warning-bg: rgba(217, 119, 6, 0.12);
+    --notice-danger-border: #dc2626;
+    --notice-danger-bg: rgba(220, 38, 38, 0.12);
 }
 
 /* Light Theme */

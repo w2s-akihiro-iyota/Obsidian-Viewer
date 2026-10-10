@@ -365,23 +365,75 @@ footer {
 }
 
 /* ===== View Header & Breadcrumb ===== */
+/* 記事ページのヘッダー: パンくずと操作 → タイトル → メタ情報 → タグ */
 .view-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.view-header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    gap: 12px;
+}
+
+.view-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .breadcrumb {
     color: var(--text-muted);
     font-size: 0.9em;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 4px 8px;
+    min-width: 0;
 }
 
 .breadcrumb a {
     color: var(--text-muted);
+}
+
+.breadcrumb a:hover {
+    color: var(--accent-purple);
+}
+
+.breadcrumb-sep {
+    opacity: 0.6;
+}
+
+.breadcrumb-current {
+    color: var(--text-normal);
+    overflow-wrap: anywhere;
+}
+
+.view-title {
+    margin: 16px 0 8px;
+    font-size: 2rem;
+    line-height: 1.3;
+    color: var(--text-normal);
+    overflow-wrap: anywhere;
+}
+
+.view-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+    .view-title {
+        font-size: 1.5rem;
+    }
 }
 
 /* ===== Tag Filter ===== */

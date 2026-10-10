@@ -152,6 +152,162 @@ a.menu-option {
     height: 16px;
 }
 
+/* ===== 公開チェック（F-5）: 外部の人の表示の切り替え・バナー・チェックパネル ===== */
+/* 色は variables.css の --badge-* / --notice-*。塗りの上に白文字か、半透明の地に --text-normal の文字にする */
+.public-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-normal);
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.public-view-toggle:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-purple);
+    text-decoration: none;
+}
+
+.public-view-toggle.is-active {
+    border-color: var(--accent-purple);
+    background-color: rgba(123, 97, 255, 0.12);
+}
+
+.publish-check-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background-color: var(--badge-warning-bg);
+    color: var(--badge-text);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.publish-check-count.is-ok {
+    background-color: var(--badge-ok-bg);
+}
+
+.public-view-banner,
+.public-view-private-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border-left: 4px solid var(--notice-warning-border);
+    background-color: var(--notice-warning-bg);
+    color: var(--text-normal);
+    font-size: 0.9rem;
+}
+
+.public-view-banner svg {
+    flex-shrink: 0;
+}
+
+.public-view-private-notice {
+    border-left-color: var(--notice-danger-border);
+    background-color: var(--notice-danger-bg);
+    font-weight: 600;
+}
+
+.publish-check-panel {
+    margin-bottom: 24px;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-secondary);
+    color: var(--text-normal);
+    font-size: 0.9rem;
+}
+
+.publish-check-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: var(--text-normal);
+}
+
+.publish-check-all-ok {
+    margin: 0 0 8px;
+    color: var(--text-muted);
+}
+
+.publish-check-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.publish-check-item {
+    padding: 6px 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.publish-check-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.publish-check-item.has-issue .publish-check-label {
+    font-weight: 600;
+}
+
+.publish-check-num {
+    flex-shrink: 0;
+    color: var(--text-normal);
+    font-weight: 700;
+}
+
+.publish-check-ok-mark {
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.publish-check-list,
+.publish-check-sublist {
+    margin: 4px 0 0;
+    padding-left: 20px;
+    overflow-wrap: anywhere;
+}
+
+.publish-check-list a {
+    color: var(--accent-purple);
+}
+
+.publish-check-path {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.publish-check-list code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background-color: var(--bg-primary);
+    font-family: var(--code-font);
+    font-size: 0.85em;
+}
+
+/* 狭い画面では切り替えボタンをアイコンと件数だけにする */
+@media (max-width: 600px) {
+    .public-view-toggle-label {
+        display: none;
+    }
+}
+
 /* Mobile specific buttons */
 .mobile-only-btn {
     display: none !important;
