@@ -1,4 +1,7 @@
     <!-- Help Modal -->
+    {# 管理者向けの説明を出すか。記事ページの「外部の人の表示」（?as=public）では is_localhost が False になるが、
+       ヘルプは管理者なら出す（is_admin は記事ページだけが渡す。ほかのページは is_localhost で判定する） #}
+    {% set help_is_admin = is_admin if is_admin is defined else is_localhost %}
     <div id="help-modal" class="settings-modal">
         <div class="settings-modal-container">
             <div class="settings-header line-bottom">
@@ -15,9 +18,12 @@
                 <div class="help-tabs line-bottom">
                     <button class="help-tab active" data-tab="about">アプリについて</button>
                     <button class="help-tab" data-tab="basic">基本操作</button>
-                    {% if is_localhost %}
-                    <button class="help-tab" data-tab="sync">同期手順</button>
-                    <button class="help-tab" data-tab="publish">公開・共有</button>
+                    {% if help_is_admin %}
+                    <button class="help-tab" data-tab="syntax">書き方</button>
+                    {% endif %}
+                    <button class="help-tab" data-tab="keys">ショートカット</button>
+                    {% if help_is_admin %}
+                    <button class="help-tab" data-tab="admin">管理者向け</button>
                     {% endif %}
                     <button class="help-tab" data-tab="display">表示機能</button>
                 </div>
@@ -65,8 +71,9 @@
                                             </svg>
                                         </span>
                                         <div class="feature-text">
-                                            <strong>内部リンク & リンクプレビュー</strong><br>
-                                            <code>[[ページ名]]</code> 形式の内部リンクを解決し、ホバー時にプレビューを表示
+                                            <strong>内部リンクと埋め込み</strong><br>
+                                            <code>[[ページ名]]</code> のリンクとホバープレビューに加え、見出しへのリンク
+                                            <code>[[ページ名#見出し]]</code> と、ほかのノートの埋め込み <code>![[ページ名]]</code> に対応
                                         </div>
                                     </li>
                                     <li>
@@ -112,9 +119,63 @@
                                         </span>
                                         <div class="feature-text">
                                             <strong>全文検索</strong><br>
-                                            ファイル名・タイトルによる高速なインクリメンタル検索
+                                            本文まで対象に検索し、一致した箇所を抜き出して表示します。<kbd>Ctrl</kbd>+<kbd>K</kbd>
+                                            でどこからでも開け、<code>tag:</code> / <code>path:</code> で絞り込めます
                                         </div>
                                     </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>ファイルツリーとクイックスイッチャー</strong><br>
+                                            フォルダ構成のまま辿れるツリーと、キーボードだけでノートを開ける検索モーダル
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="18" cy="5" r="3"></circle>
+                                                <circle cx="6" cy="12" r="3"></circle>
+                                                <circle cx="18" cy="19" r="3"></circle>
+                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            {% if help_is_admin %}
+                                            <strong>グラフビューとダッシュボード</strong><br>
+                                            ノート同士のつながりを図で見られます。ダッシュボードでは更新の推移やタグの集計を確認できます
+                                            {% else %}
+                                            <strong>グラフビュー</strong><br>
+                                            ノート同士のつながりを図で見られます
+                                            {% endif %}
+                                        </div>
+                                    </li>
+                                    {% if help_is_admin %}
+                                    <li>
+                                        <span class="feature-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M9 11l3 3L22 4"></path>
+                                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="feature-text">
+                                            <strong>公開チェック</strong><br>
+                                            外部の人に見える表示に切り替えて、非公開ノートへのリンクやリンク切れを公開前に確かめられます
+                                        </div>
+                                    </li>
+                                    {% endif %}
+                                    {# エディタは管理者だけが使える（外部の人は閲覧のみ） #}
+                                    {% if help_is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -129,6 +190,7 @@
                                             ブラウザ上で記事を作成・編集し、リアルタイムでプレビュー確認が可能
                                         </div>
                                     </li>
+                                    {% endif %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -173,6 +235,8 @@
                                             4 種類のアプリテーマ、コードブロックテーマ、Mermaid テーマを個別に設定
                                         </div>
                                     </li>
+                                    {# 同期と公開設定は管理者だけが使う機能なので、外部の人には出さない #}
+                                    {% if help_is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -203,6 +267,7 @@
                                             Frontmatter の <code>publish</code> フラグで記事の公開・非公開を制御
                                         </div>
                                     </li>
+                                    {% endif %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -230,48 +295,217 @@
                             <div class="help-grid">
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                            <polyline points="14 2 14 8 20 8"></polyline>
-                                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                                            <polyline points="10 9 9 9 8 9"></polyline>
-                                        </svg> ファイル閲覧</h5>
-                                    <p>左側のサイドバーでファイルを選択して閲覧します。<br />右上のアイコンから<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。</p>
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                        </svg> ファイルツリー</h5>
+                                    <p>サイドバーの<b>Files</b>タブに、Vault のフォルダ構成がそのまま表示されます。<br />
+                                        開いているノートまで自動で展開し、閉じたフォルダには中のノート数が出ます。上の入力欄でファイル名を絞り込めます。
+                                        {% if help_is_admin %}<br />非公開ノートには「非公開」の印が付きます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
                                             <circle cx="11" cy="11" r="8"></circle>
                                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg> 検索</h5>
-                                    <p>上部の検索バーにキーワードを入力して、ファイルを即座に検索できます。<br />モバイルでは虫眼鏡アイコンをタップしてください。</p>
+                                        </svg> クイックスイッチャー</h5>
+                                    <p><kbd>Ctrl</kbd>+<kbd>K</kbd>（Mac は <kbd>⌘</kbd>+<kbd>K</kbd>）か上部の検索バーで開きます。<br />
+                                        何も入力しないと、最近見たノートが並びます。<code>tag:会議</code>・<code>path:フォルダ名</code> で絞り込めます。<br />
+                                        開いたノートでは、検索した言葉に色が付き、最初の一致まで移動します。</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                            <polyline points="7 10 12 15 17 10"></polyline>
-                                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                                        </svg> PDF書き出し</h5>
-                                    <p>記事表示時の右上の「...」メニューから、現在の記事をPDFとして保存、または印刷することができます。</p>
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M6 12h12"></path>
+                                            <path d="M6 20V4"></path>
+                                            <path d="M18 20V4"></path>
+                                        </svg> 記事のヘッダー</h5>
+                                    <p>タイトルの上の<b>パンくず</b>でフォルダ名を押すと、そのフォルダのノート一覧に移ります。<br />
+                                        タイトルの下に、公開状態・更新日・読了時間・リンク元の数が並びます。<b>リンク元</b>を押すとページ下部へ移ります。</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                        </svg> リンク元と関連記事</h5>
+                                    <p>記事の下に、このノートへリンクしているノート（<b>リンク元</b>）と、タグが共通する<b>関連記事</b>が表示されます。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                        </svg> ノート一覧</h5>
+                                    <p>トップページの一覧は、右上のアイコンで<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。<br />
+                                        タグで絞り込めます。{% if help_is_admin %}公開・非公開でも絞り込めます。{% endif %}</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
                                             <polygon
                                                 points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
                                             </polygon>
-                                        </svg> アウトライン</h5>
-                                    <p>サイドバーの<b>Outline</b>タブに、現在の記事の見出し一覧が表示されます。<br />クリックするとその場所へスクロールします。</p>
+                                        </svg> アウトラインと履歴</h5>
+                                    <p>サイドバーの<b>Outline</b>タブに見出しの一覧が出ます。押すとその場所へ移ります。<br />
+                                        <b>History</b>タブには、最近開いたノートが30件まで残ります。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="18" cy="5" r="3"></circle>
+                                            <circle cx="6" cy="12" r="3"></circle>
+                                            <circle cx="18" cy="19" r="3"></circle>
+                                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                        </svg> グラフビュー</h5>
+                                    <p>左端のアイコンからグラフを開くと、ノートとリンクのつながりを図で見られます。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="5" r="1"></circle>
+                                            <circle cx="12" cy="12" r="1"></circle>
+                                            <circle cx="12" cy="19" r="1"></circle>
+                                        </svg> 記事のメニュー</h5>
+                                    <p>記事右上の<b>「⋮」</b>から、<b>URLのコピー</b>と<b>PDF出力・印刷</b>ができます。<br />
+                                        画像は押すと拡大します。コードブロックは右上のボタンでコピーできます。</p>
                                 </div>
                             </div>
                         </section>
                     </div>
 
-                    {% if is_localhost %}
-                    <!-- Sync Instructions Panel -->
-                    <div id="help-panel-sync" class="help-panel">
+                    {# 書き方は Vault に書く人（管理者）向け。外部の人は閲覧だけなので出さない #}
+                    {% if help_is_admin %}
+                    <!-- Syntax Panel -->
+                    <div id="help-panel-syntax" class="help-panel">
+                        <section class="settings-section">
+                            <h4>書き方</h4>
+                            <p>Obsidian で書いた記法を、そのまま表示できます。</p>
+                            <div class="help-table-wrap">
+                                <table class="help-table help-syntax">
+                                    <thead>
+                                        <tr><th scope="col">種類</th><th scope="col">書き方</th><th scope="col">表示</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>内部リンク</td>
+                                            <td><code>[[ノート]]</code><br><code>[[ノート|表示名]]</code><br><code>[[フォルダ/ノート]]</code></td>
+                                            <td>ほかのノートへのリンク。マウスを乗せると中身をプレビューします</td>
+                                        </tr>
+                                        <tr>
+                                            <td>見出しへのリンク</td>
+                                            <td><code>[[ノート#見出し]]</code><br><code>[[#見出し]]</code></td>
+                                            <td>指定した見出しの位置へ移ります。<code>[[#見出し]]</code> は同じノートの中です</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ノートの埋め込み</td>
+                                            <td><code>![[ノート]]</code><br><code>![[ノート#見出し]]</code></td>
+                                            <td>ほかのノート（またはその節）の中身を、その場に表示します</td>
+                                        </tr>
+                                        <tr>
+                                            <td>画像</td>
+                                            <td><code>![[画像.png]]</code><br><code>![[画像.png|300]]</code></td>
+                                            <td>画像を表示します。<code>|</code> の後ろは幅（<code>300x200</code> で幅と高さ）</td>
+                                        </tr>
+                                        <tr>
+                                            <td>コールアウト</td>
+                                            <td><code>&gt; [!note] タイトル</code><br><code>&gt; 本文</code></td>
+                                            <td>色付きの囲み。<code>```ad-info</code> の書き方にも対応します</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ハイライト</td>
+                                            <td><code>==強調したい文字==</code></td>
+                                            <td>蛍光ペンのような色が付きます</td>
+                                        </tr>
+                                        <tr>
+                                            <td>タスク</td>
+                                            <td><code>- [ ] やること</code><br><code>- [x] 済んだこと</code></td>
+                                            <td>チェックボックス付きのリスト</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Dataview</td>
+                                            <td><code>```dataview</code><br><code>LIST FROM #会議</code><br><code>```</code></td>
+                                            <td>条件に合うノートの一覧や表を作ります（<code>LIST</code> / <code>TABLE</code>）</td>
+                                        </tr>
+                                        <tr>
+                                            <td>図と数式</td>
+                                            <td><code>```mermaid</code><br><code>$E=mc^2$</code> / <code>$$...$$</code></td>
+                                            <td>Mermaid の図と、KaTeX の数式</td>
+                                        </tr>
+                                        <tr>
+                                            <td>カードリンク</td>
+                                            <td><code>```cardlink</code><br><code>url: https://...</code><br><code>title: ページ名</code><br><code>```</code></td>
+                                            <td>外部ページをカードの形で表示します</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="help-tip">コードブロックやインラインコード（<code>`...`</code>）の中に書いた <code>[[...]]</code> はリンクになりません。リンク元の数にも入りません。</p>
+                        </section>
+                    </div>
+                    {% endif %}
+
+                    <!-- Shortcuts Panel -->
+                    <div id="help-panel-keys" class="help-panel">
+                        <section class="settings-section">
+                            <h4>キーボードショートカット</h4>
+                            <p>Mac では <kbd>Ctrl</kbd> の代わりに <kbd>⌘</kbd> を使います。</p>
+                            <div class="help-table-wrap">
+                                <table class="help-table help-keys">
+                                    <thead>
+                                        <tr><th scope="col">キー</th><th scope="col">動作</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">どの画面でも</th></tr>
+                                        <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>クイックスイッチャーを開く・閉じる</td></tr>
+                                        <tr><td><kbd>Esc</kbd></td><td>ヘルプ・クイックスイッチャー・画像の拡大を閉じる</td></tr>
+                                    </tbody>
+                                    <tbody>
+                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">クイックスイッチャー</th></tr>
+                                        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>候補を選ぶ</td></tr>
+                                        <tr><td><kbd>Enter</kbd></td><td>開く</td></tr>
+                                        <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>新しいタブで開く</td></tr>
+                                    </tbody>
+                                    <tbody>
+                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">ファイルツリーの絞り込み欄</th></tr>
+                                        <tr><td><kbd>↓</kbd></td><td>ツリーへ移る</td></tr>
+                                        <tr><td><kbd>Enter</kbd></td><td>最初のノートを開く</td></tr>
+                                        <tr><td><kbd>Esc</kbd></td><td>絞り込みを消す</td></tr>
+                                    </tbody>
+                                    <tbody>
+                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">ファイルツリー</th></tr>
+                                        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>上下に移る（先頭で <kbd>↑</kbd> を押すと絞り込み欄へ）</td></tr>
+                                        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>フォルダを閉じる・開く</td></tr>
+                                        <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>先頭・末尾へ</td></tr>
+                                        <tr><td><kbd>Enter</kbd></td><td>ノートを開く・フォルダを開閉する</td></tr>
+                                    </tbody>
+                                    {% if help_is_admin %}
+                                    <tbody>
+                                        <tr class="help-table-group"><th colspan="2" scope="colgroup">エディタ（管理者のみ）</th></tr>
+                                        <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存する</td></tr>
+                                        <tr><td><kbd>Tab</kbd></td><td>字下げ（スペース4つ）</td></tr>
+                                    </tbody>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                    {% if help_is_admin %}
+                    <!-- Admin Panel（同期・公開・公開チェック・編集・ダッシュボード） -->
+                    <div id="help-panel-admin" class="help-panel">
                         <section class="settings-section">
                             <h4>ファイル同期の設定手順</h4>
                             <p>ローカルの Obsidian フォルダを本システムと同期させるには、以下の手順を行ってください。</p>
@@ -279,7 +513,7 @@
                                 <div class="step">
                                     <span class="step-num">1</span>
                                     <div>
-                                        <p>「サイドバー」下の <b>歯車マーク</b> アイコンをクリックして設定画面を開きます。</p>
+                                        <p>画面左端のアイコン列の下にある <b>歯車マーク</b> をクリックして設定画面を開きます。</p>
                                     </div>
                                 </div>
                                 <div class="step">
@@ -334,16 +568,32 @@
                                 </div>
                             </div>
                         </section>
-                    </div>
 
-                    <!-- Publish & Share Panel -->
-                    <div id="help-panel-publish" class="help-panel">
+                        <section class="settings-section">
+                            <h4>同期で起きること</h4>
+                            <ul class="help-list">
+                                <li><b>Vault で消したノートは、ビューアからも消えます。</b></li>
+                                <li><b>一度にたくさん消えるときは、削除を止めて確認を待ちます。</b>
+                                    <ul>
+                                        <li>ビューアのノートの半分以上が消える場合や、同期元のフォルダが空の場合です（フォルダの指定ミスやドライブ未接続で全部消えるのを防ぐため）</li>
+                                        <li>設定画面に出る<b>「確認して削除する」</b>を押すと、削除を実行します</li>
+                                    </ul>
+                                </li>
+                                <li><b>同期中にもう一度同期しようとしても、二重には動きません。</b>「同期を実行中です」と表示されます。</li>
+                                <li><b>自動同期の間隔</b>は、設定画面で「自動同期を有効にする」をオンにすると選べます。</li>
+                                <li><b>再インデックス</b>は、検索やリンクの結果が古いと感じたときに使います。設定画面の「コンテンツの再インデックス」の<b>「再構築」</b>を押すと、同期せずに、いまのファイルから索引だけを作り直します。</li>
+                            </ul>
+                        </section>
+
                         <section class="settings-section">
                             <h4>記事の公開設定</h4>
                             <p>
                                 公開用ポート（<code>8000</code>）からアクセスされた場合、Frontmatter に
-                                <code>publish: "TRUE"</code> が設定されたファイルのみが表示されます。<br />
+                                <code>publish: true</code> が設定されたファイルのみが表示されます。<br />
                                 管理用URL（<code>http://localhost:8002</code>）からのアクセスでは、すべてのファイルが閲覧可能です。
+                            </p>
+                            <p style="margin-top: 8px;">
+                                公開用ポートでは、タグ一覧・検索・Dataview・グラフ・リンク元も、公開ノートだけを対象にします。
                             </p>
 
                             <h5 style="margin-top: 20px;">方法1: Obsidian Linter プラグインで自動付与する（推奨）</h5>
@@ -358,20 +608,20 @@
                                 <div class="step">
                                     <span class="step-num">2</span>
                                     <div>
-                                        <p>Linter の設定画面を開き、<b>YAML > Insert YAML Attributes > トグル</b> を ON にして <b>Text tO insert のテキストボックス</b> に以下を設定する</p>
+                                        <p>Linter の設定画面を開き、<b>YAML > Insert YAML Attributes > トグル</b> を ON にして <b>Text to insert のテキストボックス</b> に以下を設定する</p>
                                         <p class="help-tip" style="margin-top: 8px;">
-                                            <code>publish: "TRUE"</code>
+                                            <code>publish: true</code>
                                         </p>
                                     </div>
                                 </div>
                                 <div class="step">
                                     <span class="step-num">3</span>
                                     <div>
-                                        <p>ファイル保存時に <code>publish: "TRUE"</code> が Frontmatter に自動追加される</p>
+                                        <p>ファイル保存時に <code>publish: true</code> が Frontmatter に自動追加される</p>
                                         <div class="help-tip">
                                             <p>
                                                 <b>ヒント：</b><br />
-                                                特定のファイルを非公開にしたい場合は、手動で <code>publish: "FALSE"</code> に変更するか、Obsidianから変更してください。
+                                                特定のファイルを非公開にしたい場合は、手動で <code>publish: false</code> に変更するか、Obsidianから変更してください。
                                             </p>
                                         </div>
                                     </div>
@@ -381,14 +631,14 @@
                             <h5 style="margin-top: 24px;">方法2: 手動で Frontmatter に記述する</h5>
                             <p>Markdownファイルの先頭に、以下のように記述します。</p>
                             <pre style="background: var(--bg-secondary); padding: 12px 16px; border-radius: 6px; margin: 12px 0; font-size: 0.85em; border: 1px solid var(--border-color);"><code>---
-publish: "TRUE"
+publish: true
 ---</code></pre>
                             <p style="font-size: 0.85em; color: var(--text-muted);">
-                                <code>publish: "TRUE"</code> のないファイルは、外部からのアクセス時に非公開（403エラー）となります。
+                                <code>publish: true</code> のないファイルは、外部からのアクセス時に非公開（403エラー）となります。
                             </p>
                         </section>
 
-                        <section class="settings-section" style="margin-top: 24px;">
+                        <section class="settings-section">
                             <h4>共有URLの設定</h4>
                             <p>
                                 記事ページの「URLをコピー」機能では、デフォルトで今開いているURL（<code>localhost:8002</code> など）が生成されます。<br />
@@ -398,7 +648,7 @@ publish: "TRUE"
                                 <div class="step">
                                     <span class="step-num">1</span>
                                     <div>
-                                        <p>サイドバー下の <b>歯車アイコン</b> から設定画面を開く</p>
+                                        <p>画面左端のアイコン列の下にある <b>歯車アイコン</b> から設定画面を開く</p>
                                     </div>
                                 </div>
                                 <div class="step">
@@ -437,6 +687,84 @@ publish: "TRUE"
                                     本設定はURLコピー時の置換のみを行い、ネットワーク設定自体は変更しません。
                                 </p>
                             </div>
+                        </section>
+
+                        <section class="settings-section">
+                            <h4>公開チェック（外部の人の表示）</h4>
+                            <p>公開する前に、外部の人にどう見えるかを記事ページで確かめられます。</p>
+                            <div class="sync-steps">
+                                <div class="step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <p>確かめたい記事を開きます。問題があると、ヘッダーの<b>「外部の人の表示」</b>ボタンに<b>「要確認 N」</b>の件数が出ます。</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <p>ボタンを押すと、外部の人と同じ表示に切り替わり、本文の上に<b>チェック結果</b>が出ます。</p>
+                                        <p class="help-tip" style="margin-top: 12px;">
+                                            ・<b>非公開ノートへのリンク</b>：外部ではリンク切れに見えます<br />
+                                            ・<b>非公開ノートの埋め込み</b>：外部では中身が出ません<br />
+                                            ・<b>存在しないノートへのリンク</b><br />
+                                            ・<b>見つからない画像</b><br />
+                                            ・<b>Dataview で外部に出ない結果</b>：非公開ノートは一覧から外れます<br />
+                                            ・ノート自身が非公開なら、<b>外部からは 403</b> になると表示します
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <p><b>「通常の表示に戻る」</b>を押すと、管理者の表示に戻ります。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="settings-section">
+                            <h4>ノートの編集</h4>
+                            <div class="help-grid">
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 20h9"></path>
+                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path>
+                                        </svg> 既存のノートを直す</h5>
+                                    <p>記事右上の<b>「⋮」→「編集」</b>で開きます。<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。<br />
+                                        保存先は Vault の元ファイルです。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                        </svg> ほかで更新されていたとき</h5>
+                                    <p>開いたあとに Obsidian 側でファイルが変わっていたら、<b>上書きせずに知らせます</b>。
+                                        <b>「最新を読み込み直す」</b>（入力中の内容はクリップボードへコピー）か、<b>「それでも上書きする」</b>を選んでください。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                                        </svg> 新しいノートを作る</h5>
+                                    <p>左端のエディタのアイコンから、新しいノートを作れます。<br />
+                                        同期元フォルダの直下に保存されます。同じ名前のノートがあると保存できません。</p>
+                                </div>
+                            </div>
+                            <p class="help-tip">Docker で動かしている場合、Vault を読み取り専用（<code>:ro</code>）でマウントしていると保存できません。書き込みを許すマウントに変えてください。</p>
+                        </section>
+
+                        <section class="settings-section">
+                            <h4>ダッシュボード</h4>
+                            <p>左端のアイコンから開きます。ノートの件数（公開・非公開の内訳）と総文字数、更新の推移（ヒートマップ）、最近更新したノート、タグの集計を確認できます。</p>
                         </section>
                     </div>
                     {% endif %}
