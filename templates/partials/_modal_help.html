@@ -367,7 +367,8 @@
                                             <line x1="12" y1="18" x2="12.01" y2="18"></line>
                                         </svg> スマホでの画面の移り方</h5>
                                     <p>スマホでは左端のアイコンの列が隠れます。左上のボタンでサイドバーを開くと、一番上に<b>ノート</b>・<b>グラフ</b>の切り替えがあります。
-                                        {% if viewer_is_admin %}<br />管理者には<b>ダッシュボード</b>・<b>エディタ</b>も並びます。{% endif %}</p>
+                                        {% if viewer_is_admin %}<br />管理者には<b>ダッシュボード</b>・<b>エディタ</b>も並びます。{% endif %}<br />
+                                        記事ページでは、右上の<b>「＋」</b>を押すと<b>「つながり」</b>と<b>「メニュー」</b>（{% if viewer_is_admin %}編集・{% endif %}URL をコピー・PDF で出力）が出ます。{% if viewer_is_admin %}<br />外部の人の表示は、タイトルの下のボタンから切り替えます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -687,7 +688,7 @@ publish: true
                                 <div class="step">
                                     <span class="step-num">1</span>
                                     <div>
-                                        <p>確かめたい記事を開きます。問題があると、ヘッダーの<b>「外部の人の表示」</b>ボタンに<b>「要確認 N」</b>の件数が出ます。</p>
+                                        <p>確かめたい記事を開きます。問題があると、ヘッダーの<b>「外部の人の表示」</b>ボタン（スマホではタイトルの下）に<b>「要確認 N」</b>の件数が出ます。</p>
                                     </div>
                                 </div>
                                 <div class="step">

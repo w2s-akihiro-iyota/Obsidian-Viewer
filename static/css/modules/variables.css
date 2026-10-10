@@ -21,6 +21,10 @@
     --article-actions-top: 72px;
     --article-actions-gap: 12px;
     --article-actions-edge-margin: 12px;
+    /* 768px 以下の右上の「＋」（D-11。layout.css の .article-dial）: 出てくるボタンどうしの間と、まわりの薄い暗幕 */
+    --article-dial-gap: 10px;
+    --article-dial-backdrop: rgba(0, 0, 0, 0.18);
+    --article-dial-duration: 0.18s;
     /* 記事ページの「つながり」（F-8）: パネルの幅とグラフの高さ、768px 以下のシートの高さ、影と暗幕 */
     --local-graph-panel-width: 340px;
     --local-graph-canvas-height: 240px;

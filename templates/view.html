@@ -26,10 +26,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>hljs.highlightAll();</script>
 
-<!-- 右上のアクション置き場と、ローカルグラフ（つながり）。d3 と graph-render.js は、初めて開いたときに local-graph.js が読み込む -->
+<!-- 右上のアクション置き場と、ローカルグラフ（つながり）、768px 以下の「＋」の開閉（article-dial.js）。d3 と graph-render.js は、初めて開いたときに local-graph.js が読み込む -->
 <script src="/static/js/modules/article-actions.js?v=20261011" defer></script>
-<script src="/static/js/modules/local-graph-panel.js?v=20261011" defer></script>
+<script src="/static/js/modules/local-graph-panel.js?v=20261014" defer></script>
 <script src="/static/js/modules/local-graph.js?v=20261012" defer></script>
+<script src="/static/js/modules/article-dial.js?v=20261014" defer></script>
 
 <!-- KaTeX for Math -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -59,49 +60,70 @@
 {% set local_graph_label = local_graph_key.short ~ " (" ~ local_graph_key.keys[0]|join("+") ~ ")" %}
 {# 右上のアクション置き場（layout.css の .article-actions。置き場所は article-actions.js が決める）
    つながり（F-8）: ボタンと、押すと出るパネル（狭い画面では下からのシート）。開閉は local-graph-panel.js、中身は local-graph.js が描く
-   G キーは app/shortcuts.py の定義から data-shortcut-key で渡す #}
+   G キーは app/shortcuts.py の定義から data-shortcut-key で渡す
+   768px 以下（D-11）: 右上は「＋」1 つにまとめ、押すと「つながり」と「メニュー」を縦に出す（開閉は article-dial.js）。
+   PC では「＋」・暗幕・ラベル・メニューの枠は出さず、つながりのボタンだけを今までどおり置く。
+   「メニュー」の枠には、記事ヘッダーの ⋮（.page-menu-container）を 768px 以下のときだけ article-dial.js が移す（中身を 2 回書かない） #}
 <div class="article-actions" id="article-actions">
-    <div class="local-graph-anchor">
-        <button type="button" class="local-graph-toggle{% if not local_graph_count %} is-empty{% endif %}" id="local-graph-toggle"
-            title="{{ local_graph_label }}" aria-label="{{ local_graph_label }}" aria-expanded="false" aria-controls="local-graph"
-            data-shortcut-key="{{ local_graph_key.keys[0][0] }}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    <div class="article-dial" id="article-dial">
+        <div class="article-dial-backdrop"></div>
+        <button type="button" class="article-dial-toggle" id="article-dial-toggle" title="このノートの操作"
+            aria-label="このノートの操作" aria-expanded="false" aria-controls="article-dial-items">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            {% if local_graph_count %}<span class="local-graph-count" aria-hidden="true">{{ local_graph_count }}</span>{% endif %}
+            {% if local_graph_count %}<span class="article-dial-dot" aria-hidden="true"></span>{% endif %}
         </button>
-        <div class="local-graph-backdrop" hidden></div>
-        <section class="local-graph" id="local-graph" role="dialog" aria-labelledby="local-graph-title" tabindex="-1" hidden
-            data-center="{{ slug }}" data-title="{{ title }}" data-public="{{ 'true' if public_view else 'false' }}"
-            data-d3-src="{{ d3lib.D3_SRC }}" data-render-src="{{ d3lib.GRAPH_RENDER_SRC }}">
-            <div class="local-graph-head">
-                <h3 class="local-graph-title" id="local-graph-title">つながり</h3>
-                <div class="segmented-control local-graph-depth" role="radiogroup" aria-label="表示する範囲">
-                    {% for depth in local_graph_depths %}
-                    <input type="radio" name="local-graph-depth" value="{{ depth }}" id="local-graph-depth-{{ depth }}"{% if loop.first %} checked{% endif %}>
-                    <label for="local-graph-depth-{{ depth }}">{{ depth }} 歩</label>
-                    {% endfor %}
-                </div>
-                <button type="button" class="local-graph-close" title="閉じる (Esc)" aria-label="閉じる (Esc)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        <div class="article-dial-items" id="article-dial-items">
+            <div class="local-graph-anchor article-dial-item">
+                <span class="article-dial-label" aria-hidden="true">つながり</span>
+                <button type="button" class="local-graph-toggle{% if not local_graph_count %} is-empty{% endif %}" id="local-graph-toggle"
+                    title="{{ local_graph_label }}" aria-label="{{ local_graph_label }}" aria-expanded="false" aria-controls="local-graph"
+                    data-shortcut-key="{{ local_graph_key.keys[0][0] }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
+                    {% if local_graph_count %}<span class="local-graph-count" aria-hidden="true">{{ local_graph_count }}</span>{% endif %}
                 </button>
+                <div class="local-graph-backdrop" hidden></div>
+                <section class="local-graph" id="local-graph" role="dialog" aria-labelledby="local-graph-title" tabindex="-1" hidden
+                    data-center="{{ slug }}" data-title="{{ title }}" data-public="{{ 'true' if public_view else 'false' }}"
+                    data-d3-src="{{ d3lib.D3_SRC }}" data-render-src="{{ d3lib.GRAPH_RENDER_SRC }}">
+                    <div class="local-graph-head">
+                        <h3 class="local-graph-title" id="local-graph-title">つながり</h3>
+                        <div class="segmented-control local-graph-depth" role="radiogroup" aria-label="表示する範囲">
+                            {% for depth in local_graph_depths %}
+                            <input type="radio" name="local-graph-depth" value="{{ depth }}" id="local-graph-depth-{{ depth }}"{% if loop.first %} checked{% endif %}>
+                            <label for="local-graph-depth-{{ depth }}">{{ depth }} 歩</label>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="local-graph-close" title="閉じる (Esc)" aria-label="閉じる (Esc)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="local-graph-canvas"></div>
+                    <p class="local-graph-note" hidden></p>
+                    <div class="local-graph-foot">
+                        <span>点を押すと移動</span>
+                        <a href="/graph?focus={{ slug | urlencode }}">全体グラフで開く ↗</a>
+                    </div>
+                </section>
             </div>
-            <div class="local-graph-canvas"></div>
-            <p class="local-graph-note" hidden></p>
-            <div class="local-graph-foot">
-                <span>点を押すと移動</span>
-                <a href="/graph?focus={{ slug | urlencode }}">全体グラフで開く ↗</a>
+            <div class="article-dial-item article-dial-menu" id="article-dial-menu">
+                <span class="article-dial-label" aria-hidden="true">メニュー</span>
             </div>
-        </section>
+        </div>
     </div>
 </div>
 
@@ -119,6 +141,28 @@
 </li>
 {% endmacro %}
 
+{# 管理者の通常表示から「外部の人の表示」（?as=public）へ移るリンク。
+   PC は記事ヘッダーの右のボタン（.public-view-toggle）、768px 以下はメタ情報の下のチップ（.public-view-chip）。
+   CSS で片方だけを出す（隠す方は display: none にして、同じリンクが 2 つ読み上げられないようにする）。
+   ラベルは「class_name-label」（600px 以下でボタンのラベルだけを隠す .public-view-toggle-label など） #}
+{% macro public_view_link(class_name, chevron=false) %}
+<a href="/view/{{ slug }}?as=public" class="{{ class_name }}" title="外部の人に見える内容を確認する" aria-label="外部の人に見える内容を確認する">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+    <span class="{{ class_name }}-label">外部の人の表示</span>
+    {{ check_count_badge(publish_check) }}
+    {% if chevron %}
+    <svg class="public-view-chip-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+    {% endif %}
+</a>
+{% endmacro %}
+
 {% macro check_count_badge(check) %}
 {% if check.issue_count %}
 <span class="publish-check-count">要確認 {{ check.issue_count }}</span>
@@ -129,13 +173,19 @@
 
 <div class="view-header">
     <div class="view-header-top">
+        {# 768px 以下は「ホーム › 直前のフォルダ」の 1 行にする（ノート名はタイトルと同じなので出さない）。
+           フォルダが 2 段以上なら、途中（is-middle）を隠して「…」（.breadcrumb-ellipsis）を出す。layout.css #}
         <div class="breadcrumb" aria-label="パンくずリスト">
             <a href="/">ホーム</a>
+            {% if breadcrumbs|length > 1 %}
+            <span class="breadcrumb-ellipsis" aria-hidden="true"><span class="breadcrumb-sep">›</span> …</span>
+            {% endif %}
             {% for crumb in breadcrumbs %}
-            <span class="breadcrumb-sep" aria-hidden="true">›</span>
-            <a href="{{ crumb.href }}" class="breadcrumb-folder">{{ crumb.name }}</a>
+            {% set middle = "" if loop.last else " is-middle" %}
+            <span class="breadcrumb-sep{{ middle }}" aria-hidden="true">›</span>
+            <a href="{{ crumb.href }}" class="breadcrumb-folder{{ middle }}">{{ crumb.name }}</a>
             {% endfor %}
-            <span class="breadcrumb-sep" aria-hidden="true">›</span>
+            <span class="breadcrumb-sep is-current" aria-hidden="true">›</span>
             <span class="breadcrumb-current" aria-current="page">{{ title }}</span>
         </div>
 
@@ -155,19 +205,11 @@
                 {{ check_count_badge(publish_check) }}
             </a>
             {% else %}
-            <a href="/view/{{ slug }}?as=public" class="public-view-toggle" title="外部の人に見える内容を確認する" aria-label="外部の人に見える内容を確認する">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <span class="public-view-toggle-label">外部の人の表示</span>
-                {{ check_count_badge(publish_check) }}
-            </a>
+            {{ public_view_link("public-view-toggle") }}
             {% endif %}
             {% endif %}
             <div class="page-menu-container">
-                <button class="page-menu-btn" id="page-menu-btn" title="メニュー" aria-label="このノートの操作"
+                <button class="page-menu-btn" id="page-menu-btn" title="メニュー" aria-label="このノートのメニュー"
                     aria-haspopup="menu" aria-expanded="false">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="1"></circle>
@@ -223,7 +265,8 @@
                 <line x1="8" y1="2" x2="8" y2="6"></line>
                 <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-            更新 {{ updated.strftime('%Y-%m-%d %H:%M') }}
+            {# 768px 以下は時刻・「で読了」（.view-meta-long）を隠して短くする。文字は 1 つの span にまとめ、inline-flex の gap を挟まない #}
+            <span>更新 {{ updated.strftime('%Y-%m-%d') }}<span class="view-meta-long"> {{ updated.strftime('%H:%M') }}</span></span>
         </time>
         <span class="reading-time">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -231,7 +274,7 @@
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
-            約{{ reading_time }}分で読了
+            <span>約{{ reading_time }}分<span class="view-meta-long">で読了</span></span>
         </span>
         {% if backlinks %}
         <a href="#backlinks" class="view-backlink-count">リンク元 {{ backlinks|length }}</a>
@@ -239,6 +282,13 @@
         <span class="view-backlink-count">リンク元 0</span>
         {% endif %}
     </div>
+
+    {% if is_admin and not public_view %}
+    {# 768px 以下だけ: 外部の人の表示へのチップ（PC は記事ヘッダーの右のボタン）。外部表示中は出さない（帯の「戻る」で戻る） #}
+    <div class="view-public-chip-row">
+        {{ public_view_link("public-view-chip", chevron=true) }}
+    </div>
+    {% endif %}
 
     {% if frontmatter.tags %}
     <div class="view-tags">
@@ -260,6 +310,7 @@
         <circle cx="12" cy="12" r="3"></circle>
     </svg>
     <span>{{ system_message("S203") }}</span>
+    <a href="/view/{{ slug }}" class="public-view-banner-back">戻る</a>
 </div>
 {% if not is_published %}
 <div class="public-view-private-notice" role="alert">{{ system_message("S204") }}</div>

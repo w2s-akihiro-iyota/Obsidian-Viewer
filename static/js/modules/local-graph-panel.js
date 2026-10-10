@@ -3,6 +3,9 @@
 // 開く・閉じる、フォーカスの移動と戻し、Esc と G キー、パネルの外（スマホでは暗幕）を押したら閉じる
 // 中身（深さ・読み込み・描画）は local-graph.js が onOpen で受け持つ
 // 開くボタン（trigger）は setTrigger で差し替えられる（右上のボタンを 1 つにまとめたときに、まとめたボタンから開けるように）
+// 閉じたときにフォーカスを戻す先は、既定では trigger。trigger が閉じると隠れる場所にあるとき（768px 以下の「＋」の中）は
+// setTrigger の 2 つめの引数で、見えているボタン（「＋」）を渡す
+// 開閉を知りたい側（768px 以下の「＋」。article-dial.js）は onOpenChange で登録する
 // ==============================================
 
 /**
@@ -13,12 +16,24 @@
  * @param {HTMLElement|null} o.trigger 開くボタン（押すと開閉。aria-expanded を付け、閉じたらフォーカスを戻す）
  * @param {string} o.shortcutKey 開閉のキー（app/shortcuts.py の定義。テンプレートが data-shortcut-key で渡す）
  * @param {Function} o.onOpen 開いたときに呼ぶ
- * @returns {{open: Function, close: Function, isOpen: Function, setTrigger: Function}}
+ * @returns {{open: Function, close: Function, isOpen: Function, setTrigger: Function, onOpenChange: Function}}
  */
 function createLocalGraphPanel(o) {
     const { panel, backdrop, closeButton, onOpen } = o;
     const shortcutKey = (o.shortcutKey || '').toLowerCase();
     let trigger = null;
+    let focusTarget = null;  // 閉じたときにフォーカスを戻す先（既定は trigger）
+    const openChangeListeners = [];
+
+    /**
+     * 開閉したときに呼ぶ関数を登録する
+     * @param {(open: boolean) => void} fn
+     */
+    function onOpenChange(fn) {
+        openChangeListeners.push(fn);
+    }
+
+    const notifyOpenChange = (open) => openChangeListeners.forEach(fn => fn(open));
 
     const isOpen = () => !panel.hidden;
 
@@ -29,6 +44,7 @@ function createLocalGraphPanel(o) {
         if (trigger) trigger.setAttribute('aria-expanded', 'true');
         panel.focus({ preventScroll: true });
         if (onOpen) onOpen();
+        notifyOpenChange(true);
     }
 
     /**
@@ -40,19 +56,25 @@ function createLocalGraphPanel(o) {
         panel.hidden = true;
         if (backdrop) backdrop.hidden = true;
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
-        if (trigger && (restoreFocus || focusWasInside || document.activeElement === document.body)) {
-            trigger.focus({ preventScroll: true });
+        if (focusTarget && (restoreFocus || focusWasInside || document.activeElement === document.body)) {
+            focusTarget.focus({ preventScroll: true });
         }
+        notifyOpenChange(false);
     }
 
     const toggle = () => (isOpen() ? close() : open());
 
-    function setTrigger(el) {
+    /**
+     * @param {HTMLElement|null} el 開くボタン（押すと開閉し、aria-expanded を付ける）
+     * @param {HTMLElement|null} returnFocusTo 閉じたときにフォーカスを戻す先（省略すると el）
+     */
+    function setTrigger(el, returnFocusTo = el) {
         if (trigger) {
             trigger.removeEventListener('click', toggle);
             trigger.setAttribute('aria-expanded', 'false');
         }
         trigger = el || null;
+        focusTarget = returnFocusTo || trigger;
         if (trigger) {
             trigger.addEventListener('click', toggle);
             trigger.setAttribute('aria-expanded', String(isOpen()));
@@ -87,5 +109,5 @@ function createLocalGraphPanel(o) {
         toggle();
     }, true);
 
-    return { open, close, isOpen, setTrigger };
+    return { open, close, isOpen, setTrigger, onOpenChange };
 }

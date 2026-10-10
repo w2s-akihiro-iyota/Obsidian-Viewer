@@ -1008,3 +1008,106 @@ def test_ショートカットの定義に記事ページのGがありヘルプ�
         assert "<tr><td><kbd>G</kbd></td><td>つながり</td></tr>" in sheet
         # ヘルプの「グラフビュー」の説明
         assert "記事ページの<b>右上のボタン</b>（<kbd>G</kbd>）で" in html
+
+# ---------- D-11: 768px 以下の記事ヘッダー（右上の「＋」・外部の人の表示のチップ・パンくずの省略） ----------
+
+DIAL_TOGGLE_RE = re.compile(r'<button type="button" class="article-dial-toggle" id="article-dial-toggle".*?</button>', re.S)
+
+
+def _dial_toggle(html):
+    match = DIAL_TOGGLE_RE.search(html)
+    assert match, "「＋」のボタンが無い"
+    return match.group(0)
+
+
+def test_右上のプラスはつながりとメニューをまとめaria属性を持つ(graph_site):
+    html = _view(TestClient(app, base_url=ADMIN), "中心.md")
+    button = _dial_toggle(html)
+    assert 'aria-label="このノートの操作"' in button
+    assert 'aria-expanded="false"' in button and 'aria-controls="article-dial-items"' in button
+    assert 'id="article-dial-items"' in html and 'id="article-dial-menu"' in html
+    # 「つながり」は今のボタンをそのまま使い（＋の中に入れる）、メニューの中身はページに 1 つだけ
+    items = html[html.index('id="article-dial-items"'):html.index('id="article-dial-menu"')]
+    assert 'id="local-graph-toggle"' in items
+    assert html.count('id="page-menu-dropdown"') == 1 and html.count('id="copy-url-btn"') == 1
+    assert html.count('id="local-graph-toggle"') == 1
+    assert '<script src="/static/js/modules/article-dial.js' in html
+
+
+def test_つながりのあるノートだけプラスに点を出す(graph_site):
+    client = TestClient(app, base_url=ADMIN)
+    assert 'class="article-dial-dot"' in _dial_toggle(_view(client, "中心.md"))
+    assert "article-dial-dot" not in _dial_toggle(_view(client, "孤立.md"))
+    # 外部では公開ノートだけで数える（非公開ノートにしかつながらない B2 は点を出さない）
+    assert "article-dial-dot" not in _dial_toggle(_view(TestClient(app, base_url=PUBLIC), "B2.md"))
+
+
+def test_外部の人のメニューはURLとPDFだけ(graph_site):
+    html = _view(TestClient(app, base_url=PUBLIC), "中心.md")
+    assert _dial_toggle(html)
+    assert "/editor?path=" not in html
+    assert 'id="copy-url-btn"' in html and 'id="export-pdf-btn"' in html
+
+
+CHIP_RE = re.compile(r'<a href="([^"]+)" class="public-view-chip"')
+
+
+def test_管理者の通常表示にはメタ情報の下に外部の人の表示のチップを出す(check_site):
+    html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md").text
+    slug = cache.PATH_TO_SLUG["公開ページ.md"]
+    assert CHIP_RE.findall(html) == [f"/view/{slug}?as=public"]
+    chip = html[html.index('class="public-view-chip"'):]
+    chip = chip[:chip.index("</a>")]
+    assert "外部の人の表示" in chip and "要確認 6" in chip and "public-view-chip-chevron" in chip
+    # ラベルは部品ごとの名前（600px 以下で隠すのは PC 用ボタンのラベルだけ）
+    assert '<span class="public-view-chip-label">外部の人の表示</span>' in chip
+    assert '<span class="public-view-toggle-label">外部の人の表示</span>' in html
+    # チップはメタ情報の行の下
+    assert html.index('class="view-meta"') < html.index('class="public-view-chip"')
+    # PC 用の右上の切り替えボタンも今までどおり出す（どちらを見せるかは CSS）
+    assert f'href="/view/{slug}?as=public" class="public-view-toggle"' in html
+
+
+def test_外部の人と外部表示中にはチップを出さない(check_site):
+    assert "public-view-chip" not in _get(TestClient(app, base_url=PUBLIC), "公開ページ.md").text
+    assert not CHIP_RE.search(_get(TestClient(app, base_url=ADMIN), "公開ページ.md", **{"as": "public"}).text)
+
+
+def test_外部表示中の帯に通常の表示へ戻るリンクを出す(check_site):
+    slug = cache.PATH_TO_SLUG["公開ページ.md"]
+    html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md", **{"as": "public"}).text
+    banner = html[html.index('class="public-view-banner"'):]
+    banner = banner[:banner.index("</div>")]
+    assert f'<a href="/view/{slug}" class="public-view-banner-back">戻る</a>' in banner
+    assert "public-view-banner-back" not in _get(TestClient(app, base_url=ADMIN), "公開ページ.md").text
+
+
+def _breadcrumb(html):
+    m = re.search(r'<div class="breadcrumb" aria-label="パンくずリスト">(.*?)</div>', html, re.S)
+    assert m, "パンくずが無い"
+    return m.group(1)
+
+
+def test_深いフォルダのパンくずは途中を省略できる印を持つ(site):
+    path = site / "a" / "b" / "c" / "深いノート.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("---\npublish: true\n---\n本文\n", encoding="utf-8")
+    indexing.refresh_global_caches()
+    crumb = _breadcrumb(_get(TestClient(app, base_url=ADMIN), "a/b/c/深いノート.md").text)
+    assert 'class="breadcrumb-ellipsis"' in crumb
+    # 途中のフォルダ（a・b）だけに is-middle を付け、直前のフォルダ（c）とノート名は付けない
+    assert re.findall(r'class="breadcrumb-folder( is-middle)?">([^<]+)</a>', crumb) == [
+        (" is-middle", "a"), (" is-middle", "b"), ("", "c")]
+    assert '<span class="breadcrumb-current" aria-current="page">深いノート</span>' in crumb
+
+
+def test_フォルダが1段以下のパンくずは省略しない(check_site):
+    crumb = _breadcrumb(_get(TestClient(app, base_url=ADMIN), "資料/公開資料.md").text)
+    assert "breadcrumb-ellipsis" not in crumb and "is-middle" not in crumb
+    assert "breadcrumb-ellipsis" not in _breadcrumb(_get(TestClient(app, base_url=ADMIN), "公開ページ.md").text)
+
+
+def test_メタ情報は時刻と読了の文字を短い表示で隠せる形で出す(check_site):
+    html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md").text
+    assert re.search(r'<span>更新 \d{4}-\d{2}-\d{2}<span class="view-meta-long"> \d{2}:\d{2}</span></span>', html)
+    assert re.search(r'<span>約\d+分<span class="view-meta-long">で読了</span></span>', html)
