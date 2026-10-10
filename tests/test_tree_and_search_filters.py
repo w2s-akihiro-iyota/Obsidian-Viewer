@@ -1,6 +1,6 @@
 """ファイルツリー（F-1）とクイックスイッチャーの絞り込み（F-2）の契約テスト
 
-実行: docker exec -w /app -e PYTHONPATH=/app obsidian-viewer-app python -m pytest tests/test_tree_and_search_filters.py -q
+実行: docker exec -w /app obsidian-viewer-app python -m pytest tests/test_tree_and_search_filters.py -q -p no:cacheprovider（手順は CLAUDE.md の Testing）
 """
 import pytest
 
