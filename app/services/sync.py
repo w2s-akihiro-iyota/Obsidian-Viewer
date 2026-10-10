@@ -3,6 +3,7 @@ import shutil
 import asyncio
 import logging
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -11,6 +12,7 @@ from app.config import (
 )
 from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
+from app.core.sync_history import KindChanges, SyncTrigger, add_record, build_record
 from app.events import config_updated_event
 
 from app.utils.messages import get_system, get_error, get_warning
@@ -36,10 +38,41 @@ class SyncKind:
 
 @dataclass
 class DirSyncResult:
-    copied: int = 0
+    added: list[str] = field(default_factory=list)     # コピー先に無かったのでコピーした
+    updated: list[str] = field(default_factory=list)   # コピー先にあったが、変わっていたのでコピーし直した
     deleted: list[str] = field(default_factory=list)
     held: list[str] = field(default_factory=list)   # 削除を保留したファイル
     hold_reason: str = ""
+
+    @property
+    def copied(self) -> int:
+        """コピーした件数（追加＋更新）"""
+        return len(self.added) + len(self.updated)
+
+    def to_changes(self) -> KindChanges:
+        """同期の記録（F-7）に渡す形にする"""
+        return KindChanges(added=self.added, updated=self.updated, deleted=self.deleted,
+                           held=self.held, hold_reason=self.hold_reason)
+
+
+@dataclass
+class SyncRun:
+    """同期（または保留した削除の実行）1 回分。開始時刻と種類ごとの結果を持ち、終わったら _record で記録する"""
+    trigger: str
+    started: datetime = field(default_factory=lambda: datetime.now(JST))
+    clock: float = field(default_factory=time.monotonic)
+    results: dict[str, DirSyncResult] = field(default_factory=dict)
+
+    def add(self, kind: str, result: DirSyncResult) -> DirSyncResult:
+        """種類ごとの結果を足す（途中で失敗しても、そこまでの結果を記録に残すため、終わった種類から足す）"""
+        self.results[kind] = result
+        return result
+
+
+def _record(run: SyncRun, error: str = "") -> None:
+    """1 回分を同期の記録に残す。error が空なら成功"""
+    add_record(build_record(run.started, time.monotonic() - run.clock, run.trigger, error,
+                            {kind: r.to_changes() for kind, r in run.results.items()}))
 
 
 @dataclass
@@ -178,9 +211,11 @@ def sync_directory(src_dir: Path, dest_dir: Path, protected: list[str]) -> DirSy
         dest = dest_dir / rel
         try:
             if _needs_copy(src, dest):
+                # コピーする前に、コピー先にあったか（＝更新）を見ておく
+                existed = dest.exists()
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dest)
-                result.copied += 1
+                (result.updated if existed else result.added).append(rel)
         except FileNotFoundError:
             # 一覧を取ったあとに同期元から消えた（OneDrive の同期中など）。次回の同期で扱う
             logger.info("Skipped (removed during sync): %s", src)
@@ -209,64 +244,68 @@ def _sync_kind(kind: str, src_dir: Path, dest_dir: Path, protected: list[str]) -
 
 # ---------- 同期全体 ----------
 
-def perform_sync(config: SyncConfig) -> tuple[bool, str]:
-    """ファイルの同期を実行します。ほかの同期が実行中なら SyncInProgressError"""
+def perform_sync(config: SyncConfig, trigger: str = SyncTrigger.MANUAL) -> tuple[bool, str]:
+    """
+    ファイルの同期を実行します。ほかの同期が実行中なら SyncInProgressError
+
+    同期を有効にしていれば、成否にかかわらず結果を同期の記録（F-7）に残す。trigger は SyncTrigger の値。
+    """
     if not _sync_lock.acquire(blocking=False):
         raise SyncInProgressError()
     try:
-        return _perform_sync(config)
+        logger.info("Starting sync. sync_enabled=%s, content_src=%s", config.sync_enabled, config.content_src)
+        if not config.sync_enabled:
+            return False, get_system("S104")
+
+        run = SyncRun(trigger)
+        try:
+            success, message = _perform_sync(config, run)
+        except Exception as e:
+            success, message = False, f"{get_system('S103')}: {str(e)}"
+            logger.error(message, exc_info=True)
+        _record(run, "" if success else message)
+        return success, message
     finally:
         _sync_lock.release()
 
 
-def _perform_sync(config: SyncConfig) -> tuple[bool, str]:
-    logger.info("Starting sync. sync_enabled=%s, content_src=%s", config.sync_enabled, config.content_src)
-    if not config.sync_enabled:
-        return False, get_system("S104")
-
+def _perform_sync(config: SyncConfig, run: SyncRun) -> tuple[bool, str]:
+    """同期の本体。終わった種類から run に結果を足す。想定外の例外は呼び出し側で失敗として扱う"""
     if not config.content_src:
         return False, get_error("E001")
 
-    try:
-        # 記録するのは開始時刻（表示用。差分の判定には使わない）
-        started_at = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    # 1. コンテンツの同期
+    src_path = Path(config.content_src)
+    if not src_path.exists():
+        return False, get_error("E002")
 
-        # 1. コンテンツの同期
-        src_path = Path(config.content_src)
-        if not src_path.exists():
-            return False, get_error("E002")
+    notes = run.add(SyncKind.CONTENT, _sync_kind(SyncKind.CONTENT, src_path, CONTENT_DIR, PROTECTED_ITEMS))
 
-        notes = _sync_kind(SyncKind.CONTENT, src_path, CONTENT_DIR, PROTECTED_ITEMS)
+    # 2. 画像の同期（オプション）
+    images = DirSyncResult()
+    img_src_path = Path(config.images_src) if config.images_src else None
+    if img_src_path and img_src_path.exists() and IMAGES_DIR.exists():
+        logger.info(get_system("S105"))
+        images = run.add(SyncKind.IMAGES, _sync_kind(SyncKind.IMAGES, img_src_path, IMAGES_DIR,
+                                                      PROTECTED_IMAGE_ITEMS))
+    else:
+        logger.info("Skipping image sync (not configured or path not found)")
+        _set_pending(SyncKind.IMAGES, None)
 
-        # 2. 画像の同期（オプション）
-        images = DirSyncResult()
-        img_src_path = Path(config.images_src) if config.images_src else None
-        if img_src_path and img_src_path.exists() and IMAGES_DIR.exists():
-            logger.info(get_system("S105"))
-            images = _sync_kind(SyncKind.IMAGES, img_src_path, IMAGES_DIR, PROTECTED_IMAGE_ITEMS)
-        else:
-            logger.info("Skipping image sync (not configured or path not found)")
-            _set_pending(SyncKind.IMAGES, None)
+    # 3. 完了処理（記録するのは開始時刻。表示用で、差分の判定には使わない）
+    config.last_sync = run.started.strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("Sync successful (started at %s)", config.last_sync)
+    save_config(config)
 
-        # 3. 完了処理
-        config.last_sync = started_at
-        logger.info("Sync successful (started at %s)", config.last_sync)
-        save_config(config)
+    # キャッシュリフレッシュのトリガー
+    refresh_global_caches()
 
-        # キャッシュリフレッシュのトリガー
-        refresh_global_caches()
-
-        msg = get_system("S108").format(notes=notes.copied, images=images.copied,
-                                        deleted=len(notes.deleted) + len(images.deleted))
-        held = len(notes.held) + len(images.held)
-        if held:
-            msg += " " + get_system("S109").format(count=held) + get_warning("W003")
-        return True, msg
-
-    except Exception as e:
-        error_msg = f"{get_system('S103')}: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return False, error_msg
+    msg = get_system("S108").format(notes=notes.copied, images=images.copied,
+                                    deleted=len(notes.deleted) + len(images.deleted))
+    held = len(notes.held) + len(images.held)
+    if held:
+        msg += " " + get_system("S109").format(count=held) + get_warning("W003")
+    return True, msg
 
 
 # ---------- 保留した削除 ----------
@@ -299,11 +338,18 @@ def confirm_pending_deletions() -> int:
         with _pending_lock:
             items = list(_pending.items())
             _pending.clear()
-        total = 0
-        for _, p in items:
+        if not items:
+            # 消すものが無い。ファイルは変わっていないので、キャッシュの作り直しも記録もしない
+            return 0
+        run = SyncRun(SyncTrigger.CONFIRM)
+        for kind, p in items:
             targets = [rel for rel in p.result.held if not _is_protected(rel, p.protected)]
-            total += len(_delete_files(p.src_dir, p.dest_dir, targets))
+            run.add(kind, DirSyncResult(deleted=_delete_files(p.src_dir, p.dest_dir, targets)))
+        total = sum(len(r.deleted) for r in run.results.values())
         logger.info("Confirmed pending deletions: %d files", total)
+        # 同期とは別の 1 回として記録する（直近の同期の記録は書き換えない）。
+        # キャッシュの作り直しより先に残す（作り直しで例外が出ても、消したことは記録に残る）
+        _record(run)
         refresh_global_caches()
         return total
     finally:
@@ -327,7 +373,7 @@ async def background_sync_loop() -> None:
                 logger.info("Auto-sync triggered")
                 loop = asyncio.get_event_loop()
                 try:
-                    await loop.run_in_executor(None, perform_sync, config)
+                    await loop.run_in_executor(None, perform_sync, config, SyncTrigger.AUTO)
                 except SyncInProgressError:
                     logger.info("Auto-sync skipped: another sync is running")
 

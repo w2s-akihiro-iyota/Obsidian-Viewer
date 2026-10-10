@@ -268,8 +268,6 @@
                                         <span class="btn-text">今すぐ同期</span>
                                         <div class="spinner"></div>
                                     </button>
-                                    <p id="last-sync-time"
-                                        style="margin-top: 8px; font-size: 0.8em; color: var(--text-muted);"></p>
                                 </div>
                                 <!-- 削除の保留（同期元が空・削除が多すぎるとき）。確認して実行する -->
                                 <div id="pending-deletions" class="pending-deletions" hidden>
@@ -286,6 +284,14 @@
                                     <button id="confirm-deletions-btn" class="danger-btn">
                                         <span class="btn-text">確認して削除する</span>
                                     </button>
+                                </div>
+                            </section>
+
+                            <!-- 同期の記録（F-7）。中身は settings.js が /api/sync/history から描く -->
+                            <section id="sync-report" class="settings-section sync-report">
+                                <h4>直近の同期 <span id="sync-report-meta" class="sync-report-meta"></span></h4>
+                                <div id="sync-report-body" class="sync-report-body">
+                                    <p class="sync-report-empty">読み込み中…</p>
                                 </div>
                             </section>
                         </div>

@@ -616,7 +616,6 @@ function initSyncSettings() {
     const wrapper = document.getElementById('sync-settings-wrapper');
     const saveBtn = document.getElementById('save-sync-settings-btn');
     const manualSyncBtn = document.getElementById('manual-sync-btn');
-    const lastSyncLabel = document.getElementById('last-sync-time');
 
     let currentConfig = {};
 
@@ -631,7 +630,6 @@ function initSyncSettings() {
             imagesSrcInput.value = config.images_src || '';
             if (baseUrlInput) baseUrlInput.value = config.base_url || '';
             intervalSelect.value = config.interval_minutes || 60;
-            lastSyncLabel.textContent = config.last_sync ? `最終同期: ${config.last_sync}` : '';
 
             toggleInputs(config.sync_enabled);
             toggleAutoSyncInputs(config.auto_sync_enabled);
@@ -666,6 +664,7 @@ function initSyncSettings() {
             .catch(err => console.error("Failed to load pending deletions", err));
     }
     loadPendingDeletions();
+    loadSyncReport();
 
     if (confirmDeletionsBtn) {
         confirmDeletionsBtn.addEventListener('click', () => {
@@ -681,6 +680,7 @@ function initSyncSettings() {
                     } else {
                         showToast(data.message || '削除に失敗しました', res.status === 409 ? 'warning' : 'error');
                     }
+                    loadSyncReport();
                     return loadPendingDeletions();
                 })
                 .catch(err => {
@@ -823,7 +823,6 @@ function initSyncSettings() {
                     imagesSrcInput.value = '';
                     if (baseUrlInput) baseUrlInput.value = '';
                     intervalSelect.value = 60;
-                    lastSyncLabel.textContent = '';
                     toggleAutoSyncInputs(false);
                     clearErrors();
                     showToast("ファイル同期を無効にしました", "success");
@@ -949,6 +948,7 @@ function initSyncSettings() {
                     // 削除を保留した。トップへ移らず、この画面で内容を確認できるようにする
                     showToast(data.message, 'warning');
                     loadPendingDeletions();
+                    loadSyncReport();
                     return;
                 }
                 if (res.ok) {
@@ -968,10 +968,231 @@ function initSyncSettings() {
             .catch(err => {
                 console.error("Sync failed", err);
                 showToast(`同期に失敗しました: ${err.message}`, "error");
+                // 失敗も記録に残るので、この欄を読み直す
+                loadSyncReport();
             })
             .finally(() => {
                 manualSyncBtn.classList.remove('loading');
                 manualSyncBtn.disabled = false;
             });
     });
+}
+
+// --- 同期の記録（F-7）: 設定の「ファイル同期」の「直近の同期」欄 ---
+// 記録には画面に出す名前を持たせていない（名前を変えたら過去の分も変わるように、ここの表で引く）
+
+const SYNC_KIND_LABELS = { content: 'ノート', images: '画像' };              // 種類の一覧
+const SYNC_CHANGE_LABELS = { added: '追加', updated: '更新', deleted: '削除' };  // 変更の一覧
+const SYNC_TRIGGER_LABELS = { manual: '手動', auto: '自動', confirm: '保留の削除' };
+// 表の並び（いちばん確かめたい削除を先頭に）
+const SYNC_TABLE_ORDER = ['deleted', 'added', 'updated'];
+
+function syncReportEl(tag, className = '', text = '') {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text) el.textContent = text;
+    return el;
+}
+
+function syncPill(change, text) {
+    return syncReportEl('span', `sync-pill sync-pill-${change}`, text);
+}
+
+/** "2026-10-10 10:00:05" → "2026-10-10 10:00"（short なら "10-10 10:00"）。時刻はサーバーが JST で記録している */
+function formatSyncTime(startedAt, short = false) {
+    const t = (startedAt || '').slice(0, 16);
+    return short ? t.slice(5) : t;
+}
+
+function formatSyncDuration(sec) {
+    return sec < 1 ? '1 秒未満' : `${Math.round(sec)} 秒`;
+}
+
+function syncTriggerLabel(trigger) {
+    return SYNC_TRIGGER_LABELS[trigger] || trigger;
+}
+
+function syncKindLabel(kind) {
+    return SYNC_KIND_LABELS[kind] || kind;
+}
+
+/** 1 種類・1 変更の件数（記録に無ければ 0） */
+function syncChangeCount(record, kind, change) {
+    return record.kinds?.[kind]?.[change]?.count || 0;
+}
+
+/** 記録 1 回分の件数。追加・更新・削除はノート、画像は画像の追加・更新・削除の合計（ピルと表の行数はこれでそろう） */
+function syncCounts(record) {
+    return {
+        added: syncChangeCount(record, 'content', 'added'),
+        updated: syncChangeCount(record, 'content', 'updated'),
+        deleted: syncChangeCount(record, 'content', 'deleted'),
+        images: Object.keys(SYNC_CHANGE_LABELS).reduce((sum, change) => sum + syncChangeCount(record, 'images', change), 0),
+    };
+}
+
+function syncCountsText(counts) {
+    return `追加 ${counts.added}・更新 ${counts.updated}・削除 ${counts.deleted}・画像 ${counts.images}`;
+}
+
+/** 1 種類・1 変更の表の行（ピル＋相対パス。ノート以外には種類の印を付ける）。ファイル名を残していない分は「ほか N 件」の行 */
+function syncReportRows(record, kind, change, fileLimit) {
+    const list = record.kinds?.[kind]?.[change];
+    if (!list || !list.count) return [];
+    const rows = list.files.map(file => {
+        const tr = syncReportEl('tr');
+        const pillCell = syncReportEl('td');
+        pillCell.appendChild(syncPill(change, SYNC_CHANGE_LABELS[change]));
+        const fileCell = syncReportEl('td', 'sync-report-file', file);
+        if (kind !== 'content') fileCell.appendChild(syncReportEl('span', 'sync-report-kind', syncKindLabel(kind)));
+        tr.append(pillCell, fileCell);
+        return tr;
+    });
+    const rest = list.count - list.files.length;
+    if (rest > 0) {
+        const tr = syncReportEl('tr', 'sync-report-more');
+        const td = syncReportEl('td', '', `${syncKindLabel(kind)}の${SYNC_CHANGE_LABELS[change]}: ほか ${rest} 件（ファイル名は ${fileLimit} 件まで残しています）`);
+        td.colSpan = 2;
+        tr.appendChild(td);
+        rows.push(tr);
+    }
+    return rows;
+}
+
+/** ノートの更新の行を「ノートの更新 N 件を表示 ▾」で開閉する行 */
+function syncUpdatedToggleRow(updatedRows, count) {
+    const tr = syncReportEl('tr', 'sync-report-toggle-row');
+    const td = syncReportEl('td');
+    td.colSpan = 2;
+    const toggle = syncReportEl('button', 'sync-report-toggle');
+    toggle.type = 'button';
+    const setOpen = open => {
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.textContent = open ? `ノートの更新 ${count} 件を隠す ▴` : `ノートの更新 ${count} 件を表示 ▾`;
+        updatedRows.forEach(row => { row.hidden = !open; });
+    };
+    setOpen(false);
+    toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+    td.appendChild(toggle);
+    tr.appendChild(td);
+    return tr;
+}
+
+/**
+ * 表: ノートの削除 → ノートの追加 → 画像（削除・追加・更新）→ ノートの更新（開閉）
+ * ノートの更新は件数が多くなりがちなので、ふだんは閉じておく
+ */
+function syncReportTable(record, fileLimit) {
+    const rowsOf = (kind, changes) => changes.flatMap(change => syncReportRows(record, kind, change, fileLimit));
+    const shownRows = [
+        ...rowsOf('content', SYNC_TABLE_ORDER.filter(change => change !== 'updated')),
+        ...rowsOf('images', SYNC_TABLE_ORDER),
+    ];
+    const updatedRows = rowsOf('content', ['updated']);
+    if (!shownRows.length && !updatedRows.length) return null;
+
+    const table = syncReportEl('table', 'sync-report-table');
+    const headRow = syncReportEl('tr');
+    headRow.append(syncReportEl('th', '', '種類'), syncReportEl('th', '', 'ファイル'));
+    const thead = syncReportEl('thead');
+    thead.appendChild(headRow);
+    const tbody = syncReportEl('tbody');
+    tbody.append(...shownRows);
+    if (updatedRows.length) {
+        tbody.append(syncUpdatedToggleRow(updatedRows, syncChangeCount(record, 'content', 'updated')), ...updatedRows);
+    }
+    table.append(thead, tbody);
+    const wrap = syncReportEl('div', 'sync-report-table-wrap');
+    wrap.appendChild(table);
+    return wrap;
+}
+
+/** 過去の同期（1 回 1 行） */
+function syncReportPast(records, limit) {
+    const details = syncReportEl('details', 'sync-report-past');
+    details.appendChild(syncReportEl('summary', '', `過去の同期（${records.length} 回分）`));
+    const list = syncReportEl('ul');
+    records.forEach(record => {
+        const li = syncReportEl('li');
+        li.append(
+            syncReportEl('span', 'sync-report-past-time', formatSyncTime(record.started_at, true)),
+            syncReportEl('span', 'sync-report-past-trigger', syncTriggerLabel(record.trigger)),
+        );
+        if (record.ok) {
+            const held = (record.held || []).reduce((sum, h) => sum + h.count, 0);
+            li.appendChild(syncReportEl('span', '', syncCountsText(syncCounts(record)) + (held ? `・削除を保留 ${held}` : '')));
+        } else {
+            li.append(syncPill('error', '失敗'), syncReportEl('span', 'sync-report-past-error', record.error));
+        }
+        list.appendChild(li);
+    });
+    details.append(list, syncReportEl('p', 'sync-report-past-note', `直近 ${limit} 回分まで残します`));
+    return details;
+}
+
+/** data は /api/sync/history の応答（history・limit・file_limit） */
+function renderSyncReport(data) {
+    const body = document.getElementById('sync-report-body');
+    const meta = document.getElementById('sync-report-meta');
+    if (!body || !meta) return;
+    body.replaceChildren();
+    meta.textContent = '';
+
+    const history = data.history || [];
+    if (!history.length) {
+        body.appendChild(syncReportEl('p', 'sync-report-empty', 'まだ同期していません'));
+        return;
+    }
+
+    const latest = history[0];
+    const counts = syncCounts(latest);
+    meta.textContent = `${formatSyncTime(latest.started_at)}（${formatSyncDuration(latest.duration_sec)}）・${syncTriggerLabel(latest.trigger)}`;
+
+    if (!latest.ok) {
+        const error = syncReportEl('p', 'sync-report-error');
+        error.append(syncPill('error', '失敗'), syncReportEl('span', '', latest.error));
+        body.appendChild(error);
+    }
+
+    const summary = syncReportEl('div', 'sync-report-summary');
+    summary.append(
+        syncPill('added', `追加 ${counts.added}`),
+        syncPill('updated', `更新 ${counts.updated}`),
+        syncPill('deleted', `削除 ${counts.deleted}`),
+        syncPill('images', `画像 ${counts.images}`),
+    );
+    body.appendChild(summary);
+
+    (latest.held || []).forEach(h => {
+        body.appendChild(syncReportEl('p', 'sync-report-held', `${syncKindLabel(h.kind)}の削除 ${h.count} 件を保留しました: ${h.reason}`));
+    });
+
+    const table = syncReportTable(latest, data.file_limit);
+    if (table) {
+        body.appendChild(table);
+    } else if (latest.ok) {
+        body.appendChild(syncReportEl('p', 'sync-report-empty', '変わったファイルはありませんでした'));
+    }
+
+    if (history.length > 1) body.appendChild(syncReportPast(history.slice(1), data.limit));
+}
+
+function loadSyncReport() {
+    if (!document.getElementById('sync-report-body')) return Promise.resolve();
+    return fetch('/api/sync/history')
+        .then(res => res.json())
+        .then(renderSyncReport)
+        .catch(err => console.error("Failed to load sync history", err));
+}
+
+/** 設定モーダルの「ファイル同期」を開き、「直近の同期」欄までスクロールする（同期完了のトーストの「内訳を見る」） */
+function openSyncReport() {
+    const settingsModal = document.getElementById('settings-modal');
+    const report = document.getElementById('sync-report');
+    if (!settingsModal || !report) return;
+    settingsModal.classList.add('active');
+    document.body.classList.add('no-scroll');
+    document.querySelectorAll('.settings-nav-item').forEach(nav => nav.classList.toggle('active', nav.getAttribute('data-tab') === 'files'));
+    document.querySelectorAll('.settings-tab-pane').forEach(pane => pane.classList.toggle('active', pane.id === 'settings-tab-files'));
+    loadSyncReport().then(() => report.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }

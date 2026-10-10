@@ -9,7 +9,9 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 # Local
+from app.config import SYNC_HISTORY_FILE_LIMIT, SYNC_HISTORY_LIMIT
 from app.core.indexing import refresh_global_caches
+from app.core.sync_history import get_history
 from app.events import config_updated_event
 from app.models.sync import SyncConfig
 from app.services.sync import (
@@ -117,6 +119,15 @@ async def api_pending_deletions(request: Request):
     """削除が多すぎる等の理由で保留した削除の一覧（localhost限定）"""
     if error := admin_guard(request): return error
     return {"pending": get_pending_deletions()}
+
+
+@router.get("/api/sync/history")
+async def api_sync_history(request: Request):
+    """同期の記録（F-7）。新しい順に直近の数回分と、残す回数・ファイル名の上限（localhost限定）"""
+    if error := admin_guard(request): return error
+    history = await run_in_threadpool(get_history)
+    return {"history": [r.model_dump() for r in history],
+            "limit": SYNC_HISTORY_LIMIT, "file_limit": SYNC_HISTORY_FILE_LIMIT}
 
 
 @router.post("/api/sync/confirm-deletions")
