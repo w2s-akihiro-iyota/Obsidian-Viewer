@@ -308,8 +308,8 @@ footer {
     content: "";
     position: absolute;
     left: 0;
-    top: 12px;
-    bottom: 12px;
+    top: 6px;
+    bottom: 6px;
     width: 3px;
     background-color: var(--accent-purple);
     border-radius: 0 3px 3px 0;

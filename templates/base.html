@@ -60,6 +60,10 @@
 {% set shortcut_page_now = shortcuts.find_page(self.body_class()) %}
 {# キー表記のマクロ。include した部品（ヘルプ・チートシート・検索）からも見える #}
 {% import 'partials/_shortcut_macros.html' as sc %}
+{# いま表示中の画面（アクティビティバーとスマホの画面切り替えで、今いる画面に印を付けるのに使う）。
+   graph / dashboard / editor のどれでもなければノート（トップ・記事ページ） #}
+{% set nav_path = request.url.path if request is defined else '' %}
+{% set nav_page = {'/graph': 'graph', '/dashboard': 'dashboard', '/editor': 'editor'}.get(nav_path, 'note') %}
 <body class="{% block body_class %}{% endblock %}">
     {% include 'partials/_activity_bar.html' %}
 
@@ -68,14 +72,59 @@
     <div class="app-wrapper">
         <aside id="sidebar" class="sidebar {% block sidebar_class %}{% endblock %}">
             <div class="sidebar-header">
+                <!-- 画面切り替え（スマホ幅だけ。アクティビティバーを隠すので、ここからグラフ等へ移れるようにする。D-6） -->
+                <nav class="sidebar-page-nav" aria-label="画面切り替え">
+                    <a href="/" class="sidebar-page-link{% if nav_page == 'note' %} active{% endif %}"{% if nav_page == 'note' %} aria-current="page"{% endif %}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        <span>ノート</span>
+                    </a>
+                    <a href="/graph" class="sidebar-page-link{% if nav_page == 'graph' %} active{% endif %}"{% if nav_page == 'graph' %} aria-current="page"{% endif %}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="18" cy="18" r="3"></circle>
+                            <circle cx="6" cy="6" r="3"></circle>
+                            <circle cx="18" cy="6" r="3"></circle>
+                            <line x1="8.59" y1="7.41" x2="15.42" y2="14.59"></line>
+                            <line x1="15.41" y1="7.41" x2="8.59" y2="14.59"></line>
+                        </svg>
+                        <span>グラフ</span>
+                    </a>
+                    {# アクティビティバーと同じ条件（管理者のときだけ） #}
+                    {% if is_localhost %}
+                    <a href="/dashboard" class="sidebar-page-link{% if nav_page == 'dashboard' %} active{% endif %}"{% if nav_page == 'dashboard' %} aria-current="page"{% endif %}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                        <span>ダッシュボード</span>
+                    </a>
+                    <a href="/editor" class="sidebar-page-link{% if nav_page == 'editor' %} active{% endif %}"{% if nav_page == 'editor' %} aria-current="page"{% endif %}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        <span>エディタ</span>
+                    </a>
+                    {% endif %}
+                </nav>
                 <div class="sidebar-tabs">
-                    <button class="sidebar-tab active" data-panel="sidebar-files" title="Files">
+                    <button class="sidebar-tab active" data-panel="sidebar-files" title="ファイル">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        <span class="sidebar-tab-label">Files</span>
+                        <span class="sidebar-tab-label">ファイル</span>
                     </button>
-                    <button class="sidebar-tab" data-panel="sidebar-outline" title="Outline">
+                    <button class="sidebar-tab" data-panel="sidebar-outline" title="目次">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="8" y1="6" x2="21" y2="6"></line>
                             <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -84,14 +133,14 @@
                             <line x1="3" y1="12" x2="3.01" y2="12"></line>
                             <line x1="3" y1="18" x2="3.01" y2="18"></line>
                         </svg>
-                        <span class="sidebar-tab-label">Outline</span>
+                        <span class="sidebar-tab-label">目次</span>
                     </button>
-                    <button class="sidebar-tab" data-panel="sidebar-history" title="History">
+                    <button class="sidebar-tab" data-panel="sidebar-history" title="閲覧履歴">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        <span class="sidebar-tab-label">History</span>
+                        <span class="sidebar-tab-label">閲覧履歴</span>
                     </button>
                 </div>
             </div>
@@ -105,7 +154,7 @@
                     </div>
                 </div>
                 <div id="sidebar-outline" class="sidebar-panel">
-                    <div class="toc-empty">No outline available</div>
+                    <div class="toc-empty">見出しがありません</div>
                 </div>
                 <div id="sidebar-history" class="sidebar-panel">
                     <div class="history-empty">閲覧履歴はありません</div>

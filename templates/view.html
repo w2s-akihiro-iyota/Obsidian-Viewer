@@ -74,7 +74,7 @@
 <div class="view-header">
     <div class="view-header-top">
         <div class="breadcrumb" aria-label="パンくずリスト">
-            <a href="/">Home</a>
+            <a href="/">ホーム</a>
             {% for crumb in breadcrumbs %}
             <span class="breadcrumb-sep" aria-hidden="true">›</span>
             <a href="{{ crumb.href }}" class="breadcrumb-folder">{{ crumb.name }}</a>
@@ -87,7 +87,7 @@
             {% if is_admin %}
             {# 管理者だけ: 外部の人に見える内容（?as=public）と通常の表示を切り替える #}
             {% if public_view %}
-            <a href="/view/{{ slug }}" class="public-view-toggle is-active" title="管理者の通常の表示に戻る">
+            <a href="/view/{{ slug }}" class="public-view-toggle is-active" title="管理者の通常の表示に戻る" aria-label="管理者の通常の表示に戻る">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
@@ -99,7 +99,7 @@
                 {{ check_count_badge(publish_check) }}
             </a>
             {% else %}
-            <a href="/view/{{ slug }}?as=public" class="public-view-toggle" title="外部の人に見える内容を確認する">
+            <a href="/view/{{ slug }}?as=public" class="public-view-toggle" title="外部の人に見える内容を確認する" aria-label="外部の人に見える内容を確認する">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
@@ -111,7 +111,8 @@
             {% endif %}
             {% endif %}
             <div class="page-menu-container">
-                <button class="page-menu-btn" id="page-menu-btn" title="メニュー">
+                <button class="page-menu-btn" id="page-menu-btn" title="メニュー" aria-label="このノートの操作"
+                    aria-haspopup="menu" aria-expanded="false">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="1"></circle>
                         <circle cx="12" cy="5" r="1"></circle>

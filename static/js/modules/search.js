@@ -166,7 +166,7 @@ function initSearch() {
                             } else {
                                 const empty = document.createElement('div');
                                 empty.className = 'search-result-empty';
-                                empty.textContent = 'No results found';
+                                empty.textContent = '見つかりませんでした';
                                 searchResults.appendChild(empty);
                             }
                             searchResults.style.display = 'block';
@@ -185,6 +185,7 @@ function initSearch() {
         const pageMenuDropdown = document.getElementById('page-menu-dropdown');
         if (pageMenuDropdown && !e.target.closest('#page-menu-btn')) {
             pageMenuDropdown.classList.remove('show');
+            document.getElementById('page-menu-btn')?.setAttribute('aria-expanded', 'false');
         }
 
         // Close search results
@@ -323,7 +324,7 @@ function initSearch() {
         const renderResults = (data, query) => {
             modalSearchResults.innerHTML = '';
             if (data.length === 0) {
-                showMessage('No results found');
+                showMessage('見つかりませんでした');
                 selectedIndex = -1;
                 return;
             }

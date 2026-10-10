@@ -962,7 +962,7 @@ function initSyncSettings() {
                     }
                     window.location.href = '/';
                 } else {
-                    throw new Error(data.message || "Sync failed");
+                    throw new Error(data.message || "同期に失敗しました");
                 }
             })
             .catch(err => {

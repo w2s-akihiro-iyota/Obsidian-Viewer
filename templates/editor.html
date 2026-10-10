@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Markdown Editor - Obsidian Viewer{% endblock %}
+{% block title %}{% if edit_path %}ノートを編集{% else %}新しいノート{% endif %} - Obsidian Viewer{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="/static/css/editor.css?v=20261009">
@@ -17,7 +17,7 @@
 {% block content %}
 <div class="editor-toolbar">
     <div class="editor-toolbar-left">
-        <h2 class="editor-title">{% if edit_path %}ノートを編集{% else %}Markdown Editor{% endif %}</h2>
+        <h2 class="editor-title">{% if edit_path %}ノートを編集{% else %}新しいノート{% endif %}</h2>
     </div>
     <div class="editor-toolbar-right">
         {% if edit_path %}
@@ -58,14 +58,14 @@
 <div class="editor-panes">
     <div class="editor-pane editor-input-pane">
         <div class="editor-pane-header">
-            <span>Editor</span>
+            <span>編集</span>
         </div>
         <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false"{% if edit_path %} data-edit-path="{{ edit_path }}" data-view-slug="{{ edit_slug }}"{% endif %}></textarea>
     </div>
     <div class="editor-resizer" id="editor-resizer"></div>
     <div class="editor-pane editor-preview-pane">
         <div class="editor-pane-header">
-            <span>Preview</span>
+            <span>プレビュー</span>
         </div>
         <div id="editor-preview" class="markdown-body"></div>
     </div>

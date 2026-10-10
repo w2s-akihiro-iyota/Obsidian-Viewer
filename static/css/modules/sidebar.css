@@ -477,6 +477,51 @@ body.resizing iframe {
     opacity: 1;
 }
 
+/* 画面切り替えの行（D-6）。スマホ幅ではアクティビティバーを隠すので、サイドバーの一番上から画面を移れるようにする。
+   PC ではアクティビティバーがあるので出さない（表示は下の 768px 以下のメディアクエリで切り替える） */
+.sidebar-page-nav {
+    display: none;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 4px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.sidebar-page-link {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere; /* 「ダッシュボード」が狭い幅でもはみ出さず折り返す */
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.sidebar-page-link:hover {
+    color: var(--text-normal);
+}
+
+.sidebar-page-link.active {
+    color: var(--accent-purple);
+    background-color: var(--bg-primary);
+}
+
+@media (max-width: 768px) {
+    .sidebar-page-nav {
+        display: flex;
+    }
+}
+
 /* Sidebar Panels (Tab Content) */
 .sidebar-panel {
     display: none;
