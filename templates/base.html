@@ -202,9 +202,8 @@
     {% include 'partials/_modal_search.html' %}
     {% include 'partials/_modal_welcome.html' %}
     {% include 'partials/_modal_help.html' %}
-    {# 設定モーダルの部品は閉じタグが1つ足りず、後ろに置くと設定モーダルの中に入ってしまうので、その前に置く #}
-    {% include 'partials/_modal_shortcuts.html' %}
     {% include 'partials/_modal_settings.html' %}
+    {% include 'partials/_modal_shortcuts.html' %}
     {# ファイルツリーの非公開の印（file-tree.js が複製する）。一覧と同じマクロから描く。外部の人のツリーに非公開ノートは無いので管理者だけ #}
     {% if viewer_is_admin %}
     <template id="private-mark-template">{{ nm.private_mark('tree-private-badge') }}</template>
