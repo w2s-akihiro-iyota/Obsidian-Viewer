@@ -56,6 +56,61 @@ def parse_obsidian_date(date_str: str) -> datetime | None:
             continue
     return None
 
+# 一覧の抜粋の文字数
+PREVIEW_LENGTH = 200
+
+# 行頭の記号
+_FENCE_LINE_RE = re.compile(r'^[ \t]*(```|~~~).*$', re.MULTILINE)
+_CALLOUT_RE = re.compile(r'^(?:[ \t]*>[ \t]*)+\[![^\]\n]*\][+-]?', re.MULTILINE)
+_QUOTE_RE = re.compile(r'^(?:[ \t]*>)+[ \t]?', re.MULTILINE)
+_HEADING_RE = re.compile(r'^[ \t]*#{1,6}[ \t]+', re.MULTILINE)
+_LIST_RE = re.compile(r'^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?', re.MULTILINE)
+_HR_RE = re.compile(r'^[ \t]*(?:[-*_][ \t]*){3,}$', re.MULTILINE)
+_TABLE_SEP_RE = re.compile(r'^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$', re.MULTILINE)
+# 文中の記号（閉じ忘れで次の行以降を巻き込まないよう、[] () の中は改行をまたがない）
+_COMMENT_RE = re.compile(r'<!--.*?-->|%%.*?%%', re.DOTALL)
+_EMBED_RE = re.compile(r'!\[\[[^\]\n]*\]\]|!\[[^\]\n]*\]\([^)\n]*\)')
+_WIKILINK_ALIAS_RE = re.compile(r'\[\[[^\]|\n]*\|([^\]\n]*)\]\]')
+_WIKILINK_RE = re.compile(r'\[\[([^\]\n]*)\]\]')
+_LINK_RE = re.compile(r'\[([^\]\n]*)\]\([^)\n]*\)')
+_HTML_TAG_RE = re.compile(r'<[^>]+>')
+# 強調: ** __ ~~ == と単独の *。_ は英数字に挟まれたもの（snake_case）だけ残す
+_EMPHASIS_RE = re.compile(r'\*\*|__|~~|==|\*|(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])')
+_SPACES_RE = re.compile(r'\s+')
+
+
+def make_preview(body: str, limit: int = PREVIEW_LENGTH) -> str:
+    """
+    一覧のカードに出す抜粋を作る。
+
+    見出し・リスト・引用・強調・コード・リンク・画像・HTML タグ・callout の記法を除いた本文を、
+    空白をつめて limit 文字で切る。コードフェンスは ``` の行だけを除き、中身は残す。
+    """
+    text = body.replace('\r\n', '\n')
+    text = _COMMENT_RE.sub('', text)
+    text = _FENCE_LINE_RE.sub('', text)
+
+    # 行頭の記号（callout → 引用 → 見出し・リストの順。引用の中のリストも外れる）
+    text = _CALLOUT_RE.sub('', text)
+    text = _QUOTE_RE.sub('', text)
+    text = _HEADING_RE.sub('', text)
+    text = _LIST_RE.sub('', text)
+    text = _HR_RE.sub('', text)
+    text = _TABLE_SEP_RE.sub('', text)
+
+    # 画像は除き、リンクは表示する文字だけにする
+    text = _EMBED_RE.sub('', text)
+    text = _WIKILINK_ALIAS_RE.sub(r'\1', text)
+    text = _WIKILINK_RE.sub(r'\1', text)
+    text = _LINK_RE.sub(r'\1', text)
+    text = _HTML_TAG_RE.sub('', text)
+
+    text = _EMPHASIS_RE.sub('', text)
+    text = text.replace('`', '').replace('|', ' ')
+    text = _SPACES_RE.sub(' ', text).strip()
+    return text[:limit]
+
+
 def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
     files_list = []
     
@@ -73,11 +128,11 @@ def get_all_files(directory: Path, relative_to: Path) -> list[dict]:
                 
                 frontmatter, body = parse_frontmatter(content)
                 
-                # Create preview (plain text, first 200 chars)
-                preview = re.sub(r'<[^>]+>', '', body) # strip HTML if any
-                preview = preview.replace('\n', ' ').strip()[:200]
+                # 一覧の抜粋（Markdown の記号を除いた本文）
+                preview = make_preview(body)
                 
-                title = frontmatter.get('title') or rel_path.stem
+                # title: 2024 のような数値でも文字列として扱う（検索・並び替えで例外にしない）
+                title = str(frontmatter.get('title') or rel_path.stem)
                 tags = frontmatter.get('tags')
                 if tags is None:
                     tags = []
@@ -158,7 +213,8 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
                 if published_only and not is_published(frontmatter):
                     continue
 
-                title = frontmatter.get('title') or rel_path.stem
+                # title: 2024 のような数値でも文字列として扱う（検索・並び替えで例外にしない）
+                title = str(frontmatter.get('title') or rel_path.stem)
                 current_level.append({
                     "name": file,
                     "title": title,

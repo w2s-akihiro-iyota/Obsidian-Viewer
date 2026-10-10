@@ -72,38 +72,9 @@
 
 .file-link {
     display: flex;
-    gap: 16px;
     padding: 16px;
     color: inherit;
     text-decoration: none;
-    min-height: 160px;
-}
-
-.file-preview {
-    flex-shrink: 0;
-    width: 240px;
-    height: 120px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: linear-gradient(to bottom right, #5940c4, #7b61ff, #8a73ff);
-    padding: 16px;
-    display: flex;
-    align-items: flex-start;
-    box-shadow: 0 0 25px rgba(123, 97, 255, 0.6), inset 0 0 25px rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(150, 120, 255, 0.3);
-}
-
-.file-preview p {
-    margin: 0;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.95);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 6;
-    line-clamp: 6;
-    -webkit-box-orient: vertical;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
 .file-content {
@@ -114,18 +85,51 @@
     min-width: 0;
 }
 
+/* タイトルと、右上の更新日・読了時間 */
+.file-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+}
+
 .file-name {
+    min-width: 0;
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-normal);
-    margin-bottom: 8px;
+    overflow-wrap: anywhere;
+}
+
+.file-head .file-meta {
+    display: flex;
+    gap: 12px;
+    margin: 0;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* 抜粋（リストではタイトルの下に2行まで） */
+.file-excerpt {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .file-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 8px;
 }
 
 .file-tag {
@@ -145,6 +149,7 @@
     transform: scale(1.05);
 }
 
+/* 公開状態のバッジ（記事ヘッダー・ダッシュボード。一覧では使わない） */
 .file-status-badge {
     display: inline-flex;
     align-items: center;
@@ -179,16 +184,6 @@
     box-shadow: none;
 }
 
-.file-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-
-
 .file-updated {
     color: var(--text-muted);
     font-size: 0.8rem;
@@ -199,27 +194,6 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-}
-
-.file-list.grid-view .file-item {
-    margin-bottom: 0;
-}
-
-.file-list.grid-view .file-link {
-    flex-direction: column;
-    gap: 12px;
-    min-height: 280px;
-}
-
-.file-list.grid-view .file-preview {
-    width: 100%;
-    height: 140px;
-    box-shadow: 0 0 30px rgba(123, 97, 255, 0.7), inset 0 0 25px rgba(255, 255, 255, 0.08);
-}
-
-.file-list.grid-view .file-preview p {
-    -webkit-line-clamp: 6;
-    line-clamp: 6;
 }
 
 /* Responsive grid: 2 columns on medium screens */
@@ -242,41 +216,54 @@
     /* Prevent grid item overflow */
 }
 
+/* 該当なしの案内はグリッドでも横いっぱいに出す */
+.file-list.grid-view .empty-state {
+    grid-column: 1 / -1;
+}
+
 .file-list.grid-view .file-item:hover {
     transform: translateY(-4px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .file-list.grid-view .file-link {
-    display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 150px;
 }
 
-.file-list.grid-view .file-main {
-    flex-grow: 1;
+.file-list.grid-view .file-content {
+    gap: 10px;
 }
 
-.file-list.grid-view .file-title {
-    font-size: 1.1rem;
-    margin-bottom: 8px;
+.file-list.grid-view .file-head {
+    flex-direction: column;
+    align-items: flex-start;
 }
 
-.file-list.grid-view .tag-list {
-    margin-top: auto;
-    padding-top: 8px;
+/* グリッドでは抜粋を上の箱に出す（抜粋が無いノートは箱ごと出さない）
+   余白は透明な border で取る。overflow は padding の内側で切るので、余白を padding にすると
+   line-clamp の後ろの行が下の余白に半分見えてしまう。箱の高さはちょうど 6 行分＋余白 */
+.file-list.grid-view .file-excerpt {
+    order: -1;
+    height: calc(6 * 1.4em + 32px);
+    padding: 0;
+    border: 16px solid transparent;
+    border-radius: 12px;
+    background: linear-gradient(to bottom right, #5940c4, #7b61ff, #8a73ff) border-box;
+    outline: 1px solid rgba(150, 120, 255, 0.3);
+    outline-offset: -1px;
+    box-shadow: 0 0 30px rgba(123, 97, 255, 0.7);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+    -webkit-line-clamp: 6;
+    line-clamp: 6;
 }
 
 .file-link:hover {
     text-decoration: none;
-}
-
-.file-meta {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-top: 4px;
 }
 
 /* Markdown Content (View) */
@@ -938,27 +925,6 @@ mark {
     background-color: rgba(102, 187, 106, 0.2);
 }
 
-/* Search Accordion */
-.search-accordion {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    margin-bottom: 10px;
-    overflow: hidden;
-}
-
-.search-summary {
-    list-style: none;
-    /* Hide default triangle */
-    padding: 0;
-    cursor: pointer;
-    background-color: var(--bg-secondary);
-}
-
-.search-summary::-webkit-details-marker {
-    display: none;
-}
-
 .search-form {
     display: flex;
     flex-direction: column;
@@ -1001,26 +967,6 @@ mark {
 
 .search-button:hover {
     opacity: 0.9;
-}
-
-.accordion-hint {
-    margin-top: 10px;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    user-select: none;
-}
-
-.accordion-icon {
-    font-size: 0.8rem;
-    transition: transform 0.2s;
-}
-
-details[open] .accordion-icon {
-    transform: rotate(180deg);
 }
 
 .tag-cloud {
@@ -1082,15 +1028,6 @@ details[open] .accordion-icon {
 }
 
 /* File Meta Information */
-.file-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 8px;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
 .file-path {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1206,13 +1143,10 @@ details[open] .accordion-icon {
     box-shadow: 0 0 25px rgba(123, 97, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-:root[data-theme="light"] .file-preview {
-    background: linear-gradient(to bottom right, #a89ff5, #c4b5fd, #d4c5ff);
-    border: 1px solid rgba(123, 97, 255, 0.4);
-    box-shadow: 0 0 25px rgba(123, 97, 255, 0.25), inset 0 0 25px rgba(255, 255, 255, 0.5);
-}
-
-:root[data-theme="light"] .file-preview p {
+:root[data-theme="light"] .file-list.grid-view .file-excerpt {
+    background: linear-gradient(to bottom right, #a89ff5, #c4b5fd, #d4c5ff) border-box;
+    outline-color: rgba(123, 97, 255, 0.4);
+    box-shadow: 0 0 25px rgba(123, 97, 255, 0.25);
     color: #3d2a7f;
     text-shadow: none;
 }
@@ -1226,10 +1160,6 @@ details[open] .accordion-icon {
 
 :root[data-theme="light"] .file-tag:hover {
     box-shadow: 0 0 18px rgba(123, 97, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.35);
-}
-
-:root[data-theme="light"] .file-list.grid-view .file-preview {
-    box-shadow: 0 0 30px rgba(123, 97, 255, 0.3), inset 0 0 25px rgba(255, 255, 255, 0.5);
 }
 
 /* Dark Mode Tag Styles */
@@ -1249,13 +1179,10 @@ details[open] .accordion-icon {
     box-shadow: 0 0 25px rgba(212, 163, 115, 0.3), 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-:root[data-theme="letter"] .file-preview {
-    background: linear-gradient(to bottom right, #f4f1ea, #fff8e8, #fffdf9);
-    border: 1px solid rgba(212, 163, 115, 0.4);
-    box-shadow: 0 0 25px rgba(212, 163, 115, 0.15), inset 0 0 25px rgba(255, 255, 255, 0.5);
-}
-
-:root[data-theme="letter"] .file-preview p {
+:root[data-theme="letter"] .file-list.grid-view .file-excerpt {
+    background: linear-gradient(to bottom right, #f4f1ea, #fff8e8, #fffdf9) border-box;
+    outline-color: rgba(212, 163, 115, 0.4);
+    box-shadow: 0 0 25px rgba(212, 163, 115, 0.15);
     color: #5d5a56;
     text-shadow: none;
 }
@@ -1269,10 +1196,6 @@ details[open] .accordion-icon {
 
 :root[data-theme="letter"] .file-tag:hover {
     box-shadow: 0 0 18px rgba(212, 163, 115, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.35);
-}
-
-:root[data-theme="letter"] .file-list.grid-view .file-preview {
-    box-shadow: 0 0 30px rgba(212, 163, 115, 0.2), inset 0 0 25px rgba(255, 255, 255, 0.5);
 }
 
 /* Midnight Theme Overrides for File List */
@@ -1427,47 +1350,20 @@ details[open] .accordion-icon {
     /* Ensure full width */
 }
 
-/* Tag Filter Accordion */
-.search-accordion {
-    border: none;
-    border-radius: 0;
-    background-color: transparent;
-    margin-bottom: 0;
-}
-
-.search-summary {
-    list-style: none;
-    cursor: pointer;
-    padding: 8px 15px;
-    margin: 0;
-    background-color: rgba(0, 0, 0, 0.02);
-    /* Slight contrast */
-    transition: background-color 0.2s;
-}
-
-.search-summary:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-.search-summary::-webkit-details-marker {
-    display: none;
-}
-
-/* Ensure search form looks good inside summary */
+/* 検索欄（ノート一覧）。検索欄の下にツールバーを1行置く */
 .search-form {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     padding: 10px 15px;
     width: 100%;
-    border-bottom: 1px solid var(--border-color);
 }
 
 .search-input-wrapper {
     flex-grow: 1;
     display: flex;
     align-items: center;
-    margin-right: 15px;
     position: relative;
 }
 
@@ -1481,30 +1377,6 @@ details[open] .accordion-icon {
     display: flex;
     /* Fix alignment */
     align-items: center;
-}
-
-.accordion-hint {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-muted);
-    font-size: 0.9em;
-    user-select: none;
-    white-space: nowrap;
-}
-
-.accordion-icon {
-    transition: transform 0.3s ease;
-    width: 16px;
-    height: 16px;
-}
-
-details[open] .accordion-icon {
-    transform: rotate(180deg);
-}
-
-.tag-filter-container {
-    border-top: 1px solid var(--border-color);
 }
 
 .tag-cloud {
@@ -1539,6 +1411,155 @@ details[open] .accordion-icon {
     border-color: var(--accent-purple);
     color: var(--accent-purple);
     font-weight: 600;
+}
+
+/* 絞り込みの欄で隠したタグ（display: inline-flex より優先する） */
+.tag-chip[hidden] {
+    display: none;
+}
+
+/* ノート一覧のツールバー（公開状態の切り替え・並び替え） */
+.list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.list-toolbar .segmented-control {
+    width: auto;
+    padding: 3px;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.list-toolbar .segmented-control label {
+    min-width: 0;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.seg-count,
+.tag-count {
+    font-size: 0.8em;
+    font-weight: 400;
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}
+
+.tag-count {
+    margin-left: 6px;
+}
+
+.list-sort-select {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+    color: var(--text-normal);
+    font-family: var(--font-family);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.list-sort-select:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 1px;
+}
+
+.list-sort-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* 件数の多いタグ（上位）と「＋ほか N」 */
+.tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.tag-more-btn {
+    border-style: dashed;
+    font-family: var(--font-family);
+    cursor: pointer;
+}
+
+.tag-more-btn[aria-expanded="true"] {
+    border-style: solid;
+    border-color: var(--accent-purple);
+    color: var(--text-normal);
+}
+
+/* 全タグの一覧（「＋ほか N」で開く） */
+.tag-all-panel {
+    border-top: 1px solid var(--border-color);
+}
+
+.tag-all-panel .tag-cloud {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 10px 15px 15px;
+    scrollbar-gutter: stable;
+}
+
+/* 件数と、効いている条件（× でその条件だけ外す） */
+.search-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+    .search-stats {
+        font-size: 0.8rem;
+    }
+}
+
+.search-count b {
+    color: var(--text-normal);
+    font-weight: 600;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 8px 2px 10px;
+    border: 1px solid var(--accent-purple);
+    border-radius: 12px;
+    background-color: rgba(123, 97, 255, 0.12);
+    color: var(--accent-purple);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+}
+
+.filter-chip:hover {
+    background-color: rgba(123, 97, 255, 0.24);
+    text-decoration: none;
+}
+
+.filter-chip-x {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.filter-clear {
+    font-size: 0.8rem;
+    color: var(--accent-purple);
 }
 
 /* ページビュー内タグ */

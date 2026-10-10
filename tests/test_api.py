@@ -7,6 +7,7 @@
 - 記事ページのヘッダー（D-1）: パンくず・タイトル・メタ情報
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
 - 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
+- ノート一覧（D-2 / D-10）: 並び替え・タグの件数（外部には公開ノートだけで数える）・条件のチップ・抜粋・非公開の印
 """
 import copy
 import os
@@ -515,3 +516,185 @@ def test_クイックスイッチャーの下の段は定義から描く(site):
     expected = [s for s in shortcuts.group("quick-switcher").shortcuts] + [shortcuts.find_shortcut("global", ("Esc",))]
     assert re.findall(r"<span>(.*?)</span>", footer) == [f"{_keys_html(s.keys, '')} {s.short}" for s in expected]
     assert [s.short for s in expected] == ["選択", "開く", "新しいタブ", "閉じる"]   # 今の文言のまま
+
+
+# --- ノート一覧（D-2 / D-10）: 並び替え・タグの件数・条件・抜粋・非公開の印 ---
+
+@pytest.fixture
+def list_site(site):
+    """公開2件・非公開1件。更新日・タイトル・文字数の順がそれぞれ違うように作る"""
+    for name in ("親.md", "子.md"):
+        (site / name).unlink()
+    now = time.time()
+    notes = {
+        # ファイル名: (本文, 何秒前に更新したか)
+        "古い.md": ("---\ntitle: Alpha\npublish: true\ntags: [共通, 公開だけ]\n---\n短い\n", 300),
+        "中間.md": ("---\ntitle: Charlie\npublish: true\ntags: [共通]\n---\n" + "中くらいの本文" * 5 + "\n", 100),
+        "新しい.md": ("---\ntitle: Bravo\npublish: false\ntags: [共通, 秘密タグ]\n---\n" + "とても長い本文" * 30 + "\n", 0),
+    }
+    for name, (text, ago) in notes.items():
+        path = site / name
+        path.write_text(text, encoding="utf-8")
+        os.utime(path, (now - ago, now - ago))
+    indexing.refresh_global_caches()
+    return site
+
+
+def _titles(html):
+    """一覧に出たノートのタイトル（上から順）"""
+    return re.findall(r'<div class="file-name">\s*([^<]+?)\s*<', html)
+
+
+def _tag_row(html):
+    m = re.search(r'<div class="tag-row">(.*?)</div>', html, re.S)
+    return m.group(1) if m else ""
+
+
+@pytest.mark.parametrize("sort, expected", [
+    ("updated", ["Bravo", "Charlie", "Alpha"]),
+    ("updated_asc", ["Alpha", "Charlie", "Bravo"]),
+    ("title", ["Alpha", "Bravo", "Charlie"]),
+    ("chars", ["Bravo", "Charlie", "Alpha"]),
+])
+def test_一覧はsortの値で並び替える(list_site, sort, expected):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"sort": sort}).text
+    assert _titles(html) == expected
+    assert re.search(rf'<option value="{sort}" selected>', html)
+
+
+def test_一覧のsortが不正なら更新日の新しい順(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"sort": "xxx"}).text
+    assert _titles(html) == ["Bravo", "Charlie", "Alpha"]
+    assert '<option value="updated" selected>' in html
+
+
+def test_検索中は並び替えを選べず並びはhiddenで引き継ぐ(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"q": "a", "sort": "title"}).text
+    assert re.search(r'<select name="sort"[^>]*disabled', html)
+    assert '<input type="hidden" name="sort" value="title">' in html
+
+
+def test_タグの件数は公開状態の絞り込み後の一覧で数える(list_site):
+    client = TestClient(app, base_url=ADMIN)
+    row_all = _tag_row(client.get("/").text)
+    assert '#共通<span class="tag-count">3</span>' in row_all
+    assert '#秘密タグ<span class="tag-count">1</span>' in row_all
+    row_public = _tag_row(client.get("/", params={"visibility": "public"}).text)
+    assert '#共通<span class="tag-count">2</span>' in row_public
+    assert "秘密タグ" not in row_public
+
+
+def test_外部の一覧では非公開ノートのタグが名前も件数も出ない(list_site):
+    html = TestClient(app, base_url=PUBLIC).get("/", params={"visibility": "all"}).text
+    assert "秘密タグ" not in html
+    assert '#共通<span class="tag-count">2</span>' in _tag_row(html)
+    assert _titles(html) == ["Charlie", "Alpha"]
+    # 公開状態の切り替えも出さない
+    assert 'name="visibility"' not in html
+
+
+def test_選択中のタグは上位に入らなくても上の列に出す(list_site, monkeypatch):
+    monkeypatch.setattr(content_api, "LIST_TOP_TAG_COUNT", 1)
+    html = TestClient(app, base_url=ADMIN).get("/", params={"tag": "秘密タグ"}).text
+    row = _tag_row(html)
+    assert "#共通" in row
+    assert re.search(r'class="tag-chip active"[^>]*aria-current="true"[^>]*>\s*#秘密タグ', row)
+    assert "＋ほか 1" in row     # 公開だけ
+
+
+def test_絞り込み中は全件数と条件のチップを出し無ければ件数だけ(list_site):
+    client = TestClient(app, base_url=ADMIN)
+    plain = client.get("/").text
+    assert "<b>3 件</b></span>" in plain
+    assert "filter-chip" not in plain and "条件を外す" not in plain
+
+    html = client.get("/", params={"visibility": "public", "tag": "共通", "sort": "title"}).text
+    assert "<b>2 件</b>（全 3 件中）" in html
+    chips = re.findall(r'<a href="([^"]+)"[^>]*class="filter-chip"[^>]*>([^<]+)<', html)
+    # × で外すのはその条件だけ。並び替えは残す
+    assert ("/?tag=%E5%85%B1%E9%80%9A&amp;sort=title", "公開") in chips
+    assert ("/?visibility=public&amp;sort=title", "#共通") in chips
+    assert re.search(r'href="/\?sort=title"[^>]*class="filter-clear"', html)
+
+
+def test_ページ送りは条件と並びを引き継ぐ(list_site, monkeypatch):
+    monkeypatch.setattr(content_api, "PER_PAGE", 1)
+    html = TestClient(app, base_url=ADMIN).get("/", params={"q": "a", "visibility": "all", "sort": "chars"}).text
+    assert re.search(r'href="/\?q=a&amp;sort=chars&amp;page=2"[^>]*hx-get="/\?q=a&amp;sort=chars&amp;page=2"', html)
+
+
+def test_管理者の一覧は非公開ノートにだけ印を付け外部には出さない(list_site):
+    admin = TestClient(app, base_url=ADMIN).get("/").text
+    assert admin.count('class="private-mark"') == 1
+    assert re.search(r'Bravo\s*<span class="private-mark" title="非公開">', admin)
+    assert "file-status-badge" not in admin
+    public = TestClient(app, base_url=PUBLIC).get("/").text
+    assert "private-mark" not in public
+    assert "file-status-badge" not in public
+
+
+def test_抜粋はMarkdownの記号を除いた本文にする():
+    body = (
+        "# 見出し\n"
+        "- リスト1\n* リスト2\n+ リスト3\n1. 番号\n- [ ] タスク\n"
+        "> 引用\n> [!note] 注意の題\n> 中身\n"
+        "**太字** と _斜体_ と ~~消し~~ と ==印== と `code` と snake_case\n"
+        "```python\nprint(1)\n```\n"
+        "[[ノート|別名]] と [[別ノート]] と [リンク](https://example.com)\n"
+        "![[画像.png]] ![alt](img.png) <span>タグ</span>\n\n\n  空白   つめる\n"
+    )
+    assert indexing.make_preview(body) == (
+        "見出し リスト1 リスト2 リスト3 番号 タスク 引用 注意の題 中身 "
+        "太字 と 斜体 と 消し と 印 と code と snake_case print(1) "
+        "別名 と 別ノート と リンク タグ 空白 つめる"
+    )
+
+
+def test_抜粋は200文字で切る():
+    assert len(indexing.make_preview("あ" * 300)) == 200
+    assert indexing.make_preview("") == ""
+
+
+def test_外部からvisibility_privateを指定しても公開ノートだけ(list_site):
+    html = TestClient(app, base_url=PUBLIC).get("/", params={"visibility": "private"}).text
+    assert _titles(html) == ["Charlie", "Alpha"]
+    assert "filter-chip" not in html
+
+
+def test_外部から非公開ノートだけのタグを指定すると0件で中身を出さない(list_site):
+    html = TestClient(app, base_url=PUBLIC).get("/", params={"tag": "秘密タグ"}).text
+    assert _titles(html) == []
+    assert "<b>0 件</b>" in html
+    assert "Bravo" not in html and "とても長い本文" not in html
+    # 選んだタグは上の列に出るが、件数は 0（公開ノートだけで数える）
+    assert '#秘密タグ<span class="tag-count">0</span>' in _tag_row(html)
+
+
+def test_ページが総ページ数を超えたら最後のページに丸める(list_site, monkeypatch):
+    monkeypatch.setattr(content_api, "PER_PAGE", 2)
+    client = TestClient(app, base_url=ADMIN)
+    html = client.get("/", params={"page": 99}).text
+    assert _titles(html) == ["Alpha"]
+    assert "2 / 2 ページ" in html
+    empty = client.get("/", params={"page": 5, "q": "該当なし"}).text
+    assert _titles(empty) == [] and "条件に合うノートはありません" in empty
+
+
+def test_数値のタイトルでも一覧の検索と並び替えができる(list_site):
+    (list_site / "年.md").write_text("---\ntitle: 2024\npublish: true\n---\n本文\n", encoding="utf-8")
+    indexing.refresh_global_caches()
+    client = TestClient(app, base_url=ADMIN)
+    assert _titles(client.get("/", params={"q": "2024"}).text) == ["2024"]
+    assert _titles(client.get("/", params={"sort": "title"}).text)[0] == "2024"
+
+
+def test_抜粋のリンクの閉じ忘れは次の行を巻き込まない():
+    assert indexing.make_preview("[閉じ忘れ](http://a\n次の行) と [[壊れ\n本文]]") == "[閉じ忘れ](http://a 次の行) と [[壊れ 本文]]"
+
+
+def test_ダッシュボードのタグ分布は件数の多い順に上位だけ(list_site, monkeypatch):
+    from app.api import dashboard as dashboard_api
+    monkeypatch.setattr(dashboard_api, "DASHBOARD_TOP_TAG_COUNT", 1)
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    assert "共通" in html
+    assert "秘密タグ" not in html and "公開だけ" not in html

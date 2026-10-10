@@ -1094,17 +1094,7 @@ input:checked+.slider:before {
     flex: 1;
 }
 
-/* Visibility Filter styles */
-.visibility-filter {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 12px;
-    margin: 10px 0 20px;
-    padding: 0 15px;
-    border: none;
-}
-
+/* 公開状態の切り替え（ノート一覧のツールバー） */
 .segmented-control {
     display: flex;
     background-color: var(--bg-secondary);
@@ -1151,20 +1141,6 @@ input:checked+.slider:before {
     box-shadow: 0 2px 8px rgba(123, 97, 255, 0.4);
 }
 
-.visibility-filter+.search-accordion {
-    margin-top: 15px;
-}
-
-.search-stats {
-    text-align: left;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-    width: 100%;
-    /* Align with container edge (no auto margins) */
-    padding: 0;
-}
-
 /* Mobile specific search refinements */
 @media (max-width: 480px) {
     .segmented-control {
@@ -1176,17 +1152,6 @@ input:checked+.slider:before {
         font-size: 0.75rem;
         flex: 1 1 0;
         min-width: 0;
-    }
-
-    .visibility-filter {
-        gap: 8px;
-        padding: 0 10px;
-        width: 100%;
-    }
-
-    .search-stats {
-        padding-left: 0;
-        font-size: 0.8rem;
     }
 }
 

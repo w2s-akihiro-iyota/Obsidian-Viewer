@@ -1,5 +1,5 @@
 // ==============================================
-// search.js - Desktop search, mobile search modal, HTMX state, view toggle, accordion
+// search.js - Desktop search, mobile search modal, HTMX state, view toggle, note list tags
 // ==============================================
 
 // 絞り込み条件（tag:会議 / path:"スペース 入り"）。サーバー側の parse_search_query と同じ書式
@@ -238,29 +238,50 @@ function initSearch() {
     const initialView = localStorage.getItem('fileListView') || 'list';
     setView(initialView);
 
-    // --- HTMX State preservation ---
-    let accordionState = false;
+    // --- 一覧のタグ（「＋ほか N」で全タグを開閉し、絞り込み欄で名前を絞る） ---
+    // 開いているかどうかは DOM（panel.hidden）だけで持つ。htmx の履歴復元で DOM が戻っても食い違わないように
+    const isTagPanelOpen = () => {
+        const panel = document.getElementById('tag-all-panel');
+        return !!panel && !panel.hidden;
+    };
 
+    const setTagPanel = (open) => {
+        const panel = document.getElementById('tag-all-panel');
+        const btn = document.querySelector('.tag-more-btn');
+        if (!panel || !btn) return;
+        panel.hidden = !open;
+        btn.setAttribute('aria-expanded', String(open));
+    };
+
+    document.body.addEventListener('click', (e) => {
+        if (!e.target.closest('.tag-more-btn')) return;
+        const open = !isTagPanelOpen();
+        setTagPanel(open);
+        if (open) document.getElementById('tag-filter-input')?.focus();
+    });
+
+    document.body.addEventListener('input', (e) => {
+        if (e.target.id !== 'tag-filter-input') return;
+        const term = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('#tag-all-panel .tag-chip[data-tag]').forEach(chip => {
+            chip.hidden = !chip.dataset.tag.toLowerCase().includes(term);
+        });
+    });
+
+    // 絞り込みで一覧を差し替えるときは、差し替える前の開閉を読んでおき、新しい一覧に引き継ぐ
+    let tagPanelOpenBeforeSwap = false;
     document.body.addEventListener('htmx:beforeSwap', (event) => {
         if (event.detail.target.id === 'search-interactive-area') {
-            const accordion = document.querySelector('.search-accordion');
-            if (accordion) {
-                accordionState = accordion.open;
-            }
+            tagPanelOpenBeforeSwap = isTagPanelOpen();
         }
     });
 
     document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.detail.target.id === 'search-interactive-area') {
-            // Restore View Mode to the NEW file-list
+            // 差し替えた一覧にも、リスト/グリッドの選択とタグ一覧の開閉を引き継ぐ
             const currentView = localStorage.getItem('fileListView') || 'list';
             setView(currentView);
-
-            // Restore Accordion State
-            const accordion = document.querySelector('.search-accordion');
-            if (accordion) {
-                accordion.open = accordionState;
-            }
+            setTagPanel(tagPanelOpenBeforeSwap);
         }
     });
 
@@ -440,66 +461,4 @@ function initSearch() {
     }
 
     highlightSearchTermsInPage();
-
-    // --- Accordion Animation Logic ---
-    const accordions = document.querySelectorAll('.search-accordion');
-    accordions.forEach(el => {
-        const summary = el.querySelector('summary');
-
-        // Load saved state
-        const savedState = localStorage.getItem('searchAccordionOpen');
-        if (savedState !== null) {
-            el.open = (savedState === 'true');
-        }
-
-        if (!summary) return;
-
-        // Save state on toggle (click)
-        summary.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent default toggle
-
-            if (el.classList.contains('animating')) return;
-
-            if (el.open) {
-                // Closing
-                localStorage.setItem('searchAccordionOpen', 'false');
-                el.classList.add('animating');
-                const startHeight = el.offsetHeight;
-                el.style.height = `${startHeight}px`;
-
-                requestAnimationFrame(() => {
-                    const endHeight = summary.offsetHeight;
-                    el.style.height = `${endHeight}px`;
-                });
-
-                el.addEventListener('transitionend', function onEnd() {
-                    el.open = false;
-                    el.style.height = ''; // Reset
-                    el.classList.remove('animating');
-                    el.removeEventListener('transitionend', onEnd);
-                }, { once: true });
-
-            } else {
-                // Opening
-                localStorage.setItem('searchAccordionOpen', 'true');
-                el.classList.add('animating');
-                const startHeight = el.offsetHeight; // Should be summary height
-                el.open = true; // Open to calculate full height
-                el.style.height = '';
-                const endHeight = el.offsetHeight;
-
-                el.style.height = `${startHeight}px`;
-
-                requestAnimationFrame(() => {
-                    el.style.height = `${endHeight}px`;
-                });
-
-                el.addEventListener('transitionend', function onEnd() {
-                    el.style.height = ''; // Allow auto height
-                    el.classList.remove('animating');
-                    el.removeEventListener('transitionend', onEnd);
-                }, { once: true });
-            }
-        });
-    });
 }

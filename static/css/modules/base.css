@@ -12,17 +12,6 @@ body {
     navigation: auto;
 }
 
-/* Accordion Animation Styles */
-.search-accordion {
-    overflow: hidden;
-    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.search-accordion.animating {
-    pointer-events: none;
-    /* Prevent clicks during animation */
-}
-
 * {
     box-sizing: border-box;
 }

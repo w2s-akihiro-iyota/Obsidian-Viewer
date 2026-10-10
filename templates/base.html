@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261016">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261019">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -43,8 +43,8 @@
     <script src="/static/js/modules/table-copy.js?v=20260223" defer></script>
     <script src="/static/js/modules/mermaid.js?v=20260223" defer></script>
     <script src="/static/js/modules/sidebar.js?v=20261013" defer></script>
-    <script src="/static/js/modules/file-tree.js?v=20261015" defer></script>
-    <script src="/static/js/modules/search.js?v=20261012" defer></script>
+    <script src="/static/js/modules/file-tree.js?v=20261018" defer></script>
+    <script src="/static/js/modules/search.js?v=20261018" defer></script>
     <script src="/static/js/modules/settings.js?v=20261015" defer></script>
     <script src="/static/js/modules/history.js?v=20261011" defer></script>
     <script src="/static/js/modules/editor.js?v=20261010" defer></script>
@@ -60,6 +60,7 @@
 {% set shortcut_page_now = shortcuts.find_page(self.body_class()) %}
 {# キー表記のマクロ。include した部品（ヘルプ・チートシート・検索）からも見える #}
 {% import 'partials/_shortcut_macros.html' as sc %}
+{% import 'partials/_note_macros.html' as nm %}
 {# いま表示中の画面（アクティビティバーとスマホの画面切り替えで、今いる画面に印を付けるのに使う）。
    graph / dashboard / editor のどれでもなければノート（トップ・記事ページ） #}
 {% set nav_path = request.url.path if request is defined else '' %}
@@ -197,6 +198,10 @@
     {# 設定モーダルの部品は閉じタグが1つ足りず、後ろに置くと設定モーダルの中に入ってしまうので、その前に置く #}
     {% include 'partials/_modal_shortcuts.html' %}
     {% include 'partials/_modal_settings.html' %}
+    {# ファイルツリーの非公開の印（file-tree.js が複製する）。一覧と同じマクロから描く。外部の人のツリーに非公開ノートは無いので管理者だけ #}
+    {% if viewer_is_admin %}
+    <template id="private-mark-template">{{ nm.private_mark('tree-private-badge') }}</template>
+    {% endif %}
 </body>
 
 </html>
