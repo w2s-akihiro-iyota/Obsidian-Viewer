@@ -59,8 +59,9 @@ def test_ISO形式の日付を読む(text, expected):
 
 
 # Obsidian の日本語ロケールが frontmatter に書く形式（旧 debug/debug_date_parse.py のサンプル）。
-# いまの実装はこの形式の書式を持たないので、TypeError が直っても None になる見込み。
-@_TYPE_ERROR
+# いまの実装はこの形式の書式を持たない（TypeError を直しても None になる）。対応するまでは xfail で残す。
+# いまは TypeError で落ちるが、書式の対応が済むまでは何で落ちても xfail のままにする（raises を絞らない）。
+@pytest.mark.xfail(strict=True, reason="未対応の書式。ロードマップ Q-18")
 @pytest.mark.parametrize("text, expected", [
     ("火曜日, 3月 4日 2025, 4:03:46 午後", datetime(2025, 3, 4, 16, 3, 46)),
     ("水曜日, 4月 16日 2025, 12:35:46 午後", datetime(2025, 4, 16, 12, 35, 46)),

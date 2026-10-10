@@ -30,6 +30,12 @@ def content_dir(tmp_path, monkeypatch):
     return content
 
 
+def _snapshot(content_dir):
+    """tmp_path 全体（CONTENT_DIR とその外）のファイルと中身。拒否のあとで何も増えず変わっていないかを見る"""
+    root = content_dir.parent
+    return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+
 @pytest.fixture
 def client():
     return TestClient(app, base_url=ADMIN)
@@ -52,9 +58,12 @@ def test_プレビューはCONTENT_DIRの中のノートを返す(content_dir, c
     "/公開.md",
 ])
 def test_プレビューはドット2つと先頭のスラッシュを400にする(content_dir, client, path):
+    before = _snapshot(content_dir)
     res = client.get("/api/preview", params={"path": path})
+    # 入口の検査で止まる（ファイルを探しに行った 404 や、読んだうえでの 403 にならない）
     assert res.status_code == 400
-    assert "CONTENT_DIR の外" not in res.text
+    assert res.json() == {"detail": "Invalid path"}
+    assert _snapshot(content_dir) == before
 
 
 def test_いまはファイル名の中のドット2つも400にする(content_dir, client):
@@ -75,17 +84,20 @@ def test_いまはファイル名の中のドット2つも400にする(content_d
     "C:\\temp\\x",
 ])
 def test_エディタの保存はドット2つとスラッシュとバックスラッシュを400にする(content_dir, client, filename):
+    before = _snapshot(content_dir)
     res = client.post("/api/editor/save", json={"filename": filename, "content": "本文"})
     assert res.status_code == 400
     assert res.json()["message"] == get_error("E202")
-    assert sorted(p.name for p in content_dir.parent.rglob("*")) == ["content", "公開.md", "外.md"]
+    assert _snapshot(content_dir) == before
 
 
 @pytest.mark.parametrize("ch", list('<>:"|?*'))
 def test_エディタの保存はWindowsで使えない文字を400にする(content_dir, client, ch):
+    before = _snapshot(content_dir)
     res = client.post("/api/editor/save", json={"filename": f"名前{ch}", "content": "本文"})
     assert res.status_code == 400
     assert res.json()["message"] == get_error("E202")
+    assert _snapshot(content_dir) == before
 
 
 def test_エディタの保存は外部ポートから403(content_dir):

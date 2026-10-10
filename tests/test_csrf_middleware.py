@@ -54,8 +54,9 @@ def test_Originがnullなら拒否する(client):
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS"])
 def test_読み取り系のメソッドは別サイトからでも止めない(client, method):
+    # ミドルウェアを通り抜けてルーティングまで届き、どのルートにも当たらず 404 になる
     res = client.request(method, PROBE, headers={"Origin": "http://evil.example"})
-    assert res.status_code != 403
+    assert res.status_code == 404
 
 
 def test_拒否するとルートの処理は動かない(client):

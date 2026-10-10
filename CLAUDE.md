@@ -127,9 +127,10 @@ docker-compose logs -f           # ログ確認
 - `static/images/*` - 画像ファイル (samples/除く)
 
 ## Testing
-- `pytest` と `httpx2`（`requirements-dev.txt`。starlette の TestClient が使う）。本番イメージには入れない
+- `pytest` と `httpx2==2.13.1`（`requirements-dev.txt`。starlette 1.7 の TestClient が使う）。本番イメージには入れない
 - 設定はリポジトリ直下の `pytest.ini`（`testpaths = tests`、`pythonpath = .`）
-- 実行: `docker cp tests/. obsidian-viewer-app:/app/tests/` と `docker cp pytest.ini obsidian-viewer-app:/app/` → `docker exec -w /app obsidian-viewer-app python -m pytest -q -p no:cacheprovider`（コンテナに入っていなければ先に `pip install -r requirements-dev.txt`）
+- 実行: `docker cp tests/. obsidian-viewer-app:/app/tests/` と `docker cp pytest.ini obsidian-viewer-app:/app/` → `docker exec -w /app obsidian-viewer-app python -m pytest -q -p no:cacheprovider`
+  - コンテナに pytest・httpx2 が無ければ先に `docker exec obsidian-viewer-app pip install pytest httpx2==2.13.1`（`requirements-dev.txt` はコンテナにマウントされていないので、版は `requirements-dev.txt` と同じものを直接指定する）
 - `/app/app` と `templates/` は compose でマウント済み。`tests/` と `pytest.ini` はイメージに焼いた時点のままなので、実行前にコピーする。消したテストはコンテナ側からも消す
 - テストは対象モジュールごとのファイルに分ける（例 `tests/test_slug.py`）。`tests/test_api.py` は API・画面の契約テスト、`tests/test_note_editing.py` は既存ノート編集の契約テスト
 - `tests/` には `test_*.py` 以外を置かない（手動の検証スクリプトは残さない）
