@@ -14,6 +14,8 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 # Cache files
 METADATA_CACHE_FILE = BASE_DIR / "metadata_cache.json"
 CONFIG_FILE = BASE_DIR / "app" / "server_config.yaml"
+# 同期の記録（F-7）。server_config.yaml と同じ場所に、別のファイルとして置く（Git 管理外）
+SYNC_HISTORY_FILE = CONFIG_FILE.parent / "sync_history.json"
 
 # 待ち受けポート（コンテナ内）
 # 管理用ポートはホストの 127.0.0.1 にだけ公開する前提（docker-compose.yml の ports を参照）
@@ -69,6 +71,12 @@ PROTECTED_IMAGE_ITEMS = PROTECTED_ITEMS + ["logo.png"]
 
 # 1回の同期でこの割合以上のファイルが消える場合は、削除を保留して確認を待つ
 SYNC_DELETE_HOLD_RATIO = 0.5
+
+# 同期の記録（F-7）に残す回数（新しいものから）
+SYNC_HISTORY_LIMIT = 10
+
+# 同期の記録に残すファイル名の上限（1 回・1 種類・追加/更新/削除それぞれ）。超えた分は件数だけ残す
+SYNC_HISTORY_FILE_LIMIT = 200
 
 # ノートの埋め込み（![[ノート]]）の入れ子の上限。これより深いものは埋め込まずにリンクにする
 MAX_EMBED_DEPTH = 2

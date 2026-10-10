@@ -273,6 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const syncMsg = sessionStorage.getItem('syncCompletedMessage');
     if (syncMsg) {
         sessionStorage.removeItem('syncCompletedMessage');
-        setTimeout(() => showToast(syncMsg, "success"), 400);
+        // 「内訳を見る」で設定の「ファイル同期」にある同期の記録（F-7）へ移る
+        setTimeout(() => showToast(syncMsg, "success", { label: "内訳を見る", onClick: openSyncReport }), 400);
     }
 });

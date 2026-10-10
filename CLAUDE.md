@@ -31,7 +31,8 @@ app/
 │   ├── markdown.py        # Markdownレンダリング・カスタムプラグイン
 │   ├── note_health.py     # ダッシュボードの「手入れが必要なノート」（リンク切れ・孤立・タグなし）
 │   ├── note_list.py       # ノート一覧の条件（ListQuery）・絞り込み・並び替え・タグ集計
-│   └── search.py          # 全文検索ロジック
+│   ├── search.py          # 全文検索ロジック
+│   └── sync_history.py    # 同期の記録（直近の結果を app/sync_history.json に残す）
 ├── models/sync.py         # Request/Response用Pydanticモデル
 ├── services/
 │   ├── sync.py            # 物理ファイル同期・バックグラウンドタスク処理

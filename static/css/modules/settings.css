@@ -548,6 +548,204 @@
     align-self: flex-start;
 }
 
+/* 同期の記録（F-7）: ファイル同期タブの「直近の同期」 */
+.sync-report h4 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+}
+
+.sync-report-meta {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.sync-report-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.sync-report-empty,
+.sync-report-held,
+.sync-report-error {
+    margin: 0;
+}
+
+.sync-report-empty {
+    color: var(--text-muted);
+}
+
+.sync-report-held {
+    color: var(--text-muted);
+    font-size: 0.85em;
+}
+
+.sync-report-error {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    overflow-wrap: anywhere;
+}
+
+/* 件数のピル。色は種類ごとの --pill-color から作る（文字は地の明るさに合わせて文字色へ寄せる） */
+.sync-report-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sync-pill {
+    --pill-color: var(--text-muted);
+    display: inline-block;
+    padding: 1px 9px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--pill-color) 65%, var(--text-normal));
+    background-color: color-mix(in srgb, var(--pill-color) 18%, transparent);
+}
+
+.sync-pill-added { --pill-color: var(--badge-ok-bg); }
+.sync-pill-updated { --pill-color: var(--accent-purple); }
+.sync-pill-deleted,
+.sync-pill-error { --pill-color: var(--notice-danger-border); }
+.sync-pill-images { --pill-color: var(--text-muted); }
+
+.sync-report-table-wrap {
+    max-height: 360px;
+    overflow: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.sync-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.sync-report-table th,
+.sync-report-table td {
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sync-report-table th {
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.sync-report-table th:first-child,
+.sync-report-table td:first-child {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.sync-report-table tr:last-child td {
+    border-bottom: none;
+}
+
+.sync-report-file {
+    font-family: var(--code-font);
+    overflow-wrap: anywhere;
+}
+
+.sync-report-kind {
+    margin-left: 8px;
+    color: var(--text-muted);
+    font-family: var(--font-family);
+    font-size: 0.85em;
+}
+
+.sync-report-more td {
+    color: var(--text-muted);
+}
+
+.sync-report-toggle {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent-purple);
+    font: inherit;
+    cursor: pointer;
+}
+
+.sync-report-toggle:hover {
+    text-decoration: underline;
+}
+
+.sync-report-past {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.sync-report-past summary {
+    cursor: pointer;
+}
+
+.sync-report-past ul {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sync-report-past li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.sync-report-past-time {
+    color: var(--text-normal);
+}
+
+.sync-report-past-error {
+    overflow-wrap: anywhere;
+}
+
+.sync-report-past-note {
+    margin: 8px 0 0;
+    font-size: 0.9em;
+}
+
+/* トーストのボタン（「内訳を見る」など） */
+.toast-action {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: none;
+    color: var(--accent-purple);
+    font: inherit;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.toast-action:hover {
+    background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
+}
+
 .danger-btn {
     display: inline-flex;
     align-items: center;
