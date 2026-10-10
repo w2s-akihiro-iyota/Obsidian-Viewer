@@ -61,6 +61,13 @@ def distances_from(graph: LinkGraph, center: str, depth: int) -> dict[str, int]:
     return distance
 
 
+def neighbor_count(graph: LinkGraph, center: str) -> int:
+    """中心から 1 歩でつながっている点の数（リンクの向きは問わない。中心が点に無ければ 0）"""
+    if center not in graph.nodes:
+        return 0
+    return len(distances_from(graph, center, 1)) - 1
+
+
 def local_graph(graph: LinkGraph, center: str, depth: int, max_nodes: int | None = None) -> tuple[LinkGraph, dict[str, int], bool]:
     """
     中心から depth 歩以内の部分グラフ・各点の距離・上限で切ったか

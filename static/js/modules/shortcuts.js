@@ -60,7 +60,7 @@ function initShortcutSheet() {
             close({ restoreFocus: false });
             return;
         }
-        if (e.key !== '?' || !isShortcutSheetKey(e)) return;
+        if (e.key !== '?' || !isShortcutKey(e)) return;
         if (isOpen()) {
             e.preventDefault();
             close();
@@ -103,15 +103,23 @@ function groupUsableAt(groupEl, place) {
 }
 
 /**
- * ? をショートカット一覧のキーとして扱ってよいか
+ * 1 文字のキー（? や記事ページの G）をショートカットとして扱ってよいか
  * 文字を打っている場所（入力欄・textarea・contenteditable・select）、日本語の変換中、
  * Ctrl / ⌘ / Alt との組み合わせでは、文字入力やほかの操作に譲る
  */
-function isShortcutSheetKey(e) {
+function isShortcutKey(e) {
     if (e.isComposing || e.keyCode === 229) return false;
     if (e.ctrlKey || e.metaKey || e.altKey) return false;
     const target = e.target;
     if (!(target instanceof Element)) return true;
     if (target.isContentEditable) return false;
     return !target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+}
+
+/**
+ * モーダル（ヘルプ・ショートカット一覧・クイックスイッチャー・設定・ようこそ・画像の拡大）が開いているか
+ * 開いているあいだは、記事ページの G などのショートカットを効かせず、Esc もそちらに譲る
+ */
+function isShortcutModalOpen() {
+    return Boolean(document.querySelector(`${SHORTCUT_SHEET_BLOCKERS}, #shortcut-sheet.active`));
 }

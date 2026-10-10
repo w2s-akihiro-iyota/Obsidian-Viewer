@@ -49,7 +49,7 @@
     .markdown-body h1.view-title-duplicate,
     .backlinks-section,
     .related-section,
-    .local-graph {
+    .article-actions {
         display: none !important;
     }
 

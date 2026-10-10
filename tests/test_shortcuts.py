@@ -62,7 +62,9 @@ def test_チートシートはいまの画面だけのグループを先頭に�
 
 def test_チートシートは画面が分からなければ定義の順():
     assert groups_for_page(None, False) == visible_groups(False)
-    assert groups_for_page(find_page("page-view"), False)[0].id == "global"
+    # その画面だけのグループが無い画面では「どの画面でも」が先頭、記事ページでは記事ページのグループ（G）が先頭
+    assert groups_for_page(find_page("page-index"), False)[0].id == "global"
+    assert [g.id for g in groups_for_page(find_page("page-view"), False)[:2]] == ["view", "global"]
 
 
 def test_説明文の角かっこはキーの見た目にしてほかはエスケープする():

@@ -3,7 +3,8 @@
 {% block title %}グラフ - Obsidian Viewer{% endblock %}
 
 {% block head %}
-{% include "partials/_d3.html" %}
+{% import "partials/_d3.html" as d3lib %}
+{{ d3lib.scripts() }}
 {% endblock %}
 
 {% block body_class %}graph-page{% endblock %}
