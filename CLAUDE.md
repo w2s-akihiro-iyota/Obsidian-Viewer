@@ -127,9 +127,12 @@ docker-compose logs -f           # ログ確認
 - `static/images/*` - 画像ファイル (samples/除く)
 
 ## Testing
-- `pytest`（`requirements-dev.txt`）。本番イメージには入れない
-- 実行: `docker cp tests/. obsidian-viewer-app:/app/tests/` → `docker exec -w /app -e PYTHONPATH=/app obsidian-viewer-app python -m pytest tests -q`（コンテナに pytest が無ければ先に `pip install pytest`）
-- `tests/test_note_editing.py` が既存ノート編集の契約テスト。`tests/` と `debug/` にはほかに手動検証スクリプトもある
+- `pytest` と `httpx2`（`requirements-dev.txt`。starlette の TestClient が使う）。本番イメージには入れない
+- 設定はリポジトリ直下の `pytest.ini`（`testpaths = tests`、`pythonpath = .`）
+- 実行: `docker cp tests/. obsidian-viewer-app:/app/tests/` と `docker cp pytest.ini obsidian-viewer-app:/app/` → `docker exec -w /app obsidian-viewer-app python -m pytest -q -p no:cacheprovider`（コンテナに入っていなければ先に `pip install -r requirements-dev.txt`）
+- `/app/app` と `templates/` は compose でマウント済み。`tests/` と `pytest.ini` はイメージに焼いた時点のままなので、実行前にコピーする。消したテストはコンテナ側からも消す
+- テストは対象モジュールごとのファイルに分ける（例 `tests/test_slug.py`）。`tests/test_api.py` は API・画面の契約テスト、`tests/test_note_editing.py` は既存ノート編集の契約テスト
+- `tests/` には `test_*.py` 以外を置かない（手動の検証スクリプトは残さない）
 
 ## Common Pitfalls
 - Uvicornのワーカー数は1に固定すること (ログ重複防止)。起動は `python -m app.server`（2ポートを1プロセスで待ち受け）

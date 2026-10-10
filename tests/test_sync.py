@@ -261,3 +261,48 @@ def test_同期中に同期を始めようとすると断る():
             sync.confirm_pending_deletions()
     finally:
         sync._sync_lock.release()
+
+
+# ---------- 部品: 保護対象の判定・コピーの要否 ----------
+
+@pytest.mark.parametrize("rel_path, expected", [
+    ("samples", True),
+    ("samples/sample.md", True),
+    ("samples/深い/x.png", True),
+    ("logo.png", True),
+    ("sub/samples/x.md", False),       # 先頭の階層だけを見る
+    ("samples2/x.md", False),          # 名前の前方一致ではない
+    ("sub/logo.png", False),
+    ("ノート.md", False),
+])
+def test_保護対象は先頭の階層の名前で判定する(rel_path, expected):
+    assert sync._is_protected(rel_path, PROTECTED) is expected
+
+
+def test_コピー先に無ければコピーが要る(tmp_path):
+    _write(tmp_path / "src.md", "x", mtime=1_000_000)
+    assert sync._needs_copy(tmp_path / "src.md", tmp_path / "無い.md") is True
+
+
+def test_大きさも更新日時も同じならコピーは要らない(tmp_path):
+    _write(tmp_path / "src.md", "abc", mtime=1_000_000)
+    _write(tmp_path / "dst.md", "xyz", mtime=1_000_000)
+    assert sync._needs_copy(tmp_path / "src.md", tmp_path / "dst.md") is False
+
+
+def test_大きさが違えば更新日時が同じでもコピーが要る(tmp_path):
+    _write(tmp_path / "src.md", "abcd", mtime=1_000_000)
+    _write(tmp_path / "dst.md", "abc", mtime=1_000_000)
+    assert sync._needs_copy(tmp_path / "src.md", tmp_path / "dst.md") is True
+
+
+@pytest.mark.parametrize("diff, expected", [
+    (0.5, False),
+    (1.0, False),      # 1 秒までの差はタイムスタンプの精度の違いとみなす
+    (1.5, True),
+    (-1.5, True),      # コピー先のほうが新しくても、違えば同期元に合わせる
+])
+def test_更新日時は1秒を超えて違えばコピーが要る(tmp_path, diff, expected):
+    _write(tmp_path / "src.md", "abc", mtime=1_000_000 + diff)
+    _write(tmp_path / "dst.md", "abc", mtime=1_000_000)
+    assert sync._needs_copy(tmp_path / "src.md", tmp_path / "dst.md") is expected

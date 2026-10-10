@@ -1,4 +1,4 @@
-"""API の契約テスト（TestClient。httpx は requirements-dev.txt）
+"""API の契約テスト（TestClient。httpx2 は requirements-dev.txt）
 
 - 記事ページのキャッシュは、埋め込んだノートの更新・削除で作り直す（F-4）
 - 保留した削除の API は管理者だけ。同期中は 409（B-2 / B-4）
