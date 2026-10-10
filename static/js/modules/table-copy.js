@@ -44,7 +44,7 @@ async function copyTableToClipboard(table, format) {
         await copyToClipboard(content);
     } catch (err) {
         console.error('Copy failed:', err);
-        alert('Copy failed. Please try manually.');
+        alert('コピーできませんでした。手動でコピーしてください。');
     }
 }
 
@@ -71,15 +71,15 @@ function addTableCopyButtons() {
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
-            <span>Copy</span>
+            <span>コピー</span>
         `;
 
         // Create dropdown menu
         const dropdown = document.createElement('div');
         dropdown.className = 'table-copy-dropdown';
         dropdown.innerHTML = `
-            <button type="button" class="copy-option" data-format="excel">Excel Format</button>
-            <button type="button" class="copy-option" data-format="markdown">Markdown Format</button>
+            <button type="button" class="copy-option" data-format="excel">Excel 形式</button>
+            <button type="button" class="copy-option" data-format="markdown">Markdown 形式</button>
         `;
 
         copyContainer.appendChild(copyBtn);
@@ -108,7 +108,7 @@ function addTableCopyButtons() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
-                    <span>Copied!</span>
+                    <span>コピーしました</span>
                 `;
                 setTimeout(() => {
                     copyBtn.innerHTML = originalText;

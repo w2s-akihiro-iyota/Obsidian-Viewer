@@ -14,12 +14,14 @@
     --code-font: 'Consolas', 'Monaco', 'Courier New', monospace;
     --sidebar-width: 280px;
     --activity-bar-width: 50px;
-    --heading-h1: #8B4513;
-    --heading-h2: #D2691E;
+    /* 見出しの色は地の明るさに合わせてテーマごとに持つ（色相の並びは全テーマ共通）。
+       暗い地では明るめにし、背景とのコントラスト比 4.5:1 以上を保つ */
+    --heading-h1: #C98A5B;
+    --heading-h2: #E07B39;
     --heading-h3: #E6B422;
-    --heading-h4: #1976D2;
-    --heading-h5: #7B1FA2;
-    --heading-h6: #33691E;
+    --heading-h4: #5AA0E8;
+    --heading-h5: #B98AE0;
+    --heading-h6: #7FB35A;
     --z-sidebar: 100;
     --z-header: 100;
     --z-dropdown: 1000;
@@ -45,9 +47,10 @@
     --text-muted: #717171;
     --accent-purple: #7b61ff;
     --border-color: #e0e0e0;
+    /* 明るい地では h2・h3 を暗めにする（黄色の h3 は白地で 1.9:1 しかなかった） */
     --heading-h1: #8B4513;
-    --heading-h2: #D2691E;
-    --heading-h3: #E6B422;
+    --heading-h2: #B3561A;
+    --heading-h3: #8F6F00;
     --heading-h4: #1976D2;
     --heading-h5: #7B1FA2;
     --heading-h6: #33691E;
@@ -66,9 +69,10 @@
     --accent-purple: #d4a373;
     /* Warm Orange/Brown Accent */
     --border-color: #e6e2da;
+    /* 明るい地では h2・h3 を暗めにする（黄色の h3 は白地で 1.9:1 しかなかった） */
     --heading-h1: #8B4513;
-    --heading-h2: #D2691E;
-    --heading-h3: #E6B422;
+    --heading-h2: #B3561A;
+    --heading-h3: #8F6F00;
     --heading-h4: #1976D2;
     --heading-h5: #7B1FA2;
     --heading-h6: #33691E;
@@ -82,16 +86,16 @@
     /* Darker Night */
     --text-normal: #a9b1d6;
     /* Storm Grey */
-    --text-muted: #565f89;
-    /* Muted Blue Grey */
+    --text-muted: #7a83ad;
+    /* Muted Blue Grey（#565f89 では背景に対して 2.76:1 で読みにくかったため明るくした） */
     --accent-purple: #7aa2f7;
     /* Bright Blue */
     --border-color: #292e42;
     /* Dark Blue Border */
-    --heading-h1: #8B4513;
-    --heading-h2: #D2691E;
+    --heading-h1: #C98A5B;
+    --heading-h2: #E07B39;
     --heading-h3: #E6B422;
-    --heading-h4: #1976D2;
-    --heading-h5: #7B1FA2;
-    --heading-h6: #33691E;
+    --heading-h4: #5AA0E8;
+    --heading-h5: #B98AE0;
+    --heading-h6: #7FB35A;
 }

@@ -41,7 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Toggle dropdown
         pageMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            pageMenuDropdown.classList.toggle('show');
+            const isOpen = pageMenuDropdown.classList.toggle('show');
+            pageMenuBtn.setAttribute('aria-expanded', String(isOpen));
         });
     }
 
@@ -191,17 +192,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const iconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
         const checkSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         
-        button.innerHTML = `${iconSvg} Copy`;
+        button.innerHTML = `${iconSvg} コピー`;
 
         pre.appendChild(button);
 
         button.addEventListener('click', () => {
             copyToClipboard(codeBlock.textContent).then(() => {
-                button.innerHTML = `${checkSvg} Copied!`;
+                button.innerHTML = `${checkSvg} コピーしました`;
                 button.classList.add('copied');
                 showToast("コードをコピーしました", "success");
                 setTimeout(() => {
-                    button.innerHTML = `${iconSvg} Copy`;
+                    button.innerHTML = `${iconSvg} コピー`;
                     button.classList.remove('copied');
                 }, COPY_FEEDBACK_DURATION);
             }).catch(err => {

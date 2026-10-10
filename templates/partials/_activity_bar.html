@@ -1,7 +1,7 @@
     <!-- Activity Bar (Ribbon) - Desktop Only -->
     <aside class="activity-bar">
         <div class="activity-top">
-            <button id="sidebar-toggle-desktop" class="sidebar-toggle-btn desktop-toggle" title="Toggle Sidebar">
+            <button id="sidebar-toggle-desktop" class="sidebar-toggle-btn desktop-toggle" title="サイドバーを開閉" aria-label="サイドバーを開閉">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -11,7 +11,7 @@
         </div>
         <div class="activity-bottom">
             <!-- Graph View -->
-            <a href="/graph" class="activity-btn" title="Graph View">
+            <a href="/graph" class="activity-btn{% if nav_page == 'graph' %} active{% endif %}" title="グラフ" aria-label="グラフ"{% if nav_page == 'graph' %} aria-current="page"{% endif %}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="18" cy="18" r="3"></circle>
@@ -22,7 +22,7 @@
                 </svg>
             </a>
             <!-- History -->
-            <button id="activity-history-btn" class="activity-btn" title="閲覧履歴">
+            <button id="activity-history-btn" class="activity-btn" title="閲覧履歴" aria-label="閲覧履歴">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -31,7 +31,7 @@
             </button>
             <!-- Editor & Dashboard (localhost only) -->
             {% if is_localhost %}
-            <a href="/dashboard" class="activity-btn" title="Dashboard">
+            <a href="/dashboard" class="activity-btn{% if nav_page == 'dashboard' %} active{% endif %}" title="ダッシュボード" aria-label="ダッシュボード"{% if nav_page == 'dashboard' %} aria-current="page"{% endif %}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="7" height="9"></rect>
@@ -40,7 +40,7 @@
                     <rect x="3" y="16" width="7" height="5"></rect>
                 </svg>
             </a>
-            <a href="/editor" class="activity-btn" id="editor-open-btn" title="Markdown Editor">
+            <a href="/editor" class="activity-btn{% if nav_page == 'editor' %} active{% endif %}" id="editor-open-btn" title="新しいノートを書く" aria-label="新しいノートを書く"{% if nav_page == 'editor' %} aria-current="page"{% endif %}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 20h9"></path>
@@ -49,7 +49,7 @@
             </a>
             {% endif %}
             <!-- Settings and Help -->
-            <button id="settings-open-btn" class="activity-btn" title="Settings">
+            <button id="settings-open-btn" class="activity-btn" title="設定" aria-label="設定">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>

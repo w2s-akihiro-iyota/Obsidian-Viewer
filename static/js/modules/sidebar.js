@@ -76,7 +76,7 @@ function initSidebar() {
         const headers = Array.from(content.querySelectorAll('h1, h2, h3'));
 
         if (headers.length === 0) {
-            outlineContainer.innerHTML = '<div class="toc-empty">No headers found</div>';
+            outlineContainer.innerHTML = '<div class="toc-empty">見出しがありません</div>';
             return;
         }
 

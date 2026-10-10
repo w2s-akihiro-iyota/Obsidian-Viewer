@@ -297,7 +297,7 @@
                                             stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                                         </svg> ファイルツリー</h5>
-                                    <p>サイドバーの<b>Files</b>タブに、Vault のフォルダ構成がそのまま表示されます。<br />
+                                    <p>サイドバーの<b>ファイル</b>タブに、Vault のフォルダ構成がそのまま表示されます。<br />
                                         開いているノートまで自動で展開し、閉じたフォルダには中のノート数が出ます。上の入力欄でファイル名を絞り込めます。
                                         {% if viewer_is_admin %}<br />非公開ノートには「非公開」の印が付きます。{% endif %}</p>
                                 </div>
@@ -353,9 +353,19 @@
                                             <polygon
                                                 points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
                                             </polygon>
-                                        </svg> アウトラインと履歴</h5>
-                                    <p>サイドバーの<b>Outline</b>タブに見出しの一覧が出ます。押すとその場所へ移ります。<br />
-                                        <b>History</b>タブには、最近開いたノートが30件まで残ります。</p>
+                                        </svg> 目次と閲覧履歴</h5>
+                                    <p>サイドバーの<b>目次</b>タブに見出しの一覧が出ます。押すとその場所へ移ります。<br />
+                                        <b>閲覧履歴</b>タブには、最近開いたノートが30件まで残ります。</p>
+                                </div>
+                                <div class="help-card">
+                                    <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+                                            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                                        </svg> スマホでの画面の移り方</h5>
+                                    <p>スマホでは左端のアイコンの列が隠れます。左上のボタンでサイドバーを開くと、一番上に<b>ノート</b>・<b>グラフ</b>の切り替えがあります。
+                                        {% if viewer_is_admin %}<br />管理者には<b>ダッシュボード</b>・<b>エディタ</b>も並びます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"

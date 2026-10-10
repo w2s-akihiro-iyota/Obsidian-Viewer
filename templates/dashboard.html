@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Obsidian Viewer{% endblock %}
+{% block title %}ダッシュボード - Obsidian Viewer{% endblock %}
 
 {% block body_class %}dashboard-page{% endblock %}
 {% block container_class %}container-wide{% endblock %}
@@ -14,32 +14,32 @@
             <rect x="14" y="12" width="7" height="9"></rect>
             <rect x="3" y="16" width="7" height="5"></rect>
         </svg>
-        Dashboard
+        ダッシュボード
     </h1>
 
     <!-- 統計カード -->
     <div class="dashboard-grid">
         <div class="stat-card">
             <div class="stat-value">{{ total_files }}</div>
-            <div class="stat-label">Total Notes</div>
+            <div class="stat-label">ノート</div>
         </div>
         <div class="stat-card">
             <div class="stat-value stat-public">{{ public_files }}</div>
-            <div class="stat-label">Public</div>
+            <div class="stat-label">公開</div>
         </div>
         <div class="stat-card">
             <div class="stat-value stat-private">{{ private_files }}</div>
-            <div class="stat-label">Private</div>
+            <div class="stat-label">非公開</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ "{:,}".format(total_chars) }}</div>
-            <div class="stat-label">Total Characters</div>
+            <div class="stat-label">文字数</div>
         </div>
     </div>
 
-    <!-- Activity Heatmap -->
+    <!-- 最終更新日の分布（ヒートマップ） -->
     <section class="dashboard-section heatmap-section">
-        <h2 class="dashboard-section-title">Activity</h2>
+        <h2 class="dashboard-section-title">最終更新日の分布</h2>
         <div class="heatmap-wrapper">
             <div class="heatmap-months">
                 {% for label in month_labels %}
@@ -49,18 +49,18 @@
             <div class="heatmap-grid">
                 {% for item in heatmap_data %}
                 <div class="heatmap-cell level-{{ item.level }}" 
-                     title="{{ item.date }}: {{ item.count }} chars"></div>
+                     title="{{ item.date }}: {{ item.count }} 文字"></div>
                 {% endfor %}
             </div>
             <div class="heatmap-legend-container">
                 <div class="heatmap-legend">
-                    <span>Less</span>
+                    <span>少ない</span>
                     <div class="heatmap-cell level-0"></div>
                     <div class="heatmap-cell level-1"></div>
                     <div class="heatmap-cell level-2"></div>
                     <div class="heatmap-cell level-3"></div>
                     <div class="heatmap-cell level-4"></div>
-                    <span>More</span>
+                    <span>多い</span>
                 </div>
             </div>
         </div>
@@ -90,7 +90,7 @@
 
         <!-- タグ分布 -->
         <section class="dashboard-section">
-            <h2 class="dashboard-section-title">タグ分布 (Top 20)</h2>
+            <h2 class="dashboard-section-title">タグ分布（上位 20）</h2>
             <div class="dashboard-tag-bars">
                 {% for tag_name, tag_count in top_tags %}
                 <div class="tag-bar-row">
