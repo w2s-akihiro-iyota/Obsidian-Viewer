@@ -10,11 +10,16 @@ import pytest
 
 from app import cache
 from app.core.markdown import heading_anchor
-from app.core import indexing
 from app.core.indexing import _build_link_maps, resolve_note_path
 from app.services import images, wikilinks
 from app.services.content import render_markdown
 from app.services.publish_check import check_publish
+
+
+def media_index_of(*names: str) -> images.MediaIndex:
+    """直下にファイル名だけを置いた添付の索引（描画・振り分けのテスト用）"""
+    return images.MediaIndex(paths=frozenset(names), by_name={n: n for n in names},
+                             by_lower_name={n.lower(): n for n in names}, by_lower_path={n.lower(): n for n in names})
 
 
 @pytest.fixture
@@ -39,7 +44,7 @@ def vault(tmp_path, monkeypatch):
     monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [{"path": r, "published": r in published} for r in notes])
     monkeypatch.setattr(cache, "FILE_NAME_CACHE", {os.path.splitext(os.path.basename(r))[0]: r for r in notes})
     monkeypatch.setattr(cache, "PATH_TO_SLUG", {r: r[:-3].replace("/", "/") for r in notes})
-    monkeypatch.setattr(cache, "IMAGE_PATH_CACHE", {})
+    monkeypatch.setattr(cache, "MEDIA_INDEX", None)
     return tmp_path
 
 
@@ -141,9 +146,9 @@ def test_埋め込んだノートを依存として記録する(vault):
 
 
 def test_画像の埋め込みは今までどおり(vault, monkeypatch):
-    monkeypatch.setattr(wikilinks, "find_image_in_static", lambda name: "/static/images/a.png" if name == "a.png" else None)
+    monkeypatch.setattr(cache, "MEDIA_INDEX", media_index_of("a.png"))
     html = render("![[a.png|300]]")
-    assert '<img src="/static/images/a.png" alt="a.png" width="300"' in html
+    assert '<img src="/media/a.png" alt="a.png" width="300"' in html
 
 
 def test_ノートのページから描画しても2段まで埋め込める(vault):
@@ -162,7 +167,7 @@ def test_コードの中は置き換えない(vault):
 
 
 def test_画像のサイズ指定は数字だけを受け付ける(vault, monkeypatch):
-    monkeypatch.setattr(wikilinks, "find_image_in_static", lambda name: "/static/images/a.png")
+    monkeypatch.setattr(cache, "MEDIA_INDEX", media_index_of("a.png"))
     html = render('![[a.png|300" onerror="alert(1)]]')
     assert "onerror" not in html and "<img" in html
     assert 'width="300" height="200"' in render("![[a.png|300x200]]")
@@ -210,10 +215,9 @@ def test_リンクの解決はファイル名かパス指定():
 
 
 def test_バックリンクもパス指定と見出しつきリンクを数える(vault, monkeypatch):
-    monkeypatch.setattr(indexing, "CONTENT_DIR", vault)
-    (vault / "参照元.md").write_text("[[会議/定例]] と [[段1#見出し]]", encoding="utf-8")
+    bodies = {"参照元.md": "[[会議/定例]] と [[段1#見出し]]"}
     files = [{"path": "参照元.md", "title": "参照元"}]
-    _, forward = _build_link_maps(files, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
+    _, forward = _build_link_maps(files, bodies, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
     assert set(forward["参照元.md"]) == {"会議/定例.md", "段1.md"}
 
 
@@ -256,22 +260,19 @@ def test_走査はコードブロックとインラインコードとコール�
 
 
 def test_コードの中のリンクはバックリンクにもフォワードリンクにも入らない(vault, monkeypatch):
-    monkeypatch.setattr(indexing, "CONTENT_DIR", vault)
-    (vault / "参照元.md").write_text(
-        "```\n[[公開メモ]]\n```\n`[[段1]]`\n> ```\n> ![[段2]]\n> ```\n[[会議/定例]]\n", encoding="utf-8")
+    bodies = {"参照元.md": "```\n[[公開メモ]]\n```\n`[[段1]]`\n> ```\n> ![[段2]]\n> ```\n[[会議/定例]]\n"}
     files = [{"path": "参照元.md", "title": "参照元"}]
-    backlinks, forward = _build_link_maps(files, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
+    backlinks, forward = _build_link_maps(files, bodies, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
     assert forward["参照元.md"] == ["会議/定例.md"]
     assert set(backlinks) == {"会議/定例.md"}
 
 
 def test_バックリンクは埋め込みも数え自己リンクと重複を除く(vault, monkeypatch):
-    monkeypatch.setattr(indexing, "CONTENT_DIR", vault)
-    (vault / "参照元.md").write_text("![[公開メモ]] [[公開メモ|別名]] [[参照元]]", encoding="utf-8")
+    bodies = {"参照元.md": "![[公開メモ]] [[公開メモ|別名]] [[参照元]]"}
     names = dict(cache.FILE_NAME_CACHE, 参照元="参照元.md")
     slugs = dict(cache.PATH_TO_SLUG, **{"参照元.md": "参照元"})
     files = [{"path": "参照元.md", "title": "参照元"}]
-    backlinks, forward = _build_link_maps(files, names, slugs)
+    backlinks, forward = _build_link_maps(files, bodies, names, slugs)
     assert forward["参照元.md"] == ["公開メモ.md"]
     assert backlinks["公開メモ.md"] == [{"title": "参照元", "path": "参照元.md", "slug": "参照元"}]
     assert "参照元.md" not in backlinks
@@ -286,14 +287,14 @@ def _published_paths():
 @pytest.fixture
 def only_a_png(monkeypatch):
     """static に a.png だけがある状態"""
-    monkeypatch.setattr(wikilinks, "find_image_in_static", lambda name: "/static/images/a.png" if name == "a.png" else None)
+    monkeypatch.setattr(cache, "MEDIA_INDEX", media_index_of("a.png"))
 
 
 @pytest.mark.parametrize("src, kind, rendered, field, listed", [
     # 名前も見出しも空。描画は中身の無いリンク切れ（画面には何も出ない）なので、公開チェックでも挙げない
     ("[[#]]", "MISSING_NOTE", '<span class="internal-link-broken"></span>', None, None),
     # 別名つきの画像。| の後ろは表示サイズ
-    ("![[a.png|300]]", "IMAGE", '<img src="/static/images/a.png" alt="a.png" width="300"', None, None),
+    ("![[a.png|300]]", "IMAGE", '<img src="/media/a.png" alt="a.png" width="300"', None, None),
     ("![[無い.png|300]]", "MISSING_IMAGE", '<span class="internal-link-broken">無い.png</span>', "missing_images", "無い.png"),
     # 見出しつきの画像名はノートの節の埋め込みとして扱われ、そのノートが無いのでリンク切れ
     ("![[a.png#x]]", "MISSING_NOTE", '<span class="internal-link-broken">a.png &gt; x</span>', "missing_links", "a.png"),

@@ -37,7 +37,7 @@ def env(tmp_path, monkeypatch):
     for d in (src, content, images):
         d.mkdir()
     monkeypatch.setattr(sync, "CONTENT_DIR", content)
-    monkeypatch.setattr(sync, "IMAGES_DIR", images)
+    monkeypatch.setattr(sync, "MEDIA_DIR", images)
     monkeypatch.setattr(sync, "_pending", {})
     monkeypatch.setattr(sync, "refresh_global_caches", lambda: None)
     monkeypatch.setattr(sync, "save_config", lambda config: None)

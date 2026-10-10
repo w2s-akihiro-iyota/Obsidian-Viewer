@@ -15,10 +15,16 @@ content/*
 !content/samples/
 
 # Images (Static)
-# Exclude everything in static/images
+# static/images はアプリの部品（logo.png・samples/ のヘルプ画像）だけを置く。それ以外は追跡しない
 static/images/*
-# But keep the samples directory and its contents
+!static/images/logo.png
 !static/images/samples/
+
+# Media（Vault の添付の同期先。/media で配信する）
+# Exclude everything in media
+media/*
+# But keep the bundled samples (アプリ同梱のサンプル)
+!media/_viewer-samples/
 
 # Images (Root - precautionary)
 images/*

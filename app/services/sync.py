@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from app.config import (
-    CONFIG_FILE, CONTENT_DIR, IMAGES_DIR, PROTECTED_ITEMS, PROTECTED_IMAGE_ITEMS, SYNC_DELETE_HOLD_RATIO,
+    CONFIG_FILE, CONTENT_DIR, MEDIA_DIR, PROTECTED_ITEMS, PROTECTED_MEDIA_ITEMS, SYNC_DELETE_HOLD_RATIO,
 )
 from app.models.sync import SyncConfig
 from app.core.indexing import refresh_global_caches
@@ -281,13 +281,13 @@ def _perform_sync(config: SyncConfig, run: SyncRun) -> tuple[bool, str]:
 
     notes = run.add(SyncKind.CONTENT, _sync_kind(SyncKind.CONTENT, src_path, CONTENT_DIR, PROTECTED_ITEMS))
 
-    # 2. 画像の同期（オプション）
+    # 2. 画像（添付）の同期（オプション）。コピー先は MEDIA_DIR（/media で配信。外部には公開ノートが参照するものだけ）
     images = DirSyncResult()
     img_src_path = Path(config.images_src) if config.images_src else None
-    if img_src_path and img_src_path.exists() and IMAGES_DIR.exists():
+    if img_src_path and img_src_path.exists() and MEDIA_DIR.exists():
         logger.info(get_system("S105"))
-        images = run.add(SyncKind.IMAGES, _sync_kind(SyncKind.IMAGES, img_src_path, IMAGES_DIR,
-                                                      PROTECTED_IMAGE_ITEMS))
+        images = run.add(SyncKind.IMAGES, _sync_kind(SyncKind.IMAGES, img_src_path, MEDIA_DIR,
+                                                      PROTECTED_MEDIA_ITEMS))
     else:
         logger.info("Skipping image sync (not configured or path not found)")
         _set_pending(SyncKind.IMAGES, None)

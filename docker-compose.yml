@@ -13,6 +13,8 @@ services:
     volumes:
       - ./content:/app/content
       - ./static:/app/static
+      # Vault の添付の同期先（/media で配信。外部の人には公開ノートが参照するものだけ）
+      - ./media:/app/media
       - ./templates:/app/templates
       - ./app:/app/app
       # 外部のObsidian保管庫などをアプリ内から参照したい場合は、ここに追加マウントを記述します。
