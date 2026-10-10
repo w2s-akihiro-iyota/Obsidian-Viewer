@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app import cache
 from app.api import templates
 from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT
+from app.core.graph import build_link_graph, neighbor_count
 from app.core.indexing import parse_frontmatter, is_published
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query
@@ -303,6 +304,10 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
 
     slug = cache.PATH_TO_SLUG.get(file_path, file_path)
 
+    # つながりのボタンの数（1 歩でつながっているノート）。外部表示では公開ノートだけで数える（/api/graph と同じ範囲）
+    link_graph = build_link_graph(cache.GLOBAL_FILE_CACHE, cache.FORWARD_LINK_CACHE, published_only)
+    local_graph_count = neighbor_count(link_graph, file_path)
+
     return templates.TemplateResponse(request=request, name="view.html", context={
         "request": request,
         "title": title,
@@ -325,6 +330,7 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         "backlinks": backlinks,
         "related_articles": related_articles,
         "local_graph_depths": LOCAL_GRAPH_DEPTHS,
+        "local_graph_count": local_graph_count,
     })
 
 

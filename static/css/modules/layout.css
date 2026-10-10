@@ -364,6 +364,36 @@ footer {
     /* Hidden on Desktop */
 }
 
+/* ===== 記事ページの右上のアクション置き場（つながりのボタンなど） ===== */
+/* 本文エリアの右上に高さ 0 で重ね、スクロールしてもヘッダーのすぐ下に残す。
+   置ける余白があれば本文の列の外側（右）に出す（article-actions.js が測って is-outside を付け外しする）。
+   位置が決まるまでは見せない（is-placed が付くまで。1 フレームだけ位置が動くのを見せないため） */
+.article-actions {
+    position: sticky;
+    top: var(--article-actions-top);
+    z-index: var(--z-article-actions);
+    height: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: var(--article-actions-gap);
+}
+
+.article-actions:not(.is-placed) {
+    visibility: hidden;
+}
+
+/* 外側に置くとき: 中身の左端を本文の右端から --article-actions-gap 離す */
+.article-actions.is-outside {
+    margin-right: calc(-1 * (var(--article-action-size) + var(--article-actions-gap)));
+}
+
+/* 外側に置けないときは、記事ヘッダーの行（外部の人の表示・⋮）の右にボタン 1 つ分の余白を取る。
+   右上に置くボタンは 1 つにする前提（狭い画面で複数を出すときは 1 つのボタンにまとめる） */
+main:has(> .article-actions:not(.is-outside)) .view-header-top {
+    padding-right: calc(var(--article-action-size) + var(--article-actions-gap));
+}
+
 /* ===== View Header & Breadcrumb ===== */
 /* 記事ページのヘッダー: パンくずと操作 → タイトル → メタ情報 → タグ */
 .view-header {

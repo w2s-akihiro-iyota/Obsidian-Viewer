@@ -470,7 +470,7 @@ def test_チートシートはいまの画面を示しその画面のグルー�
     assert SHEET_GROUP_RE.findall(editor_sheet)[:2] == ["editor", "global"]
     view_sheet = _sheet(pages[f"/view/{cache.PATH_TO_SLUG['親.md']}"])
     assert "いまの画面: 記事ページ" in view_sheet
-    assert SHEET_GROUP_RE.findall(view_sheet)[0] == "global"
+    assert SHEET_GROUP_RE.findall(view_sheet)[:2] == ["view", "global"]
     assert "いまの画面: ノート一覧" in _sheet(pages["/"])
 
 
@@ -930,13 +930,81 @@ def test_ローカルグラフは上限で中心に近い点から残す(graph_s
     assert all(l["source"] in _distances(res) and l["target"] in _distances(res) for l in res.json()["links"])
 
 
-def test_記事ページにつながりの欄と全体グラフへのリンクを出す(graph_site):
+def test_記事ページにつながりのパネルと全体グラフへのリンクを出す(graph_site):
     slug = cache.PATH_TO_SLUG["中心.md"]
     html = _view(TestClient(app, base_url=ADMIN), "中心.md")
+    assert re.search(r'<section class="local-graph" id="local-graph" role="dialog"[^>]*hidden', html)
     assert f'data-center="{slug}"' in html and 'data-public="false"' in html
+    # d3 と描画処理は開いたときに読み込むので、ページの script には無く、読み込み先だけを渡す
+    assert 'data-d3-src="https://cdn.jsdelivr.net/npm/d3@7/' in html and 'data-render-src="/static/js/modules/graph-render.js' in html
+    assert not re.search(r'<script src="[^"]*(d3@7|graph-render\.js)', html)
     assert f'href="/graph?focus={slug}"' in html
     # 深さの切り替えは config の LOCAL_GRAPH_DEPTHS から作り、先頭を選んでおく
     assert re.findall(r'name="local-graph-depth" value="(\d+)"', html) == ["1", "2"]
     assert 'value="1" id="local-graph-depth-1" checked' in html
     html = _get(TestClient(app, base_url=ADMIN), "中心.md", **{"as": "public"}).text
     assert 'data-public="true"' in html
+
+
+def test_全体グラフのページはd3と描画処理を読み込む(graph_site):
+    html = TestClient(app, base_url=PUBLIC).get("/graph").text
+    assert re.search(r'<script src="https://cdn.jsdelivr.net/npm/d3@7/[^"]*" defer>', html)
+    assert re.search(r'<script src="/static/js/modules/graph-render\.js[^"]*" defer>', html)
+
+
+TOGGLE_RE = re.compile(r'<button type="button" class="local-graph-toggle[^"]*" id="local-graph-toggle".*?</button>', re.S)
+COUNT_RE = re.compile(r'<span class="local-graph-count" aria-hidden="true">(\d+)</span>')
+
+
+def _toggle(html):
+    match = TOGGLE_RE.search(html)
+    assert match, "つながりのボタンが無い"
+    return match.group(0)
+
+
+def test_つながりのボタンはショートカットの定義から名前とキーを出す(graph_site):
+    button = _toggle(_view(TestClient(app, base_url=ADMIN), "中心.md"))
+    for attr in ("title", "aria-label"):
+        assert f'{attr}="つながり (G)"' in button
+    assert 'aria-expanded="false"' in button and 'aria-controls="local-graph"' in button
+    # 開閉のキーは JS に持たせず、定義から渡す
+    assert f'data-shortcut-key="{shortcuts.find_shortcut("view", ("G",)).keys[0][0]}"' in button
+
+
+def test_つながりのボタンの数は1歩でつながるノートの数(graph_site):
+    client = TestClient(app, base_url=ADMIN)
+    expected = len(_distances(_local(client, "中心.md", depth=1))) - 1
+    button = _toggle(_view(client, "中心.md"))
+    assert COUNT_RE.findall(button) == [str(expected)] and expected == 3   # A・秘密B・C（リンク元の C も数える）
+    assert "is-empty" not in button
+
+
+def test_つながりが無いノートはボタンに数を出さず薄くする(graph_site):
+    button = _toggle(_view(TestClient(app, base_url=ADMIN), "孤立.md"))
+    assert not COUNT_RE.search(button)
+    assert 'class="local-graph-toggle is-empty"' in button
+
+
+def test_外部ではつながりの数を公開ノートだけで数える(graph_site):
+    # 中心 → 秘密B（非公開）は数えない。管理者の外部表示も同じ
+    assert COUNT_RE.findall(_toggle(_view(TestClient(app, base_url=PUBLIC), "中心.md"))) == ["2"]
+    html = _get(TestClient(app, base_url=ADMIN), "中心.md", **{"as": "public"}).text
+    assert COUNT_RE.findall(_toggle(html)) == ["2"]
+    # 非公開ノートだけにつながる公開ノートは 0 件（数を出さない）
+    button = _toggle(_view(TestClient(app, base_url=PUBLIC), "B2.md"))
+    assert not COUNT_RE.search(button) and "is-empty" in button
+    assert COUNT_RE.findall(_toggle(_view(TestClient(app, base_url=ADMIN), "B2.md"))) == ["1"]
+
+
+def test_ショートカットの定義に記事ページのGがありヘルプとチートシートに載る(graph_site):
+    shortcut = shortcuts.find_shortcut("view", ("G",))
+    assert shortcut.description == "つながりを開く・閉じる" and shortcut.short == "つながり"
+    assert shortcuts.group("view").contexts == frozenset({"view"})
+    for base_url in (ADMIN, PUBLIC):
+        html = _view(TestClient(app, base_url=base_url), "中心.md")
+        assert ("<kbd>G</kbd>", "つながりを開く・閉じる") in _help_key_rows(html)
+        sheet = _sheet(html)
+        assert SHEET_GROUP_RE.findall(sheet)[0] == "view"   # 記事ページでは記事ページのグループを先頭に出す
+        assert "<tr><td><kbd>G</kbd></td><td>つながり</td></tr>" in sheet
+        # ヘルプの「グラフビュー」の説明
+        assert "記事ページの<b>右上のボタン</b>（<kbd>G</kbd>）で" in html

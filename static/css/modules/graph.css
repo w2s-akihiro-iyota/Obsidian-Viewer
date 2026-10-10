@@ -96,31 +96,105 @@
 
 /* =========================================
    記事ページの「つながり」（ローカルグラフ）
+   右上のボタンと、押すと出るパネル（768px 以下では下からのシート）の見た目。
+   置き場所（右上に固定・本文の列の外側）は layout.css の .article-actions
    ========================================= */
 
-/* 本文とつながりの欄を包む。狭いときは縦に並べ、つながりは本文の下（リンク元の上）に出る */
-.page-view main.container-wide {
-    container: view-main / inline-size;
+.local-graph-anchor {
+    position: relative;
 }
 
+.local-graph-toggle {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--article-action-size);
+    height: var(--article-action-size);
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--bg-secondary);
+    color: var(--text-normal);
+    cursor: pointer;
+    box-shadow: var(--local-graph-shadow-small);
+}
+
+.local-graph-toggle:hover,
+.local-graph-toggle[aria-expanded="true"] {
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+}
+
+.local-graph-toggle:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
+}
+
+/* つながりが無いノートでは薄くする（数字も出さない） */
+.local-graph-toggle.is-empty {
+    color: var(--text-muted);
+}
+
+/* 1 歩でつながっているノートの数 */
+.local-graph-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background-color: var(--accent-purple);
+    color: var(--badge-text);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* パネル: ボタンのすぐ下に本文の上へ重ねて出す（ポップオーバー） */
 .local-graph {
-    margin-top: 32px;
-    padding: 12px 14px;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: var(--local-graph-panel-width);
+    max-width: calc(100vw - 32px);
+    display: flex;
+    flex-direction: column;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 12px;
+    box-shadow: var(--local-graph-shadow);
+    overflow: hidden;
+}
+
+.local-graph[hidden],
+.local-graph-backdrop[hidden] {
+    display: none;
+}
+
+.local-graph:focus {
+    outline: none;
+}
+
+/* 暗幕はシート（768px 以下）のときだけ */
+.local-graph-backdrop {
+    display: none;
 }
 
 .local-graph-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
-    margin-bottom: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .local-graph-title {
-    margin: 0;
+    margin: 0 auto 0 0;
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-normal);
@@ -146,9 +220,31 @@
     outline-offset: 1px;
 }
 
-.local-graph-canvas {
-    height: 260px;
+.local-graph-close {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid transparent;
     border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.local-graph-close:hover {
+    border-color: var(--border-color);
+    color: var(--text-normal);
+}
+
+.local-graph-close:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 1px;
+}
+
+.local-graph-canvas {
+    height: var(--local-graph-canvas-height);
     background-color: var(--bg-primary);
     overflow: hidden;
 }
@@ -194,7 +290,7 @@
     justify-content: center;
     height: 100%;
     margin: 0;
-    padding: 16px;
+    padding: 24px 16px;
     text-align: center;
     font-size: 0.85rem;
     color: var(--text-muted);
@@ -221,7 +317,8 @@
 }
 
 .local-graph-note {
-    margin: 6px 0 0;
+    margin: 0;
+    padding: 6px 12px 0;
     font-size: 0.75rem;
     color: var(--text-muted);
 }
@@ -232,7 +329,8 @@
     justify-content: space-between;
     gap: 8px;
     flex-wrap: wrap;
-    margin-top: 8px;
+    padding: 8px 12px 10px;
+    border-top: 1px solid var(--border-color);
     font-size: 0.8rem;
     color: var(--text-muted);
 }
@@ -246,29 +344,47 @@
     text-decoration: underline;
 }
 
-/* 幅 1200px 以上で、本文の欄に余裕があるときだけ、つながりを本文の右に固定幅で出す */
-@media (min-width: 1200px) {
-    /* 読みやすい幅の設定でも、本文の幅（900px）は変えずにつながりの欄の分だけ広げる */
-    body.readable-width.page-view .container-wide {
-        max-width: calc(var(--readable-width) + var(--local-graph-width) + var(--local-graph-gap));
+/* 768px 以下: 下から出るシート（画面の高さの 6 割）。外側は半透明の暗幕で、押すと閉じる */
+@media (max-width: 768px) {
+    .local-graph-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background-color: var(--local-graph-backdrop);
     }
 
-    @container view-main (min-width: 860px) {
-        .view-body {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) var(--local-graph-width);
-            gap: var(--local-graph-gap);
-            align-items: start;
-        }
+    .local-graph {
+        position: fixed;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        max-width: none;
+        height: var(--local-graph-sheet-height);
+        border-width: 1px 0 0;
+        border-radius: 16px 16px 0 0;
+    }
 
-        .local-graph {
-            position: sticky;
-            top: calc(var(--header-height) + 16px);
-            margin-top: 20px;
-        }
+    /* つまみ（見た目だけ。引っぱって閉じる操作は付けない） */
+    .local-graph::before {
+        content: "";
+        flex-shrink: 0;
+        width: 40px;
+        height: 4px;
+        margin: 8px auto 0;
+        border-radius: 2px;
+        background-color: var(--border-color);
+    }
 
-        .local-graph-canvas {
-            height: 220px;
-        }
+    .local-graph-canvas {
+        flex: 1;
+        min-height: 0;
+        height: auto;
+    }
+
+    /* シートを開いているあいだは、右下の「トップに戻る」をシートの上に出さない */
+    body:has(#local-graph:not([hidden])) .scroll-to-top {
+        visibility: hidden;
     }
 }
