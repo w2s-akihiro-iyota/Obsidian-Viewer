@@ -8,7 +8,7 @@ import threading
 
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from app.config import CONTENT_DIR, MEDIA_DIR, READING_SPEED_JP
+from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP
 from app import cache
 from app.utils.slug import slugify_path
 
@@ -145,7 +145,7 @@ def scan_notes(directory: Path, relative_to: Path) -> list[NoteRecord]:
                 continue
             full_path = Path(root) / file
             rel_path = full_path.relative_to(relative_to)
-            mtime = datetime.fromtimestamp(full_path.stat().st_mtime)
+            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, JST)
             with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
             frontmatter, body = parse_frontmatter(content)

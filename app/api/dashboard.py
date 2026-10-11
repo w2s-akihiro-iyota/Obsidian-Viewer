@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 
 from app import cache
 from app.api import templates
-from app.config import DASHBOARD_HEALTH_ROW_LIMIT, DASHBOARD_HEATMAP_WEEKS, DASHBOARD_TOP_TAG_COUNT
+from app.config import DASHBOARD_HEALTH_ROW_LIMIT, DASHBOARD_HEATMAP_WEEKS, DASHBOARD_TOP_TAG_COUNT, JST
 from app.core.heatmap import HEATMAP_LEVEL_COUNT, build_heatmap
 from app.core.note_health import build_note_health
 from app.core.note_list import count_tags
@@ -38,7 +38,7 @@ async def dashboard_page(request: Request):
     # 手入れが必要なノート（F-6）。索引の作り直しで作ったキャッシュだけから数える
     health = build_note_health(files, cache.BACKLINK_CACHE, DASHBOARD_HEALTH_ROW_LIMIT)
 
-    heatmap_data, month_labels = build_heatmap(files, datetime.now())
+    heatmap_data, month_labels = build_heatmap(files, datetime.now(JST))
 
     return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "request": request,

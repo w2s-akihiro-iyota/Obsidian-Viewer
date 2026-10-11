@@ -2,12 +2,14 @@
 
 - is_published: 外部に見せてよいノートかの判定。公開ノートの範囲を決めるので、True 以外を公開にしない
 - parse_obsidian_date: 日付の文字列を datetime にする
+- scan_notes: 更新日時は JST（コンテナは UTC。B-9）
 """
+import os
 from datetime import datetime
 
 import pytest
 
-from app.core.indexing import is_published, parse_obsidian_date
+from app.core.indexing import is_published, parse_obsidian_date, scan_notes
 
 
 # ---------- is_published ----------
@@ -70,3 +72,16 @@ def test_ISO形式の日付を読む(text, expected):
 ])
 def test_Obsidianの日本語の日付を読む(text, expected):
     assert parse_obsidian_date(text) == expected
+
+
+# ---------- scan_notes ----------
+
+def test_更新日時はJSTで持つ(tmp_path):
+    note = tmp_path / "ノート.md"
+    note.write_text("本文", encoding="utf-8")
+    # UTC 2026-10-10 20:30 = JST 2026-10-11 05:30（タイムゾーンなしだとコンテナでは前日になる）
+    ts = datetime.fromisoformat("2026-10-10T20:30:00+00:00").timestamp()
+    os.utime(note, (ts, ts))
+    mtime = scan_notes(tmp_path, tmp_path)[0].mtime
+    assert mtime.strftime("%Y-%m-%d %H:%M") == "2026-10-11 05:30"
+    assert mtime.utcoffset().total_seconds() == 9 * 3600
