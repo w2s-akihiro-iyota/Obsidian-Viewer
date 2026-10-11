@@ -115,7 +115,8 @@ def _is_inside_content_dir(path: str) -> bool:
         return False
     try:
         (CONTENT_DIR / normalized).resolve().relative_to(CONTENT_DIR.resolve())
-    except ValueError:
+    except (ValueError, OSError, RuntimeError):
+        # 外を指す・不正な文字（\0 など）・シンボリックリンクのループ
         return False
     return True
 

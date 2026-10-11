@@ -97,6 +97,12 @@ def test_記事ページは外を指すシンボリックリンクを404にす�
     assert "CONTENT_DIR の外" not in res.text
 
 
+def test_記事ページはシンボリックリンクのループを404にする(content_dir, client):
+    (content_dir / "輪A.md").symlink_to(content_dir / "輪B.md")
+    (content_dir / "輪B.md").symlink_to(content_dir / "輪A.md")
+    assert client.get("/view/輪A.md").status_code == 404
+
+
 def test_記事ページはCONTENT_DIRの中のノートを開ける(content_dir, client):
     res = client.get("/view/公開.md")
     assert res.status_code == 200
