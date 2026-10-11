@@ -193,6 +193,18 @@ def heading_ids(state):
 
 md.core.ruler.push("heading_ids", heading_ids)
 
+def _closes_code_block(top: dict, match: re.Match | None) -> bool:
+    """フェンスの行が、開いているコードブロック top を閉じるか（同じ記号・同じ長さ以上・同じ字下げ・情報文字列なし）"""
+    if not match:
+        return False
+    indent_len = len(match.group(1).replace('\t', '    '))
+    fence = match.group(2)
+    return (not match.group(3).strip()
+            and fence[0] == top['fence']
+            and len(fence) >= top['len']
+            and indent_len == top['indent'])
+
+
 def process_admonition_blocks(content: str) -> str:
     lines = content.split('\n')
     output = []
@@ -206,7 +218,13 @@ def process_admonition_blocks(content: str) -> str:
     while i < len(lines):
         line = lines[i]
         match = re.match(r'^(\s*)(`{3,}|~{3,})(.*)$', line)
-        
+
+        # コードブロックの中は、閉じのフェンスが来るまで中身としてそのまま出す（```ad-xxx の行も書き換えない）
+        if stack and stack[-1]['type'] == 'code' and not _closes_code_block(stack[-1], match):
+            output.append(f"{get_prefix()}{line}")
+            i += 1
+            continue
+
         if match:
             indent_str = match.group(1)
             # Calculate visual indent (approximate tab as 4 spaces)

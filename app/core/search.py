@@ -4,6 +4,7 @@ import re
 import logging
 import unicodedata
 from dataclasses import dataclass, field
+from itertools import groupby
 from typing import Callable
 
 from app import cache as app_cache
@@ -19,8 +20,6 @@ _CJK_RANGES = (
     ('\uf900', '\ufaff'),  # CJK互換漢字
 )
 
-_ASCII_WORD_RE = re.compile(r'[a-zA-Z0-9_]+')
-
 
 def _is_cjk(ch: str) -> bool:
     """文字がCJK（日本語含む）かどうか判定"""
@@ -30,47 +29,32 @@ def _is_cjk(ch: str) -> bool:
     return False
 
 
+def _char_kind(ch: str) -> str | None:
+    """トークン化での文字の種類（cjk: 2 文字ずつ切る / word: 単語で切る / None: 区切り）"""
+    if _is_cjk(ch):
+        return "cjk"
+    if ch.isalnum() or ch == "_":
+        return "word"
+    return None
+
+
+def normalize_text(text: str) -> str:
+    """検索用に正規化する（NFKC で全角英数字・半角カナをそろえ、小文字にする）"""
+    return unicodedata.normalize("NFKC", text).lower()
+
+
 def tokenize(text: str) -> list[str]:
-    """テキストをトークン化。ASCII=単語分割、CJK=バイグラム"""
-    text = text.lower()
+    """テキストをトークン化。英数字など=単語分割、CJK=バイグラム"""
     tokens = []
-    cjk_buf = []
-
-    i = 0
-    while i < len(text):
-        ch = text[i]
-
-        if _is_cjk(ch):
-            cjk_buf.append(ch)
-            i += 1
-        else:
-            # CJKバッファをフラッシュ（バイグラム生成）
-            if cjk_buf:
-                cjk_str = ''.join(cjk_buf)
-                if len(cjk_str) == 1:
-                    tokens.append(cjk_str)
-                else:
-                    for j in range(len(cjk_str) - 1):
-                        tokens.append(cjk_str[j:j+2])
-                cjk_buf = []
-
-            # ASCII単語を抽出
-            m = _ASCII_WORD_RE.match(text, i)
-            if m:
-                tokens.append(m.group())
-                i = m.end()
+    for kind, chars in groupby(normalize_text(text), key=_char_kind):
+        if kind == "word":
+            tokens.append("".join(chars))
+        elif kind == "cjk":
+            cjk_str = "".join(chars)
+            if len(cjk_str) == 1:
+                tokens.append(cjk_str)
             else:
-                i += 1
-
-    # 残りのCJKバッファをフラッシュ
-    if cjk_buf:
-        cjk_str = ''.join(cjk_buf)
-        if len(cjk_str) == 1:
-            tokens.append(cjk_str)
-        else:
-            for j in range(len(cjk_str) - 1):
-                tokens.append(cjk_str[j:j+2])
-
+                tokens.extend(cjk_str[j:j + 2] for j in range(len(cjk_str) - 1))
     return tokens
 
 
@@ -218,7 +202,10 @@ class SearchIndex:
     def _generate_snippet(self, body_text: str, query_tokens: set[str],
                           max_len: int = 120) -> str:
         """マッチ箇所前後のスニペットを生成"""
-        text_lower = body_text.lower()
+        # 検索語と同じく正規化して探す。長さが変わる文字（㍿ など）があるときは位置がずれるので小文字にするだけにする
+        text_lower = normalize_text(body_text)
+        if len(text_lower) != len(body_text):
+            text_lower = body_text.lower()
         best_pos = -1
         best_density = 0
 

@@ -35,7 +35,7 @@ function renderForceGraph(container, data, options = {}) {
         nodeRadius: null,           // (d, linkCount) => 半径。省略時はリンク数で決める
         nodeClass: () => '',        // (d) => 追加のクラス
         ariaLabel: 'ノートのつながりのグラフ',
-        onNodeClick: (d) => { window.location.href = `/view/${d.slug}`; },
+        onNodeClick: (d) => { window.location.href = viewUrl(d.slug); },
     }, options);
 
     container.innerHTML = '';

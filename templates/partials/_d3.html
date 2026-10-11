@@ -2,7 +2,7 @@
    d3 は static/js/vendor/ に版を固定して置いたもの（Q-3。CDN には頼らない）。
    全体グラフは scripts() でそのまま読み込み、記事ページは D3_SRC / GRAPH_RENDER_SRC を local-graph.js に渡して、初めて開いたときに読み込む #}
 {% set D3_SRC = "/static/js/vendor/d3-7.9.0/d3.min.js" %}
-{% set GRAPH_RENDER_SRC = "/static/js/modules/graph-render.js?v=20261010" %}
+{% set GRAPH_RENDER_SRC = "/static/js/modules/graph-render.js?v=20261011" %}
 {% macro scripts() -%}
 <script src="{{ D3_SRC }}" defer></script>
 <script src="{{ GRAPH_RENDER_SRC }}" defer></script>

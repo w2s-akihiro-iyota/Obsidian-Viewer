@@ -27,6 +27,11 @@ async function loadMessages() {
     }
 }
 
+// 記事ページの URL。スラッグの区切り（/）は残し、区切りの間をエンコードする（# ? % で移動先が壊れないように）
+function viewUrl(slug) {
+    return '/view/' + String(slug).split('/').map(encodeURIComponent).join('/');
+}
+
 // --- Toast Notification System ---
 /**
  * トーストを出す
