@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{# エラー画面（F-10）。app/api/errors.py が、ブラウザでページを開いたときだけ返す。URL とステータスはそのまま #}
+
+{% block title %}{{ page.title }} - Obsidian Viewer{% endblock %}
+
+{% block head %}
+<meta name="robots" content="noindex">
+<script src="/static/js/modules/error-page.js?v=20261029" defer></script>
+{% endblock %}
+
+{% block body_class %}error-page-body{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-page-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            {% if page.for_note %}
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="9.5" y1="12.5" x2="14.5" y2="17.5"></line>
+            <line x1="14.5" y1="12.5" x2="9.5" y2="17.5"></line>
+            {% elif page.status == 404 %}
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            {% elif page.status == 403 %}
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            {% elif page.status == 400 %}
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            {% else %}
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            {% endif %}
+        </svg>
+    </div>
+    <p class="error-page-status">{{ page.status }}</p>
+    <h1 class="error-page-title">{{ page.title }}</h1>
+    <p class="error-page-message">{{ page.message }}</p>
+
+    <div class="error-page-actions">
+        {% if page.status >= 500 %}
+        <button type="button" class="primary-btn" data-error-reload>再読み込み</button>
+        <a href="/" class="secondary-btn">ホームへ戻る</a>
+        {% else %}
+        <a href="/" class="primary-btn">ホームへ戻る</a>
+        {% endif %}
+        {% if page.show_search %}
+        <button type="button" class="secondary-btn" data-open-search>
+            ノートを検索<span class="error-page-keys">{{ sc.keys([["Ctrl", "K"]]) }}</span>
+        </button>
+        {% endif %}
+    </div>
+
+    {# 管理者にだけ、原因を追う手がかりと次の一手を出す #}
+    {% if is_localhost and page.admin_hint %}
+    <div class="error-page-admin">
+        <span class="error-page-admin-badge">管理者だけに表示</span>
+        {% if requested_note %}
+        <p>開こうとしたパス:<br><code>{{ requested_note }}</code></p>
+        {% endif %}
+        <p>{{ page.admin_hint }}</p>
+        {% if page.status >= 500 %}
+        <p><code>docker-compose logs -f</code></p>
+        {% endif %}
+        {% if page.for_note %}
+        <div class="error-page-admin-actions">
+            <a href="/editor" class="secondary-btn">エディタで新規作成</a>
+            <button type="button" class="secondary-btn" data-open-sync>同期の画面を開く</button>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

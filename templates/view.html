@@ -316,7 +316,7 @@
     <p class="publish-check-all-ok">{{ system_message("S205") }}</p>
     {% endif %}
     <ul class="publish-check-items">
-        {% call check_row("ノート自身が非公開（外部からは 403）", 1 if publish_check.is_private else 0) %}{% endcall %}
+        {% call check_row("ノート自身が非公開（外部からは 404）", 1 if publish_check.is_private else 0) %}{% endcall %}
         {% call check_row("非公開ノートへのリンク（外部ではリンク切れ）", publish_check.private_links|length) %}
         <ul class="publish-check-list">
             {% for note in publish_check.private_links %}

@@ -37,7 +37,7 @@ class DataviewGap:
 @dataclass(frozen=True)
 class PublishCheck:
     """1 ノート分の公開チェックの結果"""
-    is_private: bool                            # ノート自身が非公開（外部からは 403）
+    is_private: bool                            # ノート自身が非公開（外部からは 404）
     private_links: tuple[NoteRef, ...]          # 非公開ノートへのリンク（外部ではリンク切れの表示）
     private_embeds: tuple[NoteRef, ...]         # 非公開ノートの埋め込み（外部では埋め込まれない）
     missing_links: tuple[str, ...]              # 存在しないノートへのリンク（リンクに書いた名前）

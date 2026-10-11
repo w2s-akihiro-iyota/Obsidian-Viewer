@@ -32,6 +32,7 @@ from app.services import sync, wikilinks
 from app.services.content import render_markdown
 from app.services.images import MediaIndex
 from app.services.publish_check import check_publish
+from app.utils.messages import get_system
 
 ADMIN = "http://localhost:8001"     # 管理用ポート（is_admin_request が管理者とみなす）
 PUBLIC = "http://localhost:8000"
@@ -296,16 +297,16 @@ def test_外部ポートではasを付けても何も変わらない(check_site)
         assert "publish-check" not in html and "public-view" not in html and "要確認" not in html
 
 
-def test_管理者の外部表示で非公開ノートを開くと403にせず案内を出す(check_site):
+def test_管理者の外部表示で非公開ノートを開くと404にせず案内を出す(check_site):
     res = _get(TestClient(app, base_url=ADMIN), "秘密.md", **{"as": "public"})
     assert res.status_code == 200
-    assert "このノートは非公開のため、外部からは 403 になります" in res.text
+    assert get_system("S204") in res.text
 
 
-def test_外部では非公開ノートは403のまま(check_site):
+def test_外部では非公開ノートは404(check_site):
     client = TestClient(app, base_url=PUBLIC)
-    assert _get(client, "秘密.md").status_code == 403
-    assert _get(client, "秘密.md", **{"as": "public"}).status_code == 403
+    assert _get(client, "秘密.md").status_code == 404
+    assert _get(client, "秘密.md", **{"as": "public"}).status_code == 404
 
 
 # ---------- D-1: 記事ページのヘッダー ----------

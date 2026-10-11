@@ -120,17 +120,17 @@ async def preview_file(request: Request, path: str):
         path = resolved
 
     full_path = CONTENT_DIR / path
-    if not full_path.exists():
+    if not full_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
     with open(full_path, "r", encoding="utf-8", errors="replace") as f:
         content = f.read()
     frontmatter, body = parse_frontmatter(content)
 
-    # Validation for non-localhost
+    # 外部の人には、無いノートと同じ 404 にする（非公開ノートがあることを知らせない）
     is_localhost = is_admin_request(request)
     if not is_localhost and not is_published(frontmatter):
-        raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
+        raise HTTPException(status_code=404, detail="File not found")
 
     # frontmatterからタイトルを取得
     title = frontmatter.get("title") or Path(path).stem
@@ -173,6 +173,11 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
     })
 
 
+def _is_published_path(path: str) -> bool:
+    """索引にある公開ノートか"""
+    return any(f["path"] == path and f.get("published") for f in cache.GLOBAL_FILE_CACHE)
+
+
 @router.get("/view/{file_path:path}", response_class=HTMLResponse)
 async def read_item(request: Request, file_path: str, view_as: str = Query("", alias="as")):
     """
@@ -188,6 +193,9 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         full_path = CONTENT_DIR / file_path
         if full_path.exists() and full_path.is_file():
             slug = cache.PATH_TO_SLUG.get(file_path)
+            # 外部の人には、非公開ノートを飛ばす前に 404 にする（飛び先のスラッグで存在が分かってしまう）
+            if slug and not is_admin_request(request) and not _is_published_path(file_path):
+                raise HTTPException(status_code=404, detail="File not found")
             if slug:
                 return RedirectResponse(url=f"/view/{slug}", status_code=301)
             actual_path = file_path
@@ -237,9 +245,10 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
 
     is_pub = is_published(frontmatter)
 
-    # 403 は外部の人だけ。管理者の外部表示では、403 になることを画面で知らせる
+    # 外部の人には、無いノートと同じ 404 にする（非公開ノートがあることを知らせない）。
+    # 管理者の外部表示では、404 になることを画面で知らせる
     if not is_localhost and not is_pub:
-        raise HTTPException(status_code=403, detail="Forbidden: This file is not public")
+        raise HTTPException(status_code=404, detail="File not found")
 
     # 公開チェックは管理者にだけ行う（外部の人には計算もしない）
     publish_check = None
