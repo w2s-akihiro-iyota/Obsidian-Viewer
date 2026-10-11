@@ -376,6 +376,8 @@ function initSearch() {
         }
 
         if (mobileSearchBtn) mobileSearchBtn.addEventListener('click', openModal);
+        // ページ内の「ノートを検索」ボタン（エラー画面など。F-10）
+        document.querySelectorAll('[data-open-search]').forEach(btn => btn.addEventListener('click', openModal));
         if (closeSearchModalBtn) closeSearchModalBtn.addEventListener('click', closeModal);
 
         // Close on click outside

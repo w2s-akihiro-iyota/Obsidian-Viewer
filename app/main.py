@@ -9,7 +9,9 @@ logger = logging.getLogger("app.main")
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import STATICS_DIR
+from app.api.errors import handle_http_exception, handle_unexpected_error
 from app.api.routes import router
 from app.core.indexing import refresh_global_caches
 from app.services.media_migration import migrate_legacy_media
@@ -18,6 +20,11 @@ from app.utils.helpers import is_same_origin_request
 from app.utils.messages import get_error
 
 app = FastAPI(title="Obsidian Viewer")
+
+# ブラウザで開いたページのエラーは、JSON ではなくエラー画面で返す（F-10）。
+# starlette 側の HTTPException に登録する（FastAPI 側だけだと、存在しない URL の 404 を拾えない）
+app.add_exception_handler(StarletteHTTPException, handle_http_exception)
+app.add_exception_handler(Exception, handle_unexpected_error)
 
 # 状態を変えるメソッド（CSRF対策の対象）
 _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

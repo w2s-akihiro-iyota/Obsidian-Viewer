@@ -254,4 +254,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 「内訳を見る」で設定の「ファイル同期」にある同期の記録（F-7）へ移る
         setTimeout(() => showToast(syncMsg, "success", { label: "内訳を見る", onClick: openSyncReport }), 400);
     }
+
+    // --- HTMX の読み込みに失敗したとき（F-10） ---
+    // 部分読み込みにはエラー画面を返さない（app/api/errors.py）ので、何も起きないように見えないよう知らせる
+    document.body.addEventListener('htmx:responseError', (event) => {
+        const status = event.detail.xhr?.status;
+        showToast(`読み込めませんでした（${status}）`, 'error', { label: '再読み込み', onClick: () => location.reload() });
+    });
+    document.body.addEventListener('htmx:sendError', () => {
+        showToast('サーバーに接続できませんでした', 'error', { label: '再読み込み', onClick: () => location.reload() });
+    });
 });
