@@ -23,6 +23,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import cache, shortcuts
+from app.config import JST
 from app.api import content as content_api
 from app.api import editor as editor_api
 from app.core import indexing
@@ -706,6 +707,15 @@ def test_ダッシュボードのタグ分布は件数の多い順に上位だ�
     html = TestClient(app, base_url=ADMIN).get("/dashboard").text
     assert "共通" in html
     assert "秘密タグ" not in html and "公開だけ" not in html
+
+
+def test_ダッシュボードのヒートマップの今日はJSTで決める(list_site, monkeypatch):
+    # コンテナは UTC なので、タイムゾーンなしの now() だと JST の 0〜9 時に前日になる（B-9）
+    from app.api import dashboard as dashboard_api
+    seen = []
+    monkeypatch.setattr(dashboard_api, "build_heatmap", lambda files, now: (seen.append(now), ([], []))[1])
+    TestClient(app, base_url=ADMIN).get("/dashboard")
+    assert seen[0].utcoffset() == JST.utcoffset(None)
 
 
 
