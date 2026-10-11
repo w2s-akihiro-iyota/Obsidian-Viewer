@@ -127,7 +127,7 @@ const LOCAL_GRAPH_RESIZE_DELAY = 150;
             .forEach(n => {
                 const li = document.createElement('li');
                 const a = document.createElement('a');
-                a.href = `/view/${n.slug}`;
+                a.href = viewUrl(n.slug);
                 a.textContent = n.title;
                 li.appendChild(a);
                 if (n.distance > 1) {

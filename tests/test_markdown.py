@@ -104,10 +104,26 @@ def test_Admonitionはcalloutとして描画される():
     assert "既知の不具合</div>" in html
 
 
-# いまの振る舞い（不具合候補）: コードブロックの中の ```ad- の行も Admonition の始まりとみなし、
-# コードの中身を書き換える（markdown.py:218 で、コードブロックの中かどうかを見ずに ad- を判定している）。
-def test_いまはコードブロックの中のad行も書き換える():
-    assert process_admonition_blocks("```md\n```ad-note\n```") == "```md\n> [!NOTE] Note\n```"
+def test_コードブロックの中のad行は書き換えない():
+    # 書き方をコードで説明するとき（B-12）
+    src = "````md\n```ad-note\ntitle: 題\n本文\n```\n````\n後ろ"
+    assert process_admonition_blocks(src) == src
+
+
+def test_コードブロックの中のad行は情報文字列つきの閉じに見えても中身のまま():
+    # 同じ長さの ``` でも、情報文字列（ad-note）があれば閉じのフェンスではない
+    src = "```md\n```ad-note\n```"
+    assert process_admonition_blocks(src) == src
+
+
+def test_Admonitionの中のコードブロックの中のad行も書き換えない():
+    src = "````ad-tip\n~~~md\n```ad-note\n```\n~~~\n````"
+    assert process_admonition_blocks(src) == "> [!TIP] Tip\n> ~~~md\n> ```ad-note\n> ```\n> ~~~"
+
+
+def test_コードブロックを閉じたあとのad行は書き換える():
+    src = "```md\nx\n```\n```ad-note\n本文\n```"
+    assert process_admonition_blocks(src) == "```md\nx\n```\n> [!NOTE] Note\n> 本文"
 
 
 # ---------- cardlink ----------
