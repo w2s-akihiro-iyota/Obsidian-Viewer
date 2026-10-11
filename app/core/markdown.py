@@ -2,6 +2,8 @@ import markdown_it
 from markdown_it.tree import SyntaxTreeNode
 from markdown_it.token import Token
 import re
+from html import escape
+from urllib.parse import quote
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 
@@ -42,6 +44,15 @@ md = (
 # Cardlink renderer
 default_fence_renderer = md.renderer.rules.get("fence", markdown_it.renderer.RendererHTML.fence)
 
+# カードリンクの url・image に使ってよい URL（javascript: や data: を通さない）
+_CARDLINK_URL_RE = re.compile(r'^https?://', re.IGNORECASE)
+
+
+def _is_cardlink_url(url: str) -> bool:
+    """カードリンクに出してよい URL か（http/https だけ）"""
+    return bool(_CARDLINK_URL_RE.match(url))
+
+
 def render_cardlink(tokens, idx, options, env):
     token = tokens[idx]
     info = token.info.strip()
@@ -53,21 +64,31 @@ def render_cardlink(tokens, idx, options, env):
                 k, v = line.split(':', 1)
                 data[k.strip()] = v.strip()
 
-        title = data.get('title', 'No Title')
+        title = escape(data.get('title', 'No Title'))
         url = data.get('url', '#')
-        desc = data.get('description', '')
+        desc = escape(data.get('description', ''))
         image = data.get('image', '')
 
-        img_html = f'<div class="link-card-image" style="background-image: url({image})"></div>' if image else ''
-        return f"""
-        <a href="{url}" class="link-card" target="_blank" rel="noopener noreferrer">
+        # 画像は CSS の url("...") に入れるので、括弧・引用符・空白などを %xx にしてから HTML 用にエスケープする
+        img_html = ''
+        if _is_cardlink_url(image):
+            css_url = escape(quote(image, safe=":/?#[]@!$&*+,;=%~"))
+            img_html = f'<div class="link-card-image" style="background-image: url(&quot;{css_url}&quot;)"></div>'
+        content_html = f"""
             <div class="link-card-content">
                 <div class="link-card-title">{title}</div>
                 <div class="link-card-description">{desc}</div>
-                <div class="link-card-meta">{url}</div>
+                <div class="link-card-meta">{escape(url)}</div>
             </div>
             {img_html}
-        </a>
+        """
+        # http/https 以外の URL はリンクにせず、書いた内容が読めるように文字だけ出す
+        if url == '#' or _is_cardlink_url(url):
+            return f"""
+        <a href="{escape(url)}" class="link-card" target="_blank" rel="noopener noreferrer">{content_html}</a>
+        """
+        return f"""
+        <div class="link-card">{content_html}</div>
         """
     if info == "dataview":
         from app.core.dataview import process_dataview

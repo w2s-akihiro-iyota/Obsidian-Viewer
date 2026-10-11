@@ -119,7 +119,7 @@ def test_cardlinkはリンクカードにしタイトルと説明とURLと画像
     assert '<div class="link-card-title">例のページ</div>' in html
     assert '<div class="link-card-description">説明</div>' in html
     assert '<div class="link-card-meta">https://example.com/a?b=1</div>' in html
-    assert 'style="background-image: url(https://example.com/i.png)"' in html
+    assert 'style="background-image: url(&quot;https://example.com/i.png&quot;)"' in html
     assert "<pre>" not in html
 
 
@@ -131,6 +131,33 @@ def test_cardlinkのタイトルと画像を省くとNoTitleで画像の枠を�
 
 def test_cardlinkのURLを省くとシャープにリンクする():
     assert '<a href="#" class="link-card"' in md.render("```cardlink\ntitle: 題\n```")
+
+
+def test_cardlinkはタイトルと説明とURLをエスケープする():
+    html = md.render('```cardlink\nurl: https://example.com/?a=1&b="x"\ntitle: <script>alert(1)</script>\n'
+                     'description: <img src=x onerror=alert(1)>\n```')
+    assert "<script>" not in html and "<img" not in html
+    assert '<div class="link-card-title">&lt;script&gt;alert(1)&lt;/script&gt;</div>' in html
+    assert '<a href="https://example.com/?a=1&amp;b=&quot;x&quot;" class="link-card"' in html
+
+
+@pytest.mark.parametrize("url", ["javascript:alert(1)", "JavaScript:alert(1)", "data:text/html,<b>x</b>",
+                                 "\x01javascript:alert(1)", "vbscript:x", "/view/x"])
+def test_cardlinkはhttpとhttps以外のURLをリンクにせず文字だけ出す(url):
+    html = md.render(f"```cardlink\nurl: {url}\ntitle: 題\n```")
+    assert "<a " not in html and "href=" not in html
+    assert '<div class="link-card">' in html
+    assert '<div class="link-card-title">題</div>' in html
+
+
+@pytest.mark.parametrize("image", ["javascript:alert(1)", "data:image/svg+xml,<svg/>", "x.png"])
+def test_cardlinkはhttpとhttps以外の画像を出さない(image):
+    assert "link-card-image" not in md.render(f"```cardlink\nurl: https://example.com\nimage: {image}\n```")
+
+
+def test_cardlinkの画像URLはCSSのurlから抜け出せない():
+    html = md.render('```cardlink\nurl: https://example.com\nimage: https://e.com/a.png"); background: red; x:("\n```')
+    assert 'url(&quot;https://e.com/a.png%22%29;%20background:%20red;%20x:%28%22&quot;)' in html
 
 
 @pytest.mark.parametrize("info", ["python", ""])

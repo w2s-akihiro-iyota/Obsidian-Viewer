@@ -108,10 +108,21 @@ def _get_related_articles(file_path: str, tags: list, published_only: bool, limi
     return scored[:limit]
 
 
+def _is_inside_content_dir(path: str) -> bool:
+    """CONTENT_DIR の中を指すパスか（..・絶対パス・外を指すシンボリックリンクは弾く）"""
+    normalized = path.replace("\\", "/")
+    if normalized.startswith("/") or ".." in normalized.split("/"):
+        return False
+    try:
+        (CONTENT_DIR / normalized).resolve().relative_to(CONTENT_DIR.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 @router.get("/api/preview")
 async def preview_file(request: Request, path: str):
-    # Safety check
-    if ".." in path or path.startswith("/"):
+    if not _is_inside_content_dir(path):
         raise HTTPException(status_code=400, detail="Invalid path")
 
     # スラッグからの解決を試みる
@@ -186,6 +197,10 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
     管理者は ?as=public で「外部の人の表示」（外部向けと同じ本文と、公開チェックの結果）を見られる。
     外部の人が ?as=public を付けても何も変わらない。
     """
+    # Vault の外を指すパスは、見えないノートと同じく「無い」ことにする
+    if not _is_inside_content_dir(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
     # スラッグからの解決を試みる
     actual_path = cache.SLUG_TO_PATH.get(file_path)
     if actual_path is None:

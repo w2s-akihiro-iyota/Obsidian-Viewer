@@ -610,7 +610,8 @@
     height: 120px;
 }
 
-.link-card:hover {
+/* リンクにしないカード（http/https 以外の URL）は浮かせない */
+a.link-card:hover {
     transform: translateY(-2px);
     border-color: var(--accent-purple);
     text-decoration: none;
