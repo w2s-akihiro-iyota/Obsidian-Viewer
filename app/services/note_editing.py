@@ -1,6 +1,6 @@
 """既存ノートの編集（読み込み・衝突検知つきの保存）
 
-正とするのは Vault 側のファイル（同期元 content_src 配下）。
+正とするのは Vault 側のファイル（同期元 content_src と、追加の同期元の配下）。
 ビューア側（CONTENT_DIR）は同期で上書きされるコピーなので、Vault と同じ内容を書いてそろえる。
 Vault に同じノートが無い場合（samples など）は、ビューア側だけを読み書きする。
 """
@@ -13,7 +13,8 @@ from pathlib import Path
 
 from app import cache
 from app.config import CONTENT_DIR
-from app.services.sync import load_config
+from app.core.content_sources import ContentSources
+from app.services.sync_config import load_config
 
 logger = logging.getLogger("app.note_editing")
 
@@ -65,12 +66,10 @@ def _note_paths(rel_path: str) -> tuple[Path, Path | None]:
 
     app_path = _resolve_inside(CONTENT_DIR, rel_path)
 
-    vault_path = None
-    content_src = load_config().content_src
-    if content_src and Path(content_src).is_dir():
-        candidate = _resolve_inside(Path(content_src), rel_path)
-        if candidate.is_file():
-            vault_path = candidate
+    # Vault 側は、対応表で引いた同期元のファイルがあるときだけ（追加の同期元のノートもここで引ける）
+    vault_path = ContentSources.from_config(load_config()).host_path(rel_path)
+    if vault_path is not None and not vault_path.is_file():
+        vault_path = None
 
     if vault_path is None and not app_path.is_file():
         raise NoteNotFoundError(rel_path)

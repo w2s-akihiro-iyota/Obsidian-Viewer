@@ -617,6 +617,80 @@ function initSyncSettings() {
 
     let currentConfig = {};
 
+    // --- 追加の同期元（行を動的に足し引きする） ---
+    const extraList = document.getElementById('extra-sources');
+    const extraAddBtn = document.getElementById('extra-source-add-btn');
+    let extraRowSeq = 0;
+
+    function addExtraSourceRow(src = '', dest = '', exclude = []) {
+        const n = ++extraRowSeq;
+        const row = document.createElement('div');
+        row.className = 'extra-source';
+        row.innerHTML = `
+            <div class="extra-source-field">
+                <label for="extra-src-input-${n}">同期元フォルダ</label>
+                <div class="setting-input-group">
+                    <input type="text" id="extra-src-input-${n}" class="extra-source-src" placeholder="/0_host_pc/llm-wiki">
+                    <button type="button" class="secondary-btn browser-dir-btn"
+                        data-target="extra-src-input-${n}">参照...</button>
+                </div>
+                <div class="setting-error extra-source-src-error"></div>
+            </div>
+            <div class="extra-source-field">
+                <label for="extra-dest-input-${n}">ビューアでの置き場所</label>
+                <input type="text" id="extra-dest-input-${n}" class="extra-source-dest" placeholder="llm-wiki">
+                <p class="setting-desc">ビューアの一番上に作るフォルダの名前です。元フォルダの直下にあるフォルダと同じ名前は使えません</p>
+                <div class="setting-error extra-source-dest-error"></div>
+            </div>
+            <div class="extra-source-field">
+                <label for="extra-exclude-input-${n}">同期しないフォルダ</label>
+                <input type="text" id="extra-exclude-input-${n}" class="extra-source-exclude" placeholder="_ops, _templates">
+                <p class="setting-desc">同期元フォルダからのパスをカンマで区切ります。ドット（.）で始まるフォルダ・ファイルはいつも同期しません</p>
+            </div>
+            <div class="extra-source-foot">
+                <button type="button" class="extra-source-remove">この同期元を外す</button>
+            </div>`;
+        row.querySelector('.extra-source-src').value = src || '';
+        row.querySelector('.extra-source-dest').value = dest || '';
+        row.querySelector('.extra-source-exclude').value = (exclude || []).join(', ');
+        extraList.appendChild(row);
+        return row;
+    }
+
+    function renderExtraSources(list) {
+        extraList.innerHTML = '';
+        (Array.isArray(list) ? list : []).forEach(e => addExtraSourceRow(e.src, e.dest, e.exclude));
+    }
+
+    // 入力欄を「送る配列」にする。src も dest も空の行は送らない。
+    // 送る行には、返ってくるエラーの添字（extra-src-{i}）と同じ番号のエラー欄の id を付ける。
+    function collectExtraSources() {
+        const result = [];
+        extraList.querySelectorAll('.extra-source').forEach(row => {
+            row.querySelector('.extra-source-src-error').removeAttribute('id');
+            row.querySelector('.extra-source-dest-error').removeAttribute('id');
+            const src = row.querySelector('.extra-source-src').value.trim();
+            const dest = row.querySelector('.extra-source-dest').value.trim();
+            if (!src && !dest) return;
+            const exclude = row.querySelector('.extra-source-exclude').value
+                .split(/[,、，]/).map(v => v.trim()).filter(Boolean);
+            const i = result.length;
+            row.querySelector('.extra-source-src-error').id = `extra-src-${i}-error`;
+            row.querySelector('.extra-source-dest-error').id = `extra-dest-${i}-error`;
+            result.push({ src, dest, exclude });
+        });
+        return result;
+    }
+
+    extraAddBtn.addEventListener('click', () => {
+        const row = addExtraSourceRow();
+        row.querySelector('.extra-source-src').focus();
+    });
+    extraList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.extra-source-remove');
+        if (btn) btn.closest('.extra-source').remove();
+    });
+
     // Load Config
     fetch('/api/sync/config')
         .then(res => res.json())
@@ -625,6 +699,7 @@ function initSyncSettings() {
             enabledToggle.checked = config.sync_enabled;
             autoSyncToggle.checked = config.auto_sync_enabled;
             contentSrcInput.value = config.content_src || '';
+            renderExtraSources(config.extra_sources);
             imagesSrcInput.value = config.images_src || '';
             if (baseUrlInput) baseUrlInput.value = config.base_url || '';
             intervalSelect.value = config.interval_minutes || 60;
@@ -748,6 +823,7 @@ function initSyncSettings() {
             sync_enabled: enabledToggle.checked,
             auto_sync_enabled: autoSyncToggle.checked,
             content_src: contentSrcInput.value,
+            extra_sources: collectExtraSources(),
             images_src: imagesSrcInput.value,
             base_url: baseUrlInput ? baseUrlInput.value.trim() : '',
             interval_minutes: parseInt(intervalSelect.value),
@@ -802,6 +878,7 @@ function initSyncSettings() {
             sync_enabled: false,
             auto_sync_enabled: false,
             content_src: "",
+            extra_sources: [],
             images_src: "",
             base_url: "",
             interval_minutes: 60,
@@ -818,6 +895,7 @@ function initSyncSettings() {
                     // UI側の入力値も初期化
                     autoSyncToggle.checked = false;
                     contentSrcInput.value = '';
+                    renderExtraSources([]);
                     imagesSrcInput.value = '';
                     if (baseUrlInput) baseUrlInput.value = '';
                     intervalSelect.value = 60;
@@ -843,7 +921,6 @@ function initSyncSettings() {
     const dirCurrentPathLabel = document.getElementById('dir-current-path');
     const dirSelectBtn = document.getElementById('select-dir-btn');
     const dirCloseBtn = document.getElementById('close-dir-browser-modal');
-    const browseBtns = document.querySelectorAll('.browser-dir-btn');
 
     let currentActiveInput = null;
     let selectedDirPath = null;
@@ -909,11 +986,12 @@ function initSyncSettings() {
         }
     }
 
-    browseBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            openDirBrowser(btn.dataset.target);
-        });
+    // 動的に足した行の「参照...」も効くよう、イベント委譲にする
+    wrapper.addEventListener('click', (e) => {
+        const btn = e.target.closest('.browser-dir-btn');
+        if (!btn) return;
+        e.preventDefault();
+        openDirBrowser(btn.dataset.target);
     });
 
     dirCloseBtn.onclick = () => dirModal.classList.remove('active');

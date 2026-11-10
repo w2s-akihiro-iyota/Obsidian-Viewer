@@ -10,7 +10,8 @@ import pytest
 
 from app import cache
 from app.core.markdown import heading_anchor
-from app.core.indexing import _build_link_maps, resolve_note_path
+from app.core.indexing import _build_link_maps
+from app.core.note_resolver import NoteResolver
 from app.services import images, wikilinks
 from app.services.content import render_markdown
 from app.services.publish_check import check_publish
@@ -42,7 +43,7 @@ def vault(tmp_path, monkeypatch):
 
     monkeypatch.setattr(wikilinks, "CONTENT_DIR", tmp_path)
     monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [{"path": r, "published": r in published} for r in notes])
-    monkeypatch.setattr(cache, "FILE_NAME_CACHE", {os.path.splitext(os.path.basename(r))[0]: r for r in notes})
+    monkeypatch.setattr(cache, "NOTE_RESOLVER", NoteResolver([(r, None) for r in notes]))
     monkeypatch.setattr(cache, "PATH_TO_SLUG", {r: r[:-3].replace("/", "/") for r in notes})
     monkeypatch.setattr(cache, "MEDIA_INDEX", None)
     return tmp_path
@@ -182,8 +183,8 @@ def test_索引が古くてもファイルが非公開なら外部向けに埋�
 
 def _add_note(vault, name, text):
     (vault / f"{name}.md").write_text(text, encoding="utf-8")
-    cache.FILE_NAME_CACHE[name] = f"{name}.md"
     cache.PATH_TO_SLUG[f"{name}.md"] = name
+    cache.NOTE_RESOLVER = NoteResolver([(p, None) for p in cache.PATH_TO_SLUG])
 
 
 def test_コードブロック内の見出し記号は節の区切りにしない(vault):
@@ -206,18 +207,17 @@ def test_見出しにリンクがあっても表示される文字でIDを作る
 # ---------- リンクの解決ルール（描画側とバックリンク側で共通） ----------
 
 def test_リンクの解決はファイル名かパス指定():
-    names = {"定例": "会議/定例.md"}
-    slugs = {"会議/定例.md": "x", "会議/別.md": "y"}
-    assert resolve_note_path("定例", names, slugs) == "会議/定例.md"
-    assert resolve_note_path("定例.md", names, slugs) == "会議/定例.md"
-    assert resolve_note_path("会議/別", names, slugs) == "会議/別.md"
-    assert resolve_note_path("無い", names, slugs) is None
+    resolver = NoteResolver([("会議/定例.md", None), ("会議/別.md", None)])
+    assert resolver.resolve("定例") == "会議/定例.md"
+    assert resolver.resolve("定例.md") == "会議/定例.md"
+    assert resolver.resolve("会議/別") == "会議/別.md"
+    assert resolver.resolve("無い") is None
 
 
 def test_バックリンクもパス指定と見出しつきリンクを数える(vault, monkeypatch):
     bodies = {"参照元.md": "[[会議/定例]] と [[段1#見出し]]"}
     files = [{"path": "参照元.md", "title": "参照元"}]
-    _, forward = _build_link_maps(files, bodies, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
+    _, forward = _build_link_maps(files, bodies, cache.NOTE_RESOLVER, dict(cache.PATH_TO_SLUG))
     assert set(forward["参照元.md"]) == {"会議/定例.md", "段1.md"}
 
 
@@ -262,17 +262,17 @@ def test_走査はコードブロックとインラインコードとコール�
 def test_コードの中のリンクはバックリンクにもフォワードリンクにも入らない(vault, monkeypatch):
     bodies = {"参照元.md": "```\n[[公開メモ]]\n```\n`[[段1]]`\n> ```\n> ![[段2]]\n> ```\n[[会議/定例]]\n"}
     files = [{"path": "参照元.md", "title": "参照元"}]
-    backlinks, forward = _build_link_maps(files, bodies, cache.FILE_NAME_CACHE, dict(cache.PATH_TO_SLUG))
+    backlinks, forward = _build_link_maps(files, bodies, cache.NOTE_RESOLVER, dict(cache.PATH_TO_SLUG))
     assert forward["参照元.md"] == ["会議/定例.md"]
     assert set(backlinks) == {"会議/定例.md"}
 
 
 def test_バックリンクは埋め込みも数え自己リンクと重複を除く(vault, monkeypatch):
     bodies = {"参照元.md": "![[公開メモ]] [[公開メモ|別名]] [[参照元]]"}
-    names = dict(cache.FILE_NAME_CACHE, 参照元="参照元.md")
+    resolver = NoteResolver([*[(p, None) for p in cache.PATH_TO_SLUG], ("参照元.md", None)])
     slugs = dict(cache.PATH_TO_SLUG, **{"参照元.md": "参照元"})
     files = [{"path": "参照元.md", "title": "参照元"}]
-    backlinks, forward = _build_link_maps(files, bodies, names, slugs)
+    backlinks, forward = _build_link_maps(files, bodies, resolver, slugs)
     assert forward["参照元.md"] == ["公開メモ.md"]
     assert backlinks["公開メモ.md"] == [{"title": "参照元", "path": "参照元.md", "slug": "参照元"}]
     assert "参照元.md" not in backlinks
@@ -316,3 +316,55 @@ def test_閉じないコードブロックの後ろのリンクは数えない(v
     html = render(src, published_only=True)
     assert "internal-link-broken" not in html and html.count('class="internal-link"') == 1
     assert check_publish("x.md", src, True).issue_count == 0
+
+
+# ---------- B-15: 表の中の [[ノート\|表示名]] ----------
+
+def test_別名の直前のバックスラッシュは名前に含めない():
+    link = next(wikilinks.iter_wikilinks(r"[[a\|b]]"))
+    assert (link.name, link.heading, link.alias) == ("a", "", "b")
+    link = next(wikilinks.iter_wikilinks(r"[[a#見出し\|b]]"))
+    assert (link.name, link.heading, link.alias) == ("a", "見出し", "b")
+    link = next(wikilinks.iter_wikilinks(r"![[x.png\|300]]"))
+    assert (link.name, link.alias) == ("x.png", "300")
+
+
+def test_別名の無い末尾のバックスラッシュはそのまま():
+    link = next(wikilinks.iter_wikilinks(r"[[a\]]"))
+    assert (link.name, link.alias) == ("a\\", None)
+
+
+def test_表の中のエスケープした縦棒でもリンクになり表が崩れない(vault):
+    html = render("| 列1 | 列2 |\n|---|---|\n| [[公開メモ" + "\\" + "|表示名]] | x |\n")
+    assert 'href="/view/公開メモ"' in html and ">表示名</a>" in html
+    assert "internal-link-broken" not in html
+    assert html.count("<td>") == 2
+
+
+# ---------- B-16: 同名ノートはリンク元から決める ----------
+
+def _add_in_folder(vault, path, text):
+    (vault / path).write_text(text, encoding="utf-8")
+    cache.PATH_TO_SLUG[path] = path[:-3]
+    cache.NOTE_RESOLVER = NoteResolver([(p, None) for p in cache.PATH_TO_SLUG])
+
+
+def test_同名ノートはリンク元と同じフォルダを優先して描画される(vault):
+    _add_note(vault, "同名", "ルートの同名\n")
+    _add_in_folder(vault, "会議/同名.md", "会議の同名\n")
+    assert 'href="/view/同名"' in render_markdown("[[同名]]", published_only=False)
+    assert 'href="/view/会議/同名"' in render_markdown("[[同名]]", published_only=False, source_path="会議/定例.md")
+    # 埋め込みの中では、埋め込んだノートがリンク元になる
+    _add_in_folder(vault, "会議/親.md", "[[同名]]\n")
+    html = render_markdown("![[会議/親]]", published_only=False, source_path="公開メモ.md")
+    assert 'href="/view/会議/同名"' in html
+
+
+def test_バックリンクも描画と同じ同名ノートを選ぶ(vault):
+    _add_note(vault, "同名", "x")
+    _add_in_folder(vault, "会議/同名.md", "y")
+    files = [{"path": "会議/定例.md", "title": "定例"}, {"path": "公開メモ.md", "title": "メモ"}]
+    bodies = {"会議/定例.md": "[[同名]]", "公開メモ.md": "[[同名]]"}
+    _, forward = _build_link_maps(files, bodies, cache.NOTE_RESOLVER, dict(cache.PATH_TO_SLUG))
+    assert forward["会議/定例.md"] == ["会議/同名.md"]
+    assert forward["公開メモ.md"] == ["同名.md"]

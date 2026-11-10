@@ -69,7 +69,7 @@ def media_site(tmp_path, monkeypatch):
     vault, media = tmp_path / "vault", tmp_path / "media"
     vault.mkdir()
     for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
-                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "FILE_NAME_CACHE", "BACKLINK_CACHE", "FORWARD_LINK_CACHE",
+                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE",
                  "SEARCH_INDEX", "SLUG_TO_PATH", "PATH_TO_SLUG"):
         monkeypatch.setattr(cache, name, getattr(cache, name))
     for module in (content_api, editor_api, indexing, wikilinks):

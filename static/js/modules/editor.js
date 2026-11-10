@@ -90,7 +90,7 @@ function initEditor() {
         fetch('/api/editor/preview', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content })
+            body: JSON.stringify({ content, path: editPath || "" })
         })
             .then(res => res.text())
             .then(html => {

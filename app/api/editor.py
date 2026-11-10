@@ -19,7 +19,7 @@ from app.services.content import render_markdown
 from app.services.note_editing import (
     NoteConflictError, NoteNotFoundError, NoteWriteError, VaultWriteError, load_note, save_note,
 )
-from app.services.sync import load_config
+from app.services.sync_config import load_config
 from app.utils.helpers import is_admin_request, admin_guard
 from app.utils.messages import get_error, get_system
 
@@ -125,7 +125,11 @@ async def editor_preview(request: Request):
     try:
         # 記事ページと同じ見た目にするため、frontmatter は除いて本文だけを描画する
         _, body = parse_frontmatter(content)
-        html = render_markdown(body, published_only=False)
+        # 編集中のノートのパスは、索引にあるものだけ使う（同名ノートのリンク先を本番表示と合わせるため）
+        source_path = data.get("path", "")
+        if not isinstance(source_path, str) or source_path not in cache.PATH_TO_SLUG:
+            source_path = ""
+        html = render_markdown(body, published_only=False, source_path=source_path)
     except Exception as e:
         logger.error("Preview render error: %s", e)
         html = f"<p style='color:#ff6b6b;'>レンダリングエラー: {e}</p>"
@@ -167,8 +171,8 @@ async def editor_save(request: Request):
     stem = Path(filename).stem
 
     # 既存ファイルの上書き禁止（サブディレクトリ含む再帰チェック）
-    # アプリ側: FILE_NAME_CACHEは全ディレクトリのstem→pathマップ
-    if stem in cache.FILE_NAME_CACHE:
+    # アプリ側: NOTE_RESOLVER は全ディレクトリのノートの表
+    if cache.NOTE_RESOLVER is not None and cache.NOTE_RESOLVER.has_stem(stem):
         return JSONResponse({"status": "error", "message": get_error("E204")}, status_code=409)
 
     # ホスト側Vault: rglobで再帰的に同名ファイルを探索

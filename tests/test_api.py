@@ -42,7 +42,7 @@ PUBLIC = "http://localhost:8000"
 @pytest.fixture
 def site(tmp_path, monkeypatch):
     for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
-                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "FILE_NAME_CACHE", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
+                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
                  "SLUG_TO_PATH", "PATH_TO_SLUG"):
         monkeypatch.setattr(cache, name, getattr(cache, name))
     for module in (content_api, editor_api, indexing, wikilinks):
@@ -249,14 +249,16 @@ def test_リンクの振り分けは1か所で決まる(check_site, monkeypatch,
 
 
 _CACHES_KEPT_BY_CHECK = ("GLOBAL_FILE_CACHE", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "MARKDOWN_CACHE",
-                         "FILE_NAME_CACHE", "PATH_TO_SLUG", "SLUG_TO_PATH")
+                         "PATH_TO_SLUG", "SLUG_TO_PATH")
 
 
 def test_公開チェックはキャッシュを書き換えない(check_site):
     # 要素の中身（各ノートの dict など）を書き換えても気づけるよう、深いコピーで比べる
     before = {name: copy.deepcopy(getattr(cache, name)) for name in _CACHES_KEPT_BY_CHECK}
+    resolver = cache.NOTE_RESOLVER
     check_publish("公開ページ.md", _body_of("公開ページ.md"), True)
     check_publish("公開ページ.md", _body_of("公開ページ.md"), False)
+    assert cache.NOTE_RESOLVER is resolver
     assert {name: getattr(cache, name) for name in _CACHES_KEPT_BY_CHECK} == before
 
 
@@ -1171,3 +1173,20 @@ def test_管理者の記事ページは描画キャッシュが効いていれ�
     assert md_opens == {}
     # 公開チェックの結果も OGP も、キャッシュから同じものを出す
     assert second.text == first.text
+
+
+# ---------- プレビューは編集中のノートをリンク元にする（B-16） ----------
+
+def test_プレビューは編集中のノートのパスをリンク元にする(site, monkeypatch):
+    from app.core.note_resolver import NoteResolver
+    monkeypatch.setattr(cache, "NOTE_RESOLVER", NoteResolver([("a/同名.md", None), ("b/同名.md", None), ("b/元.md", None)]))
+    monkeypatch.setattr(cache, "PATH_TO_SLUG", {"a/同名.md": "a/同名", "b/同名.md": "b/同名", "b/元.md": "b/元"})
+    client = TestClient(app, base_url=ADMIN)
+
+    def preview(**extra):
+        return client.post("/api/editor/preview", json={"content": "[[同名]]", **extra}).text
+
+    assert 'href="/view/b/同名"' in preview(path="b/元.md")
+    assert 'href="/view/a/同名"' in preview()
+    # 索引に無いパスは無視する
+    assert 'href="/view/a/同名"' in preview(path="b/無い.md")

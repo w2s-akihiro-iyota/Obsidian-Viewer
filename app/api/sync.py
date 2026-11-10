@@ -13,15 +13,23 @@ from app.config import SYNC_HISTORY_FILE_LIMIT, SYNC_HISTORY_LIMIT
 from app.core.indexing import refresh_global_caches
 from app.core.sync_history import get_history
 from app.events import config_updated_event
-from app.models.sync import SyncConfig
+from app.core.content_sources import extra_source_problems, normalize_exclude
+from app.models.sync import ExtraSource, SyncConfig
 from app.services.sync import (
-    SyncInProgressError, confirm_pending_deletions, get_pending_deletions, load_config, pending_deletion_count,
-    perform_sync, save_config,
+    SyncInProgressError, confirm_pending_deletions, get_pending_deletions, pending_deletion_count, perform_sync,
 )
+from app.services.sync_config import load_config, save_config
 from app.utils.helpers import admin_guard
 from app.utils.messages import get_error, get_system, get_warning
 
 router = APIRouter()
+
+
+def _validate_extra_sources(extra_sources: list[dict], content_src: str, errors: dict) -> None:
+    """追加の同期元の問題を errors に写す（規則は content_sources。キーは extra-src-{行} / extra-dest-{行}）"""
+    rows = [ExtraSource(src=str(e.get('src') or ''), dest=str(e.get('dest') or '')) for e in extra_sources]
+    for i, field, message in extra_source_problems(rows, content_src, check_filesystem=True):
+        errors.setdefault(f'extra-{field}-{i}', message)
 
 
 @router.post("/api/sync/save")
@@ -60,6 +68,14 @@ async def api_save_sync_settings(request: Request):
         base_url = data.get('base_url', '').strip()
         if not base_url:
             warnings['base-url'] = get_warning("W002")
+
+    # 追加の同期元（exclude は空要素・重複を除いて保存する）
+    extra_sources = [e for e in (data.get('extra_sources') or []) if isinstance(e, dict)]
+    for extra in extra_sources:
+        extra['exclude'] = list(normalize_exclude(extra.get('exclude') or []))
+    data['extra_sources'] = extra_sources
+    if sync_enabled:
+        _validate_extra_sources(extra_sources, data.get('content_src', ''), errors)
 
     if errors:
         return JSONResponse({

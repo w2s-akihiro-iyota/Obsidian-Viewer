@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP
 from app import cache
+from app.core.note_resolver import NoteEntry, NoteResolver
 from app.utils.slug import slugify_path
 
 logger = logging.getLogger("app.indexing")
@@ -253,20 +254,7 @@ def get_file_tree(directory: Path, relative_to: Path, published_only: bool = Fal
     return build_file_tree(get_all_files(directory, relative_to), published_only)
 
 
-def resolve_note_path(name: str, file_name_map: dict, path_to_slug: dict) -> str | None:
-    """
-    [[name]] の name からノートの相対パスを引く（描画側とバックリンク作成側で共通のルール）
-
-    ファイル名（拡張子なし）で引き、無ければパス指定（[[フォルダ/ノート]]）として引く。末尾の .md は無視する。
-    """
-    lookup = name[:-3] if name.endswith(".md") else name
-    path = file_name_map.get(lookup)
-    if path is None and f"{lookup}.md" in path_to_slug:
-        path = f"{lookup}.md"
-    return path
-
-
-def _build_link_maps(files: list[dict], bodies: dict[str, str], file_name_map: dict, path_to_slug: dict,
+def _build_link_maps(files: list[dict], bodies: dict[str, str], resolver: NoteResolver, path_to_slug: dict,
                      media_index=None) -> tuple[dict, dict]:
     """
     全ファイルの[[wikilink]]を解析し、(バックリンク, フォワードリンク) のマップを作る
@@ -274,6 +262,7 @@ def _build_link_maps(files: list[dict], bodies: dict[str, str], file_name_map: d
     bodies は {ノートの相対パス: 本文}（scan_notes で読んだもの。ここではファイルを読み直さない）。
     media_index は添付の索引（作り直しの途中の新しいもの。見つからない画像とリンク切れを分けるのに使う）。
     リンクの拾い方（コードの中は数えない・見出しと別名の分け方）は描画と同じ iter_wikilinks を使う。
+    同名ノートがあるときは、描画と同じく、そのノート自身をリンク元として解決する。
     埋め込み（![[ノート]]）もリンクとして数える。
     あわせて、存在しないノートへのリンク先の名前を各ノートの "missing_links" に入れる
     （ダッシュボードの「リンク切れ」用。判定は公開チェックと同じ is_missing_note）。
@@ -297,10 +286,10 @@ def _build_link_maps(files: list[dict], bodies: dict[str, str], file_name_map: d
         for link in iter_wikilinks(body):
             if not link.name:   # [[#見出し]] は同じノート内
                 continue
-            target_path = resolve_note_path(link.name, file_name_map, path_to_slug)
+            target_path = resolver.resolve(link.name, source_path)
             if target_path is None:
                 # 引けなかったリンクだけ、描画と同じ振り分けでリンク切れか（見つからない画像などでないか）を見る
-                target = classify_link(link, None, file_name_map, path_to_slug, media_index)
+                target = classify_link(link, None, resolver, media_index, source_path)
                 if is_missing_note(link, target):
                     missing_links.setdefault(link.name)
                 continue
@@ -346,6 +335,16 @@ def refresh_global_caches() -> None:
             raise
 
 
+def _resolver_entries(files: list[dict]) -> list[NoteEntry]:
+    """NoteResolver に渡す (ビューアのパス, Vault のルートからのパス) の列"""
+    # 設定を読む処理が循環しないようここで読み込む
+    from app.core.content_sources import ContentSources
+    from app.services.sync_config import load_config
+
+    sources = ContentSources.from_config(load_config())
+    return [NoteEntry(f["path"], sources.vault_path(f["path"])) for f in files]
+
+
 def _refresh_global_caches() -> None:
     # 循環しないようここで読み込む（どちらも wikilinks 経由で indexing を読み込む）
     from app.services.images import build_media_index
@@ -363,13 +362,8 @@ def _refresh_global_caches() -> None:
     # 添付の索引（名前 → MEDIA_DIR からの相対パス）
     media_index = build_media_index(MEDIA_DIR)
 
-    # ファイル名(stem) → パスの逆引きマッピングを構築
-    file_name_map = {}
-    for f in files:
-        stem = Path(f["name"]).stem
-        # 同名ファイルが複数ある場合は最初のものを優先（Obsidianの最短パス解決に近い動作）
-        if stem not in file_name_map:
-            file_name_map[stem] = f["path"]
+    # [[名前]] からノートを引く表。Vault のパス（[[notes/…]] の解決用）は同期の設定の対応表から取る
+    resolver = NoteResolver(_resolver_entries(files))
 
     # スラッグマッピングの構築
     slug_to_path = {}
@@ -396,7 +390,7 @@ def _refresh_global_caches() -> None:
     _apply_slug_to_tree(tree_public)
 
     # バックリンクキャッシュの構築
-    backlinks, forward = _build_link_maps(files, bodies, file_name_map, path_to_slug, media_index)
+    backlinks, forward = _build_link_maps(files, bodies, resolver, path_to_slug, media_index)
 
     # 外部の人に見せてよい添付（公開ノートが参照するもの）
     public_media = collect_public_media(
@@ -414,7 +408,7 @@ def _refresh_global_caches() -> None:
     cache.GLOBAL_FILE_CACHE = files
     cache.GLOBAL_FILE_TREE_CACHE = tree
     cache.GLOBAL_FILE_TREE_CACHE_PUBLIC = tree_public
-    cache.FILE_NAME_CACHE = file_name_map
+    cache.NOTE_RESOLVER = resolver
     cache.SLUG_TO_PATH = slug_to_path
     cache.PATH_TO_SLUG = path_to_slug
     cache.BACKLINK_CACHE = backlinks

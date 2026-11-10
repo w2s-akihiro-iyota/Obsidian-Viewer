@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import cache
+from app.core.note_resolver import NoteResolver
 from app.api import content as content_api
 from app.api import editor as editor_api
 from app.main import app
@@ -29,7 +30,7 @@ def content_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(cache, "SLUG_TO_PATH", {})
     monkeypatch.setattr(cache, "PATH_TO_SLUG", {})
     monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [])
-    monkeypatch.setattr(cache, "FILE_NAME_CACHE", {})
+    monkeypatch.setattr(cache, "NOTE_RESOLVER", NoteResolver([]))
     return content
 
 
