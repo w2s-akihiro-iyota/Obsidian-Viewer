@@ -2,15 +2,13 @@
 
 frontmatter の値を、テンプレートがそのまま並べられる読み取り専用の形に直す。
 HTML はここでは組み立てない（エスケープは Jinja の自動エスケープに任せる）。
-文字列の中の [[...]] は、本文と同じ判定（classify_link）・同じ href（note_href）でリンクにする。
+文字列の中の [[...]] は、本文と同じ判定（classify_link）・同じ表示名と href（link_display）でリンクにする。
 """
 from dataclasses import dataclass
 from datetime import date, datetime
-from enum import Enum, auto
 
 from app.core.note_resolver import NoteResolver
-from app.services.wikilinks import LinkKind, WikiLink, classify_link, note_href, split_wikilinks
-from app.core.markdown import heading_anchor
+from app.services.wikilinks import MAX_FRONTMATTER_DEPTH, WikiLink, classify_link, link_display, split_wikilinks
 
 # プロパティに出さない frontmatter のキー（title は見出し、tags はタグ、publish は公開状態として別に出ている）
 HIDDEN_KEYS = frozenset({"title", "tags", "publish"})
@@ -36,35 +34,38 @@ class PropertyLink:
 Fragments = tuple[PropertyText | PropertyLink, ...]
 
 
-class PropertyKind(Enum):
-    """値の見せ方"""
-    TEXT = auto()     # 1 つの値（文字列・数値・日付・はい/いいえ）
-    CHIPS = auto()    # リストの札
-    NESTED = auto()   # 辞書（キーと値を 2 列で）
+@dataclass(frozen=True)
+class TextProperty:
+    """1 つの値（文字列・数値・日付・はい/いいえ）"""
+    key: str
+    parts: Fragments
 
 
 @dataclass(frozen=True)
-class Property:
-    """プロパティ 1 項目。kind に応じて parts / chips / nested のどれか 1 つだけが入る"""
+class ChipsProperty:
+    """リストの札。1 要素が 1 つの Fragments"""
     key: str
-    kind: PropertyKind
-    parts: Fragments = ()
-    chips: tuple[Fragments, ...] = ()
-    nested: tuple[tuple[str, Fragments], ...] = ()
+    chips: tuple[Fragments, ...]
+
+
+@dataclass(frozen=True)
+class NestedProperty:
+    """辞書。1 段だけ (キー, 値) の組で出す"""
+    key: str
+    nested: tuple[tuple[str, Fragments], ...]
+
+
+Property = TextProperty | ChipsProperty | NestedProperty
+
+# 循環・深すぎる入れ子・同じ入れ物の 2 回目の代わりに出す文字
+_ELLIPSIS = "…"
 
 
 def _link_fragment(link: WikiLink, resolver: NoteResolver | None, source_path: str) -> PropertyText | PropertyLink:
-    """[[...]] 1 つを、描画（process_wikilinks）と同じ振り分けでリンク・リンク切れ・見出しリンクにする"""
-    name, heading = link.name, link.heading
+    """[[...]] 1 つを、本文と同じ振り分け・表示名（link_display）で部品にする"""
     target = classify_link(link, None, resolver, source_path=source_path)
-    if target.kind is LinkKind.IMAGE:
-        return PropertyLink(name, target.image_url)
-    if target.kind is LinkKind.HEADING:
-        return PropertyLink(link.alias or heading, f"#{heading_anchor(heading)}")
-    title = link.alias or (f"{name} > {heading}" if heading else name)
-    if target.kind is not LinkKind.NOTE:   # 存在しないノート・見つからない画像
-        return PropertyLink(title, None)
-    return PropertyLink(title, note_href(target.path, heading))
+    display = link_display(link, target)
+    return PropertyLink(display.text, display.href)
 
 
 def _fragments(text: str, resolver: NoteResolver | None, source_path: str) -> Fragments:
@@ -88,37 +89,53 @@ def _scalar_text(value) -> str:
     return str(value).strip()
 
 
-def _flat_text(value) -> str:
-    """入れ子の深いリスト・辞書を 1 つの文字列にする（「さらに深いものは文字列にする」）"""
+def _flat_parts(value, seen: set[int], depth: int) -> list[str]:
+    """
+    入れ子の深いリスト・辞書を、空でない文字列の並びにする（「さらに深いものは文字列にする」）
+
+    同じ入れ物（id）は 1 回しか見ず、深さも MAX_FRONTMATTER_DEPTH までにする（YAML のアンカーの循環・膨張対策）。
+    見ない箇所は「…」にする。
+    """
+    if not isinstance(value, (dict, list, tuple)):
+        text = _scalar_text(value)
+        return [text] if text else []
+    if id(value) in seen or depth > MAX_FRONTMATTER_DEPTH:
+        return [_ELLIPSIS]
+    seen.add(id(value))
     if isinstance(value, dict):
-        pairs = (f"{k}: {_flat_text(v)}" for k, v in value.items())
-        return ", ".join(p for p in pairs if not p.endswith(": "))
-    if isinstance(value, (list, tuple)):
-        return ", ".join(t for t in (_flat_text(v) for v in value) if t)
-    return _scalar_text(value)
+        parts = []
+        for k, v in value.items():
+            inner = _flat_parts(v, seen, depth + 1)
+            if inner:
+                parts.append(f"{k}: {', '.join(inner)}")
+        return parts
+    return [t for v in value for t in _flat_parts(v, seen, depth + 1)]
 
 
-def _value_fragments(value, resolver: NoteResolver | None, source_path: str) -> Fragments:
+def _value_fragments(value, resolver: NoteResolver | None, source_path: str, seen: set[int], depth: int) -> Fragments:
     """リストの要素・辞書の値 1 つの部品。文字列はリンクを分け、リストや辞書は文字列にする。空なら空のタプル"""
     if isinstance(value, str):
         return _fragments(value.strip(), resolver, source_path) if value.strip() else ()
-    text = _flat_text(value)
+    text = ", ".join(_flat_parts(value, seen, depth))
     return (PropertyText(text),) if text else ()
 
 
 def _build_property(key: str, value, resolver: NoteResolver | None, source_path: str) -> Property | None:
     """項目 1 つを作る。値が空なら None（出さない）"""
+    seen: set[int] = set()
+    if isinstance(value, (dict, list, tuple)):
+        seen.add(id(value))   # 自分自身を指す要素は「…」にする
     if isinstance(value, dict):
         nested = tuple(
             (str(k), frags) for k, v in value.items()
-            if (frags := _value_fragments(v, resolver, source_path))
+            if (frags := _value_fragments(v, resolver, source_path, seen, 1))
         )
-        return Property(key, PropertyKind.NESTED, nested=nested) if nested else None
+        return NestedProperty(key, nested) if nested else None
     if isinstance(value, (list, tuple)):
-        chips = tuple(frags for v in value if (frags := _value_fragments(v, resolver, source_path)))
-        return Property(key, PropertyKind.CHIPS, chips=chips) if chips else None
-    parts = _value_fragments(value, resolver, source_path)
-    return Property(key, PropertyKind.TEXT, parts=parts) if parts else None
+        chips = tuple(frags for v in value if (frags := _value_fragments(v, resolver, source_path, seen, 1)))
+        return ChipsProperty(key, chips) if chips else None
+    parts = _value_fragments(value, resolver, source_path, seen, 0)
+    return TextProperty(key, parts) if parts else None
 
 
 def build_properties(frontmatter, source_path: str, resolver: NoteResolver | None = None) -> tuple[Property, ...]:

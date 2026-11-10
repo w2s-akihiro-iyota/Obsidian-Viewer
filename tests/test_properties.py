@@ -8,8 +8,8 @@ import pytest
 
 from app import cache
 from app.core.note_resolver import NoteResolver
-from app.core.properties import (HIDDEN_KEYS, Property, PropertyKind, PropertyLink, PropertyText,
-                                 build_properties)
+from app.core.properties import (HIDDEN_KEYS, ChipsProperty, NestedProperty, PropertyLink, PropertyText,
+                                 TextProperty, build_properties)
 
 NOTES = ["wiki/概念.md", "wiki/別名.md", "メモ.md"]
 
@@ -55,7 +55,7 @@ def test_値の型ごとの見せ方(vault):
     assert props["yes"].parts == (PropertyText("はい"),)
     assert props["n"].parts == (PropertyText("3"),)
     assert props["f"].parts == (PropertyText("1.5"),)
-    assert props["s"].kind is PropertyKind.TEXT
+    assert isinstance(props["s"], TextProperty)
 
 
 def test_HTMLは組み立てずそのまま持つ(vault):
@@ -78,7 +78,7 @@ def test_文字列の中のリンクはリンクとリンク切れと見出し�
 
 def test_リストは札になりリンクの要素もリンクになる(vault):
     p = build({"related": ["[[概念]]", "[[ない]]", "文字", None, "", 5]})[0]
-    assert p.kind is PropertyKind.CHIPS
+    assert isinstance(p, ChipsProperty)
     assert p.chips == (
         (PropertyLink("概念", "/view/wiki/概念"),), (PropertyLink("ない", None),),
         (PropertyText("文字"),), (PropertyText("5"),),
@@ -88,7 +88,7 @@ def test_リストは札になりリンクの要素もリンクになる(vault):
 def test_辞書は1段だけキーと値で出しさらに深いものは文字列にする(vault):
     p = build({"captured_from": {"cwd": "C:/x", "repo": None, "deep": {"a": 1, "b": [1, 2]}, "dt": date(2026, 1, 2),
                                   "link": "[[概念]]"}})[0]
-    assert p.kind is PropertyKind.NESTED
+    assert isinstance(p, NestedProperty)
     assert p.nested == (
         ("cwd", (PropertyText("C:/x"),)),
         ("deep", (PropertyText("a: 1, b: 1, 2"),)),
@@ -112,6 +112,28 @@ def test_frontmatterが辞書でなければ空(vault):
 
 def test_モデルは読み取り専用(vault):
     p = build({"a": "x"})[0]
-    assert isinstance(p, Property)
     with pytest.raises(Exception):
         p.key = "b"
+
+
+def test_YAMLのアンカーで循環する値でも落ちず循環の箇所は省略する(vault):
+    import yaml
+    fm = yaml.safe_load(chr(10).join(["a: &x [1, *x]", "b: &y {k: v, self: *y}", "c: [[q, 1]]"]))
+    props = by_key(build(fm))
+    assert props["a"].chips == ((PropertyText("1"),), (PropertyText("…"),))
+    assert props["b"].nested == (("k", (PropertyText("v"),)), ("self", (PropertyText("…"),)))
+
+
+def test_アンカーで膨らむ値でも一定時間で終わる(vault):
+    import time
+    import yaml
+    from app.services import wikilinks
+    lines = ["l0: &l0 ['[[a]]', '[[b]]', '[[c]]', '[[d]]', '[[e]]', '[[f]]']"]
+    for i in range(1, 12):
+        lines.append(f"l{i}: &l{i} [*l{i - 1}, *l{i - 1}, *l{i - 1}, *l{i - 1}, *l{i - 1}, *l{i - 1}]")
+    fm = yaml.safe_load(chr(10).join(lines))
+    start = time.perf_counter()
+    links = list(wikilinks.iter_frontmatter_wikilinks(fm))
+    build(fm)
+    assert time.perf_counter() - start < 0.5
+    assert len(links) == 6

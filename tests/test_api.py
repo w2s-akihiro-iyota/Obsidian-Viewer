@@ -1362,3 +1362,12 @@ def test_frontmatterのリンクはリンク元に数える(prop_site):
     html = _get(TestClient(app, base_url=ADMIN), "子.md").text
     # 親の本文の埋め込みと、プロパティ.md の related の 2 件
     assert "リンク元 2" in html and "プロパティ" in html.split('id="backlinks"')[1]
+
+
+def test_循環するfrontmatterの記事も200で開き索引も作れる(site):
+    text = chr(10).join(["---", "a: &x [1, *x]", "b: &y {k: '[[子]]', self: *y}", "---", "本文", ""])
+    (site / "循環.md").write_text(text, encoding="utf-8")
+    indexing.refresh_global_caches()
+    res = _get(TestClient(app, base_url=ADMIN), "循環.md")
+    assert res.status_code == 200 and "…" in _properties_html(res.text)
+    assert "循環.md" in [bl["path"] for bl in cache.BACKLINK_CACHE["子.md"]]

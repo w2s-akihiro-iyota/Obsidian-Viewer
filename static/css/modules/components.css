@@ -9,7 +9,11 @@
 .table-wrapper {
     position: relative;
     margin: 20px 0;
-    /* 長い URL などで表が広くなったら、ページ全体でなく枠の中で横にスクロールする（D-13） */
+}
+
+/* 長い URL などで表が広くなったら、ページ全体でなく枠の中で横にスクロールする（D-13）。
+   コピーボタン（.table-copy-container）は外側の .table-wrapper に置き、スクロールの枠に入れない */
+.table-scroll {
     overflow-x: auto;
 }
 

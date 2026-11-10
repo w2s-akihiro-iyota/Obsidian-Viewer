@@ -311,14 +311,15 @@
             {% for prop in properties %}
             <dt>{{ prop.key }}</dt>
             <dd>
-                {%- if prop.kind.name == "CHIPS" -%}
+                {#- 種類は dataclass のフィールドで分ける（chips は ChipsProperty、nested は NestedProperty にだけある） -#}
+                {%- if prop.chips is defined -%}
                 <span class="note-property-chips">
                     {%- for chip in prop.chips -%}
                     {%- if chip|length == 1 and chip[0].href is defined -%}{{ property_parts(chip) }}
                     {%- else -%}<span class="note-property-chip">{{ property_parts(chip) }}</span>{%- endif -%}
                     {%- endfor -%}
                 </span>
-                {%- elif prop.kind.name == "NESTED" -%}
+                {%- elif prop.nested is defined -%}
                 <span class="note-property-nested">
                     {%- for nkey, nparts in prop.nested -%}
                     <span>{{ nkey }}</span><span>{{ property_parts(nparts) }}</span>
