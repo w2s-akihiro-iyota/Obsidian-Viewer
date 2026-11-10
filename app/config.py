@@ -97,3 +97,6 @@ MAX_EMBED_DEPTH = 2
 for d in [CONTENT_DIR, STATICS_DIR, APP_IMAGES_DIR, MEDIA_DIR, TEMPLATES_DIR]:
     if not d.exists():
         d.mkdir(parents=True)
+
+# 索引の作り直しで、ノートの stat・読み込みを重ねるスレッド数（バインドマウント越しは待ち時間が支配的なので、CPU 数より多くてよい）
+SCAN_WORKERS = 8

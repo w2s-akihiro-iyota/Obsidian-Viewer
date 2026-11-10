@@ -1157,10 +1157,19 @@ def md_opens(monkeypatch):
     return counts
 
 
-def test_索引の作り直しは各ノートを1回だけ読む(check_site, md_opens):
+def test_索引の作り直しは各ノートを1回だけ読む(check_site, md_opens, monkeypatch):
     notes = sorted(p.name for p in check_site.rglob("*.md"))
+    monkeypatch.setattr(cache, "NOTE_RECORDS", {})   # 前回の記録なし（初回）
     indexing.refresh_global_caches()
     assert md_opens == {name: 1 for name in notes}
+
+
+def test_変わっていないノートは2回目の作り直しで読み直さない(check_site, md_opens, monkeypatch):
+    monkeypatch.setattr(cache, "NOTE_RECORDS", {})
+    indexing.refresh_global_caches()
+    md_opens.clear()
+    indexing.refresh_global_caches()
+    assert md_opens == {}
 
 
 def test_管理者の記事ページは描画キャッシュが効いていれば本文を読み直さない(check_site, md_opens):
@@ -1190,3 +1199,97 @@ def test_プレビューは編集中のノートのパスをリンク元にす�
     assert 'href="/view/a/同名"' in preview()
     # 索引に無いパスは無視する
     assert 'href="/view/a/同名"' in preview(path="b/無い.md")
+
+
+# ---------- 既存ノートの保存は作り直しを待たない（Q-20） ----------
+
+def test_既存ノートの保存は索引の作り直しを待たずに返し本文はすぐ新しくなる(site, monkeypatch):
+    import threading
+    from app.services import note_editing
+
+    monkeypatch.setattr(note_editing, "CONTENT_DIR", site)
+    monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig())
+    client = TestClient(app, base_url=ADMIN)
+    assert "子の本文v1" in _view(client, "子.md")
+
+    release, started = threading.Event(), threading.Event()
+    calls = []
+
+    def slow_refresh():
+        calls.append(1)
+        started.set()
+        release.wait(10)
+
+    monkeypatch.setattr(indexing, "refresh_global_caches", slow_refresh)
+    old = (site / "子.md").read_text(encoding="utf-8")
+    digest = client.get("/api/editor/note", params={"path": "子.md"}).json()["hash"]
+    res = client.post("/api/editor/update", json={
+        "path": "子.md", "content": old.replace("v1", "v2"), "base_hash": digest})
+    try:
+        assert res.status_code == 200 and res.json()["status"] == "success"   # 作り直しが終わっていなくても返る
+        assert started.wait(5)
+        assert "子の本文v2" in _view(client, "子.md")    # 記事の描画は mtime で判定するので、索引が古くても新しい
+    finally:
+        release.set()
+        assert indexing.background_refresher.wait_idle(10)
+    assert len(calls) == 1
+
+
+def test_新しいノートの作成は作り直しを待ってから返す(site, monkeypatch):
+    monkeypatch.setattr(editor_api, "load_config", lambda: SyncConfig())
+    client = TestClient(app, base_url=ADMIN)
+    res = client.post("/api/editor/save", json={"filename": "新規", "content": "新規の本文"})
+    assert res.status_code == 200
+    assert "新規.md" in cache.PATH_TO_SLUG      # 返った時点で索引に載っている
+
+
+# ---------- 公開 → 非公開の保存だけは作り直しを待つ（外部に数秒でも見せない） ----------
+
+def _save_note_as(client, content):
+    old = (client.get("/api/editor/note", params={"path": "子.md"}).json())
+    return client.post("/api/editor/update", json={"path": "子.md", "content": content, "base_hash": old["hash"]})
+
+
+def _external_search(word):
+    return [r["path"] for r in cache.SEARCH_INDEX.search(word, False, cache.GLOBAL_FILE_CACHE)]
+
+
+@pytest.fixture
+def editable_site(site, monkeypatch):
+    from app.services import note_editing
+    monkeypatch.setattr(note_editing, "CONTENT_DIR", site)
+    monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig())
+    (site / "別.md").write_text("---\npublish: true\n---\n他の本文\n", encoding="utf-8")
+    indexing.refresh_global_caches()
+    return site
+
+
+def test_公開から非公開に変える保存は応答の時点で外部の検索に出ない(editable_site):
+    client = TestClient(app, base_url=ADMIN)
+    assert "子.md" in _external_search("子の本文v1")
+    res = _save_note_as(client, "---\npublish: false\n---\n子の本文v1\n")
+    assert res.status_code == 200
+    assert "子.md" not in _external_search("子の本文v1")     # 作り直しを待ってから返したので、もう外部に出ない
+    assert "子.md" not in cache.PUBLIC_MEDIA_PATHS and not any(
+        f["path"] == "子.md" and f["published"] for f in cache.GLOBAL_FILE_CACHE)
+
+
+@pytest.mark.parametrize("before,after", [
+    ("---\npublish: false\n---\n子の本文v1\n", "---\npublish: true\n---\n子の本文v1\n"),   # 非公開 → 公開
+    ("---\npublish: true\n---\n子の本文v1\n", "---\npublish: true\n---\n子の本文v2\n"),   # 本文だけの変更
+    ("---\npublish: false\n---\n子の本文v1\n", "---\npublish: false\n---\n子の本文v2\n"),  # 非公開のまま
+])
+def test_公開から非公開以外の保存は作り直しを待たない(editable_site, monkeypatch, before, after):
+    import threading
+    client = TestClient(app, base_url=ADMIN)
+    (editable_site / "子.md").write_text(before, encoding="utf-8")
+    indexing.refresh_global_caches()
+    release, started = threading.Event(), threading.Event()
+    monkeypatch.setattr(indexing, "refresh_global_caches", lambda: (started.set(), release.wait(10)))
+    try:
+        res = _save_note_as(client, after)
+        assert res.status_code == 200
+        assert started.wait(5)       # 作り直しは走っているが、応答は待たずに返っている
+    finally:
+        release.set()
+        assert indexing.background_refresher.wait_idle(10)

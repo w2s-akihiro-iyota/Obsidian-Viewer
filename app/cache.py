@@ -11,3 +11,4 @@ FORWARD_LINK_CACHE = {}    # {source_path: [target_path]} リンク先マップ
 SEARCH_INDEX = None        # SearchIndex instance (TF-IDF全文検索)
 SLUG_TO_PATH = {}          # {slug: relative_path} スラッグ→実パス
 PATH_TO_SLUG = {}          # {relative_path: slug} 実パス→スラッグ
+NOTE_RECORDS = {}         # {relative_path: NoteRecord} 前回の読み込み結果（索引の作り直しで、変わっていないノートを読み直さないための保持。差し替えのときだけ更新）
