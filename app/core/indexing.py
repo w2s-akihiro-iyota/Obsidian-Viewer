@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from pathlib import Path
 import math
 import re
@@ -14,6 +16,12 @@ from app.core.note_resolver import NoteEntry, NoteResolver
 from app.utils.slug import slugify_path
 
 logger = logging.getLogger("app.indexing")
+
+# ノートの stat・読み込みを重ねるスレッド数（待ち時間が支配的なので、CPU 数より多くてよい）
+_SCAN_WORKERS = 8
+
+# スラッグ化は日本語→ローマ字変換が重い（710 件で約 1.5 秒）。同じパスは同じ結果なので覚えておく（Q-20）
+_slugify_path_cached = lru_cache(maxsize=None)(slugify_path)
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     frontmatter = {}
@@ -126,6 +134,9 @@ class NoteRecord:
     mtime: datetime
     frontmatter: dict
     body: str               # frontmatter を除いた本文
+    # 読み直すかどうかの判定用（Q-20）。この 2 つと相対パスが前回と同じなら、前回の記録をそのまま使う
+    mtime_ns: int = 0
+    size: int = 0
 
     @property
     def title(self) -> str:
@@ -137,22 +148,48 @@ class NoteRecord:
         return is_published(self.frontmatter)
 
 
-def scan_notes(directory: Path, relative_to: Path) -> list[NoteRecord]:
-    """directory 配下の .md を 1 回ずつ読み、frontmatter と本文に分けて返す"""
-    notes = []
+def scan_notes(directory: Path, relative_to: Path,
+               previous: dict[str, NoteRecord] | None = None) -> list[NoteRecord]:
+    """
+    directory 配下の .md を 1 回ずつ読み、frontmatter と本文に分けて返す
+
+    previous（{相対パス: 前回の NoteRecord}）を渡すと、(相対パス, 更新日時, サイズ) が前回と同じノートは
+    ファイルを開かず前回の記録をそのまま返す（Q-20。バインドマウント越しの読み込みと YAML の解析を省く）。
+    stat は 1 件 1 回だけ。消えたノートは previous にあっても結果に入らない。
+    """
+    previous = previous or {}
+    found: list[tuple[Path, str, str]] = []   # (フルパス, 相対パス, ファイル名)
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if not file.endswith('.md'):
-                continue
-            full_path = Path(root) / file
-            rel_path = full_path.relative_to(relative_to)
-            mtime = datetime.fromtimestamp(full_path.stat().st_mtime, JST)
-            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-            frontmatter, body = parse_frontmatter(content)
-            notes.append(NoteRecord(rel_path=rel_path.as_posix(), name=file, mtime=mtime,
-                                    frontmatter=frontmatter, body=body))
-    return notes
+            if file.endswith('.md'):
+                full_path = Path(root) / file
+                found.append((full_path, full_path.relative_to(relative_to).as_posix(), file))
+
+    def stat_note(item):
+        return os.stat(item[0])
+
+    def read_note(item, st):
+        full_path, rel_posix, file = item
+        mtime = datetime.fromtimestamp(st.st_mtime, JST)
+        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        frontmatter, body = parse_frontmatter(content)
+        return NoteRecord(rel_path=rel_posix, name=file, mtime=mtime, frontmatter=frontmatter, body=body,
+                          mtime_ns=st.st_mtime_ns, size=st.st_size)
+
+    # stat も読み込みも、バインドマウント越しだと 1 回数 ms かかる待ち時間なので、スレッドで重ねる
+    with ThreadPoolExecutor(max_workers=_SCAN_WORKERS) as pool:
+        stats = list(pool.map(stat_note, found))
+        reused: dict[int, NoteRecord] = {}
+        to_read = []
+        for i, (item, st) in enumerate(zip(found, stats)):
+            last = previous.get(item[1])
+            if last is not None and last.mtime_ns == st.st_mtime_ns and last.size == st.st_size:
+                reused[i] = last
+            else:
+                to_read.append(i)
+        read = dict(zip(to_read, pool.map(lambda i: read_note(found[i], stats[i]), to_read)))
+    return [reused[i] if i in reused else read[i] for i in range(len(found))]
 
 
 def _file_entry(note: NoteRecord) -> dict:
@@ -335,6 +372,49 @@ def refresh_global_caches() -> None:
             raise
 
 
+# バックグラウンドの作り直し（Q-20）。同時に 1 本だけ走らせ、走っている間に来た依頼は
+# 終わったあとの 1 回にまとめる（何回保存しても、保存が落ち着いたあとに 1 回で済む）
+_bg_lock = threading.Lock()
+_bg_running = False
+_bg_pending = False
+_bg_idle = threading.Event()
+_bg_idle.set()
+
+
+def schedule_background_refresh() -> None:
+    """索引の作り直しをバックグラウンドで頼む（待たずに戻る。失敗はログに残す）"""
+    global _bg_running, _bg_pending
+    with _bg_lock:
+        if _bg_running:
+            _bg_pending = True
+            return
+        _bg_running = True
+        _bg_idle.clear()
+    threading.Thread(target=_background_refresh_loop, name="reindex", daemon=True).start()
+
+
+def _background_refresh_loop() -> None:
+    global _bg_running, _bg_pending
+    while True:
+        try:
+            refresh_global_caches()
+        except Exception:
+            # refresh_global_caches が許可リストを空にしたうえで再送出する。ここでは握りつぶさず記録だけする
+            logger.exception("Background cache refresh failed.")
+        with _bg_lock:
+            if _bg_pending:
+                _bg_pending = False
+                continue
+            _bg_running = False
+            _bg_idle.set()
+            return
+
+
+def wait_for_background_refresh(timeout: float | None = None) -> bool:
+    """バックグラウンドの作り直しが全部終わるまで待つ（テスト用。終わっていれば True）"""
+    return _bg_idle.wait(timeout)
+
+
 def _resolver_entries(files: list[dict]) -> list[NoteEntry]:
     """NoteResolver に渡す (ビューアのパス, Vault のルートからのパス) の列"""
     # 設定を読む処理が循環しないようここで読み込む
@@ -351,7 +431,8 @@ def _refresh_global_caches() -> None:
     from app.services.media_access import collect_public_media
 
     # 各ノートを 1 回だけ読み、一覧・ツリー・リンクの表・添付の許可リストを全部ここから作る（Q-1）
-    notes = scan_notes(CONTENT_DIR, CONTENT_DIR)
+    # 前回から変わっていないノートは読み直さない（Q-20）。前回の記録は、最後に差し替えるときにだけ更新する
+    notes = scan_notes(CONTENT_DIR, CONTENT_DIR, previous=cache.NOTE_RECORDS)
     files = build_file_list(notes)
     # 本文は作り直しの間だけ使う（キャッシュには載せない）
     bodies = {n.rel_path: n.body for n in notes}
@@ -369,7 +450,7 @@ def _refresh_global_caches() -> None:
     slug_to_path = {}
     path_to_slug = {}
     for f in files:
-        base_slug = slugify_path(f["path"])
+        base_slug = _slugify_path_cached(f["path"])
         slug = base_slug
         counter = 2
         while slug in slug_to_path:
@@ -399,7 +480,8 @@ def _refresh_global_caches() -> None:
     # TF-IDF検索インデックスの構築
     from app.core.search import SearchIndex
     idx = SearchIndex()
-    idx.build(files)
+    # ノートごとのトークンも、変わっていないノートは前回のものを使い回す（転置インデックスの組み立てだけやり直す）
+    idx.build(files, previous=cache.SEARCH_INDEX)
 
     # ここで一気に差し替える
     cache.MEDIA_INDEX = media_index
@@ -414,6 +496,7 @@ def _refresh_global_caches() -> None:
     cache.BACKLINK_CACHE = backlinks
     cache.FORWARD_LINK_CACHE = forward
     cache.SEARCH_INDEX = idx
+    cache.NOTE_RECORDS = {n.rel_path: n for n in notes}
 
     logger.info("Global cache refreshed: %d files indexed, %d media (%d public).",
                 len(files), len(media_index.paths), len(public_media))

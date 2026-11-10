@@ -4,7 +4,6 @@ import re
 import logging
 import unicodedata
 from dataclasses import dataclass, field
-from itertools import groupby
 from typing import Callable
 
 from app import cache as app_cache
@@ -29,33 +28,58 @@ def _is_cjk(ch: str) -> bool:
     return False
 
 
-def _char_kind(ch: str) -> str | None:
-    """トークン化での文字の種類（cjk: 2 文字ずつ切る / word: 単語で切る / None: 区切り）"""
-    if _is_cjk(ch):
-        return "cjk"
-    if ch.isalnum() or ch == "_":
-        return "word"
-    return None
-
-
 def normalize_text(text: str) -> str:
     """検索用に正規化する（NFKC で全角英数字・半角カナをそろえ、小文字にする）"""
     return unicodedata.normalize("NFKC", text).lower()
 
 
+# CJK の連続 / それ以外の英数字・_ の連続。\w は str.isalnum() または _ と同じ範囲なので、
+# 以前の 1 文字ずつの判定（_char_kind）と同じ切り方になる。正規表現にして Python のループを避ける（Q-20）
+_CJK_CLASS = "぀-ゟ゠-ヿ一-鿿㐀-䶿豈-﫿"
+_TOKEN_RE = re.compile(rf"(?P<cjk>[{_CJK_CLASS}]+)|(?P<word>[^\W{_CJK_CLASS}]+)")
+
+
 def tokenize(text: str) -> list[str]:
     """テキストをトークン化。英数字など=単語分割、CJK=バイグラム"""
     tokens = []
-    for kind, chars in groupby(normalize_text(text), key=_char_kind):
-        if kind == "word":
-            tokens.append("".join(chars))
-        elif kind == "cjk":
-            cjk_str = "".join(chars)
+    for m in _TOKEN_RE.finditer(normalize_text(text)):
+        if m.lastgroup == "word":
+            tokens.append(m.group())
+        else:
+            cjk_str = m.group()
             if len(cjk_str) == 1:
                 tokens.append(cjk_str)
             else:
-                tokens.extend(cjk_str[j:j + 2] for j in range(len(cjk_str) - 1))
+                tokens.extend([cjk_str[j:j + 2] for j in range(len(cjk_str) - 1)])
     return tokens
+
+
+# 検索の対象にする frontmatter のキー（F-13）と、その重み。タイトル（3.0）より下、本文（1.0）より上
+META_KEYS = ("keywords", "summary", "description", "aliases")
+META_WEIGHT = 2.0
+
+
+def _value_text(value) -> str:
+    """frontmatter の値 1 つを文字列にする（配列は空白でつなぐ。数値などは文字列にする。無いものは空）"""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple, set)):
+        return " ".join(t for t in (_value_text(v) for v in value) if t)
+    return str(value).strip()
+
+
+def frontmatter_search_text(frontmatter) -> str:
+    """frontmatter の keywords・summary・description・aliases を 1 つの文字列にする（無い・壊れた frontmatter は空）"""
+    if not isinstance(frontmatter, dict):
+        return ""
+    return " ".join(t for t in (_value_text(frontmatter.get(k)) for k in META_KEYS) if t)
+
+
+def _snippet_fallback(frontmatter) -> str:
+    """本文に当たりが無いときの抜粋（summary、無ければ description）"""
+    if not isinstance(frontmatter, dict):
+        return ""
+    return _value_text(frontmatter.get("summary")) or _value_text(frontmatter.get("description"))
 
 
 def tokenize_query(query: str) -> list[str]:
@@ -115,54 +139,65 @@ class SearchIndex:
         self.title_index: dict[str, dict[str, list[int]]] = {}
         # パス用インデックス
         self.path_index: dict[str, dict[str, list[int]]] = {}
+        # メタ情報（frontmatter の keywords など）用インデックス
+        self.meta_index: dict[str, dict[str, list[int]]] = {}
         # 総文書数
         self.doc_count: int = 0
+        # {path: ((本文, タイトル, メタ情報), 本文のトークン数, 4 つの索引ごとの {term: [positions]})}。次の build で使い回す
+        self._doc_tokens: dict[str, tuple] = {}
 
-    def build(self, file_cache: list[dict]) -> None:
-        """GLOBAL_FILE_CACHEからインデックスを構築"""
+    def build(self, file_cache: list[dict], previous: "SearchIndex | None" = None) -> None:
+        """
+        GLOBAL_FILE_CACHEからインデックスを構築
+
+        previous（前回の索引）を渡すと、本文・タイトル・パス・メタ情報が前回と同じノートはトークンを使い回し、
+        転置インデックスの組み立てだけをやり直す（Q-20）。
+        """
         self.inverted_index = {}
         self.doc_lengths = {}
         self.title_index = {}
         self.path_index = {}
+        self.meta_index = {}
         self.doc_count = len(file_cache)
+        self._doc_tokens = {}
+        last_tokens = previous._doc_tokens if previous is not None else {}
 
         for f in file_cache:
             path = f["path"]
             body_text = f.get("body_text", "")
             title = f.get("title", "")
+            meta = frontmatter_search_text(f.get("frontmatter"))
 
-            # 本文インデックス
-            body_tokens = tokenize(body_text)
-            self.doc_lengths[path] = len(body_tokens)
-            for pos, token in enumerate(body_tokens):
-                if token not in self.inverted_index:
-                    self.inverted_index[token] = {}
-                if path not in self.inverted_index[token]:
-                    self.inverted_index[token][path] = []
-                self.inverted_index[token][path].append(pos)
+            key = (body_text, title, meta)
+            cached = last_tokens.get(path)
+            if cached is not None and cached[0] == key:
+                length, postings = cached[1], cached[2]
+            else:
+                body_tokens = tokenize(body_text)
+                length = len(body_tokens)
+                postings = (self._group_positions(body_tokens), self._group_positions(tokenize(title)),
+                            self._group_positions(tokenize(path)), self._group_positions(tokenize(meta)))
+            self._doc_tokens[path] = (key, length, postings)
 
-            # タイトルインデックス
-            title_tokens = tokenize(title)
-            for pos, token in enumerate(title_tokens):
-                if token not in self.title_index:
-                    self.title_index[token] = {}
-                if path not in self.title_index[token]:
-                    self.title_index[token][path] = []
-                self.title_index[token][path].append(pos)
-
-            # パスインデックス
-            path_tokens = tokenize(path)
-            for pos, token in enumerate(path_tokens):
-                if token not in self.path_index:
-                    self.path_index[token] = {}
-                if path not in self.path_index[token]:
-                    self.path_index[token][path] = []
-                self.path_index[token][path].append(pos)
+            self.doc_lengths[path] = length
+            # 本文・タイトル・パス・メタ情報（keywords・summary・description・aliases）の各インデックスへ
+            for index, doc_postings in zip(
+                    (self.inverted_index, self.title_index, self.path_index, self.meta_index), postings):
+                for token, positions in doc_postings.items():
+                    index.setdefault(token, {})[path] = positions
 
         logger.info(
             "検索インデックス構築完了: %d文書, %d語彙",
             self.doc_count, len(self.inverted_index)
         )
+
+    @staticmethod
+    def _group_positions(tokens: list[str]) -> dict[str, list[int]]:
+        """トークン列を {term: [positions]} にまとめる（ノートごと。変わらなければ次の build で使い回す）"""
+        grouped: dict[str, list[int]] = {}
+        for pos, token in enumerate(tokens):
+            grouped.setdefault(token, []).append(pos)
+        return grouped
 
     def _score_document(self, path: str, query_tokens: list[str]) -> float:
         """TF-IDF計算（対数TF + log IDF）。タイトル・パスにボーナス加算"""
@@ -188,6 +223,15 @@ class SearchIndex:
                 idf = math.log((self.doc_count + 1) / (df + 1))
                 score += log_tf * idf * 3.0
 
+            # メタ情報（keywords など）は本文より上・タイトルより下の重み
+            meta_postings = self.meta_index.get(token, {})
+            if path in meta_postings:
+                tf = len(meta_postings[path])
+                log_tf = 1 + math.log(tf) if tf > 0 else 0
+                df = len(meta_postings)
+                idf = math.log((self.doc_count + 1) / (df + 1))
+                score += log_tf * idf * META_WEIGHT
+
             # パスボーナス（1.5倍重み）
             path_postings = self.path_index.get(token, {})
             if path in path_postings:
@@ -200,8 +244,8 @@ class SearchIndex:
         return score
 
     def _generate_snippet(self, body_text: str, query_tokens: set[str],
-                          max_len: int = 120) -> str:
-        """マッチ箇所前後のスニペットを生成"""
+                          max_len: int = 120, fallback: str = "") -> str:
+        """マッチ箇所前後のスニペットを生成（本文に当たりが無く fallback があれば、その先頭を返す）"""
         # 検索語と同じく正規化して探す。長さが変わる文字（㍿ など）があるときは位置がずれるので小文字にするだけにする
         text_lower = normalize_text(body_text)
         if len(text_lower) != len(body_text):
@@ -220,6 +264,9 @@ class SearchIndex:
             if best_density >= len(query_tokens):
                 break
 
+        if best_pos < 0 and fallback:
+            # 本文に当たりが無い（keywords などで当たった）ときは、要約を見せる
+            return fallback[:max_len] + ("..." if len(fallback) > max_len else "")
         if best_pos < 0:
             # フォールバック: 先頭を返す
             return body_text[:max_len] + ("..." if len(body_text) > max_len else "")
@@ -248,6 +295,8 @@ class SearchIndex:
                 candidate_paths.update(self.title_index[token].keys())
             if token in self.path_index:
                 candidate_paths.update(self.path_index[token].keys())
+            if token in self.meta_index:
+                candidate_paths.update(self.meta_index[token].keys())
 
         # 公開フィルタ用のルックアップ
         published_set = None
@@ -280,7 +329,8 @@ class SearchIndex:
                 continue
 
             snippet = self._generate_snippet(
-                f.get("body_text", ""), query_token_set
+                f.get("body_text", ""), query_token_set,
+                fallback=_snippet_fallback(f.get("frontmatter"))
             )
 
             results.append({
