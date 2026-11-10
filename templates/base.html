@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261110">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261111">
     <script>
         // Apply theme immediately to prevent flash
         (function () {
@@ -32,6 +32,12 @@
                 document.documentElement.classList.add('readable-width');
             }
             document.documentElement.classList.add('font-' + (localStorage.getItem('fontSize') || 'medium'));
+
+            // 記事のプロパティを閉じて覚えているときも、描画前に閉じた見た目にする（開いてから閉じるちらつきを防ぐ）。
+            // 外すのと、開閉の保存は main.js
+            if (localStorage.getItem('propertiesOpen') === 'false') {
+                document.documentElement.classList.add('properties-collapsed');
+            }
         })();
     </script>
     <!-- 外部ライブラリはすべて static/js/vendor/ に版を固定して置き、CDN には頼らない（Q-3） -->
@@ -70,7 +76,7 @@
     <script src="/static/js/modules/history.js?v=20261011" defer></script>
     <script src="/static/js/modules/editor.js?v=20261110" defer></script>
     <script src="/static/js/modules/shortcuts.js?v=20261016" defer></script>
-    <script src="/static/js/modules/main.js?v=20261029" defer></script>
+    <script src="/static/js/modules/main.js?v=20261111" defer></script>
     {% block head %}{% endblock %}
 </head>
 

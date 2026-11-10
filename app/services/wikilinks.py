@@ -170,6 +170,51 @@ def iter_wikilinks(content: str) -> Iterator[WikiLink]:
                 yield WikiLink.from_match(m)
 
 
+# frontmatter の入れ子をたどる深さの上限（YAML のアンカーで自分自身を指す壊れた値でも止まるため）
+_MAX_FRONTMATTER_DEPTH = 10
+
+
+def iter_frontmatter_wikilinks(value, _depth: int = 0) -> Iterator[WikiLink]:
+    """
+    frontmatter の値（文字列・リスト・辞書。入れ子も）の中の [[...]] / ![[...]] を、出てくる順に返す（F-12）
+
+    索引のリンク元・グラフ・リンク切れ（_build_link_maps）と、記事ページのプロパティの表示が、同じこの関数で拾う。
+    frontmatter にコードブロックの記法は無いので、本文と違って文字列をそのまま探す。
+    """
+    if _depth > _MAX_FRONTMATTER_DEPTH:
+        return
+    if isinstance(value, str):
+        for part in split_wikilinks(value):
+            if isinstance(part, WikiLink):
+                yield part
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from iter_frontmatter_wikilinks(item, _depth + 1)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from iter_frontmatter_wikilinks(item, _depth + 1)
+
+
+def split_wikilinks(text: str) -> Iterator[str | WikiLink]:
+    """文字列を「ただの文字」と「リンク」の部品に分けて順に返す（つなげると元の文字列に戻る。空の文字は返さない）"""
+    pos = 0
+    for m in _WIKILINK_RE.finditer(text):
+        if m.start() > pos:
+            yield text[pos:m.start()]
+        yield WikiLink.from_match(m)
+        pos = m.end()
+    if pos < len(text):
+        yield text[pos:]
+
+
+def note_href(path: str, heading: str = "") -> str:
+    """ノート（相対パス）へのリンクの href。見出しがあればそこへ飛ぶ。描画とプロパティで共通"""
+    href = f"/view/{cache.PATH_TO_SLUG.get(path, path)}"
+    if heading:
+        href += f"#{heading_anchor(heading)}"
+    return href
+
+
 def iter_searchable_text(content: str) -> Iterator[str]:
     """コードブロックとインラインコードを除いた本文を、出てくる順に切れ目ごとに返す（添付の参照を拾う用）"""
     for text, searchable in _link_segments(content, marker=''):
@@ -366,9 +411,7 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
             return f'<span class="internal-link-broken">{title}</span>'
 
         path = target.path
-        href = f"/view/{cache.PATH_TO_SLUG.get(path, path)}"
-        if heading:
-            href += f"#{heading_anchor(heading)}"
+        href = note_href(path, heading)
 
         # 埋め込み。ループ・深すぎる入れ子はリンクにとどめる
         if link.is_embed and path not in ctx.stack and ctx.depth < MAX_EMBED_DEPTH:

@@ -2,7 +2,24 @@
 // main.js - Orchestrates module initialization
 // ==============================================
 
+// 記事のプロパティ（<details open>）の開閉を localStorage の propertiesOpen に覚える。
+// 閉じて覚えているときは、base.html が描画前に付けた properties-collapsed を、実際に閉じるのと入れ替える
+function initNoteProperties() {
+    const details = document.getElementById('note-properties');
+    if (!details) return;
+    try {
+        if (localStorage.getItem('propertiesOpen') === 'false') details.open = false;
+    } catch (e) { /* 保存できない環境では開いたまま */ }
+    document.documentElement.classList.remove('properties-collapsed');
+    details.addEventListener('toggle', () => {
+        try { localStorage.setItem('propertiesOpen', String(details.open)); } catch (e) { /* 覚えられなくても動く */ }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    // await の前に実行する（メッセージの取得を待たずに、閉じた状態へ切り替える）
+    initNoteProperties();
+
     // Load messages first
     await loadMessages();
 

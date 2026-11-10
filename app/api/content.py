@@ -20,6 +20,7 @@ from app.api import templates
 from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT
 from app.core.graph import build_link_graph, neighbor_count
 from app.core.indexing import parse_frontmatter, is_published
+from app.core.properties import build_properties
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query
 from app.services.content import render_markdown
@@ -309,9 +310,13 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
     link_graph = build_link_graph(cache.GLOBAL_FILE_CACHE, cache.FORWARD_LINK_CACHE, published_only)
     local_graph_count = neighbor_count(link_graph, file_path)
 
+    # プロパティ（frontmatter の項目）は管理者の通常表示にだけ出す。外部の人と外部表示には計算もしない
+    properties = build_properties(frontmatter, file_path) if is_localhost and not public_view else ()
+
     return templates.TemplateResponse(request=request, name="view.html", context={
         "request": request,
         "title": title,
+        "properties": properties,
         "content": _mark_duplicate_title(html, title),
         "file_path": file_path,
         "slug": slug,

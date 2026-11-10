@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
+import itertools
 import math
 import re
 import yaml
@@ -299,11 +300,13 @@ def _build_link_maps(files: list[dict], bodies: dict[str, str], resolver: NoteRe
     リンクの拾い方（コードの中は数えない・見出しと別名の分け方）は描画と同じ iter_wikilinks を使う。
     同名ノートがあるときは、描画と同じく、そのノート自身をリンク元として解決する。
     埋め込み（![[ノート]]）もリンクとして数える。
+    frontmatter の値（文字列・リストの要素・辞書の値。入れ子も）の中のリンクも、本文のリンクと同じく数える（F-12）。
+    公開チェックには数えない（frontmatter は外部の人に見えないため）。
     あわせて、存在しないノートへのリンク先の名前を各ノートの "missing_links" に入れる
     （ダッシュボードの「リンク切れ」用。判定は公開チェックと同じ is_missing_note）。
     """
     # wikilinks は indexing を読み込むため、循環しないようここで読み込む
-    from app.services.wikilinks import classify_link, is_missing_note, iter_wikilinks
+    from app.services.wikilinks import classify_link, is_missing_note, iter_frontmatter_wikilinks, iter_wikilinks
 
     backlinks = {}   # {target_path: [{title, path}]}
     forward = {}     # {source_path: [target_path]}
@@ -318,7 +321,8 @@ def _build_link_maps(files: list[dict], bodies: dict[str, str], resolver: NoteRe
         resolved_targets = []
         missing_links: dict[str, None] = {}   # 出てきた順を保ったまま重複を除く
 
-        for link in iter_wikilinks(body):
+        # 本文に加えて、frontmatter の値の中のリンク（related・sources など）も同じく数える（F-12）
+        for link in itertools.chain(iter_wikilinks(body), iter_frontmatter_wikilinks(f.get("frontmatter"))):
             if not link.name:   # [[#見出し]] は同じノート内
                 continue
             target_path = resolver.resolve(link.name, source_path)

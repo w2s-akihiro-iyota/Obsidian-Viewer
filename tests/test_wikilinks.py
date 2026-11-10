@@ -278,6 +278,35 @@ def test_バックリンクは埋め込みも数え自己リンクと重複を�
     assert "参照元.md" not in backlinks
 
 
+# ---------- frontmatter のリンク（F-12） ----------
+
+def test_frontmatterの値からリンクを入れ子も含めて拾う():
+    value = {"related": ["[[a]]", "[[b|別名]]", None], "sources": "![[c#見出し]] と [[d]]", "n": 1,
+             "from": {"x": "[[e]]", "deep": {"y": ["[[f]]"]}}}
+    assert [(l.name, l.heading, l.alias, l.is_embed) for l in wikilinks.iter_frontmatter_wikilinks(value)] == [
+        ("a", "", None, False), ("b", "", "別名", False), ("c", "見出し", None, True), ("d", "", None, False),
+        ("e", "", None, False), ("f", "", None, False)]
+    assert list(wikilinks.iter_frontmatter_wikilinks(None)) == []
+
+
+def test_文字列を文字とリンクに分けるとつなげて元に戻る():
+    text = "前[[a|b]]中[[c]]"
+    parts = list(wikilinks.split_wikilinks(text))
+    assert parts[0] == "前" and parts[2] == "中" and [type(p) for p in parts[1::2]] == [wikilinks.WikiLink] * 2
+    assert list(wikilinks.split_wikilinks("")) == []
+
+
+def test_frontmatterのリンクもリンク元とフォワードリンクとリンク切れに数える(vault):
+    files = [{"path": "参照元.md", "title": "参照元", "frontmatter": {
+        "related": ["[[公開メモ]]", "[[ない]]"], "sources": "[[会議/定例]] と [[参照元]]"}}]
+    bodies = {"参照元.md": "本文 [[段1]]"}
+    resolver = NoteResolver([*[(p, None) for p in cache.PATH_TO_SLUG], ("参照元.md", None)])
+    backlinks, forward = _build_link_maps(files, bodies, resolver, dict(cache.PATH_TO_SLUG, **{"参照元.md": "参照元"}))
+    assert set(forward["参照元.md"]) == {"段1.md", "公開メモ.md", "会議/定例.md"}
+    assert {"公開メモ.md", "会議/定例.md", "段1.md"} == set(backlinks)
+    assert files[0]["missing_links"] == ["ない"]
+
+
 # ---------- リンクの振り分け（classify_link）と走査の境界 ----------
 
 def _published_paths():

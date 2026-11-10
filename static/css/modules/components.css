@@ -9,6 +9,8 @@
 .table-wrapper {
     position: relative;
     margin: 20px 0;
+    /* 長い URL などで表が広くなったら、ページ全体でなく枠の中で横にスクロールする（D-13） */
+    overflow-x: auto;
 }
 
 .table-copy-container {
