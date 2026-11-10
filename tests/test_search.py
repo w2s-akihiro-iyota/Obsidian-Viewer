@@ -5,9 +5,12 @@
 - 英数字（アクセント付きの文字も含む）と _ は単語で切って小文字にする
 - 日本語（ひらがな・カタカナ・漢字）は 2 文字ずつずらして切る（1 文字だけならその 1 文字）
 """
+import unicodedata
+from itertools import groupby
+
 import pytest
 
-from app.core.search import SearchIndex, _is_cjk, tokenize, tokenize_query
+from app.core.search import META_WEIGHT, SearchIndex, _is_cjk, frontmatter_search_text, tokenize, tokenize_query
 
 
 @pytest.mark.parametrize("ch", ["あ", "ア", "ー", "漢", "㐀", "豈"])
@@ -84,10 +87,6 @@ def test_全角と半角のどちらで探しても当たる(query):
 
 # ---------- tokenize の高速化（Q-20）：切り方は変えない ----------
 
-import unicodedata
-from itertools import groupby
-
-
 def _reference_tokenize(text: str) -> list[str]:
     """Q-20 前の tokenize（1 文字ずつ種類を判定する実装）。正規表現版と出力が同じであることの基準"""
     def kind(ch):
@@ -135,9 +134,6 @@ def test_tokenizeはランダムな文字列でもQ20前の実装と同じ():
 
 
 # ---------- frontmatter でも当たる（F-13） ----------
-
-from app.core.search import META_WEIGHT, frontmatter_search_text
-
 
 def _entry(path, title="", body="", **frontmatter):
     return {"path": path, "title": title or path, "body_text": body, "published": True,

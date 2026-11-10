@@ -57,6 +57,8 @@ def tokenize(text: str) -> list[str]:
 # 検索の対象にする frontmatter のキー（F-13）と、その重み。タイトル（3.0）より下、本文（1.0）より上
 META_KEYS = ("keywords", "summary", "description", "aliases")
 META_WEIGHT = 2.0
+TITLE_WEIGHT = 3.0
+PATH_WEIGHT = 1.5
 
 
 def _value_text(value) -> str:
@@ -199,48 +201,25 @@ class SearchIndex:
             grouped.setdefault(token, []).append(pos)
         return grouped
 
+    def _field_score(self, index: dict[str, dict[str, list[int]]], token: str, path: str, weight: float) -> float:
+        """1 つの索引（本文・タイトル・メタ・パス）での、token の TF-IDF スコア × 重み"""
+        postings = index.get(token)
+        if not postings or path not in postings:
+            return 0.0
+        tf = len(postings[path])
+        log_tf = 1 + math.log(tf) if tf > 0 else 0
+        idf = math.log((self.doc_count + 1) / (len(postings) + 1))
+        return log_tf * idf * weight
+
     def _score_document(self, path: str, query_tokens: list[str]) -> float:
-        """TF-IDF計算（対数TF + log IDF）。タイトル・パスにボーナス加算"""
+        """TF-IDF計算（対数TF + log IDF）。タイトル・メタ情報・パスにボーナス加算"""
         score = 0.0
-        doc_len = self.doc_lengths.get(path, 1)
-
         for token in query_tokens:
-            # 本文スコア
-            postings = self.inverted_index.get(token, {})
-            if path in postings:
-                tf = len(postings[path])
-                log_tf = 1 + math.log(tf) if tf > 0 else 0
-                df = len(postings)
-                idf = math.log((self.doc_count + 1) / (df + 1))
-                score += log_tf * idf
-
-            # タイトルボーナス（3倍重み）
-            title_postings = self.title_index.get(token, {})
-            if path in title_postings:
-                tf = len(title_postings[path])
-                log_tf = 1 + math.log(tf) if tf > 0 else 0
-                df = len(title_postings)
-                idf = math.log((self.doc_count + 1) / (df + 1))
-                score += log_tf * idf * 3.0
-
+            score += self._field_score(self.inverted_index, token, path, 1.0)
+            score += self._field_score(self.title_index, token, path, TITLE_WEIGHT)
             # メタ情報（keywords など）は本文より上・タイトルより下の重み
-            meta_postings = self.meta_index.get(token, {})
-            if path in meta_postings:
-                tf = len(meta_postings[path])
-                log_tf = 1 + math.log(tf) if tf > 0 else 0
-                df = len(meta_postings)
-                idf = math.log((self.doc_count + 1) / (df + 1))
-                score += log_tf * idf * META_WEIGHT
-
-            # パスボーナス（1.5倍重み）
-            path_postings = self.path_index.get(token, {})
-            if path in path_postings:
-                tf = len(path_postings[path])
-                log_tf = 1 + math.log(tf) if tf > 0 else 0
-                df = len(path_postings)
-                idf = math.log((self.doc_count + 1) / (df + 1))
-                score += log_tf * idf * 1.5
-
+            score += self._field_score(self.meta_index, token, path, META_WEIGHT)
+            score += self._field_score(self.path_index, token, path, PATH_WEIGHT)
         return score
 
     def _generate_snippet(self, body_text: str, query_tokens: set[str],

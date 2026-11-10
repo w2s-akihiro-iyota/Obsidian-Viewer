@@ -14,7 +14,7 @@ from app.api import templates
 logger = logging.getLogger("app.editor")
 from app import cache
 from app.config import CONTENT_DIR
-from app.core.indexing import parse_frontmatter, refresh_global_caches, schedule_background_refresh
+from app.core.indexing import is_published, parse_frontmatter, refresh_global_caches, schedule_background_refresh
 from app.services.content import render_markdown
 from app.services.note_editing import (
     NoteConflictError, NoteNotFoundError, NoteWriteError, VaultWriteError, load_note, save_note,
@@ -75,6 +75,9 @@ async def editor_update_note(request: Request):
     base_hash = data.get("base_hash", "")
     force = data.get("force") is True
 
+    # 保存前に公開だったか（公開 → 非公開の保存だけは、作り直しを待つ必要がある）
+    was_published = any(f.get("path") == path and f.get("published") for f in cache.GLOBAL_FILE_CACHE)
+
     try:
         result = save_note(path, content, base_hash, force=force)
     except NoteNotFoundError:
@@ -94,10 +97,18 @@ async def editor_update_note(request: Request):
         return JSONResponse({"status": "error", "message": get_error("E208")}, status_code=500)
 
     logger.info("ノートを更新: %s (Vault=%s, ビューア=%s)", path, result.host_saved, result.app_saved)
-    # 全体の作り直しは重いので待たずに返し、バックグラウンドで行う（何回保存してもまとめて 1 回）
-    # ファイルは保存済みで、記事ページの本文は mtime で判定するためすぐ新しくなる。
-    # 検索・バックリンク・一覧は作り直しが終わるまで数秒だけ古い。失敗はログに残る（次の保存・同期で戻る）
-    schedule_background_refresh()
+    if was_published and not is_published(parse_frontmatter(content)[0]):
+        # 公開 → 非公開にした保存は、外部向けの検索・一覧・ツリー・添付の許可リストから外れるまで待ってから返す。
+        # 数秒でも非公開にしたノートが外部に見え続けないため。ファイルは保存済みなので、失敗しても保存の成功として返す
+        # （失敗時は refresh_global_caches が添付の許可リストを空にする。次の保存・同期で戻る）
+        try:
+            await run_in_threadpool(refresh_global_caches)
+        except Exception as e:
+            logger.warning("保存後のキャッシュ再構築に失敗: %s", e, exc_info=True)
+    else:
+        # 全体の作り直しは重いので待たずに返し、バックグラウンドで行う（何回保存してもまとめて 1 回）
+        # 記事ページの本文は mtime で判定するためすぐ新しくなる。検索・バックリンク・一覧は数秒だけ古い
+        schedule_background_refresh()
 
     return {
         "status": "success",

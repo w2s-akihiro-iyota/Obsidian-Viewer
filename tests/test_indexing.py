@@ -5,7 +5,9 @@
 - scan_notes: 更新日時は JST（コンテナは UTC。B-9）
 """
 import os
+import threading
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
@@ -106,10 +108,6 @@ def test_索引の作り直しは同期元の対応表からVaultのパスを渡
 
 
 # ---------- 変わっていないノートは読み直さない（Q-20） ----------
-
-import threading
-from pathlib import Path
-
 
 def _write(path, text, ts=None):
     path.write_text(text, encoding="utf-8")
@@ -268,7 +266,7 @@ def test_走っている間に何度頼んでも終わったあとに1回だけ�
     for _ in range(5):
         indexing.schedule_background_refresh()
     release.set()
-    assert indexing.wait_for_background_refresh(5)
+    assert indexing.background_refresher.wait_idle(5)
     assert len(calls) == 2
 
 
@@ -285,8 +283,8 @@ def test_バックグラウンドの作り直しが失敗してもログに残�
     monkeypatch.setattr(indexing, "refresh_global_caches", fake_refresh)
     with caplog.at_level("ERROR", logger="app.indexing"):
         indexing.schedule_background_refresh()
-        assert indexing.wait_for_background_refresh(5)
+        assert indexing.background_refresher.wait_idle(5)
     assert any(r.levelname == "ERROR" for r in caplog.records)
     indexing.schedule_background_refresh()
-    assert indexing.wait_for_background_refresh(5)
+    assert indexing.background_refresher.wait_idle(5)
     assert len(calls) == 2

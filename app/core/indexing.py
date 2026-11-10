@@ -10,15 +10,13 @@ import threading
 
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP
+from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP, SCAN_WORKERS
 from app import cache
+from app.core.background_refresh import BackgroundRefresher
 from app.core.note_resolver import NoteEntry, NoteResolver
 from app.utils.slug import slugify_path
 
 logger = logging.getLogger("app.indexing")
-
-# ノートの stat・読み込みを重ねるスレッド数（待ち時間が支配的なので、CPU 数より多くてよい）
-_SCAN_WORKERS = 8
 
 # スラッグ化は日本語→ローマ字変換が重い（710 件で約 1.5 秒）。同じパスは同じ結果なので覚えておく（Q-20）
 _slugify_path_cached = lru_cache(maxsize=None)(slugify_path)
@@ -178,7 +176,7 @@ def scan_notes(directory: Path, relative_to: Path,
                           mtime_ns=st.st_mtime_ns, size=st.st_size)
 
     # stat も読み込みも、バインドマウント越しだと 1 回数 ms かかる待ち時間なので、スレッドで重ねる
-    with ThreadPoolExecutor(max_workers=_SCAN_WORKERS) as pool:
+    with ThreadPoolExecutor(max_workers=SCAN_WORKERS) as pool:
         stats = list(pool.map(stat_note, found))
         reused: dict[int, NoteRecord] = {}
         to_read = []
@@ -372,47 +370,14 @@ def refresh_global_caches() -> None:
             raise
 
 
-# バックグラウンドの作り直し（Q-20）。同時に 1 本だけ走らせ、走っている間に来た依頼は
-# 終わったあとの 1 回にまとめる（何回保存しても、保存が落ち着いたあとに 1 回で済む）
-_bg_lock = threading.Lock()
-_bg_running = False
-_bg_pending = False
-_bg_idle = threading.Event()
-_bg_idle.set()
+# バックグラウンドの作り直し（Q-20）。同時に 1 本で、走っている間の依頼は終わったあとの 1 回にまとめる。
+# refresh_global_caches は失敗すると許可リストを空にして再送出するので、失敗は BackgroundRefresher がログに残す
+background_refresher = BackgroundRefresher(lambda: refresh_global_caches(), name="reindex")
 
 
 def schedule_background_refresh() -> None:
-    """索引の作り直しをバックグラウンドで頼む（待たずに戻る。失敗はログに残す）"""
-    global _bg_running, _bg_pending
-    with _bg_lock:
-        if _bg_running:
-            _bg_pending = True
-            return
-        _bg_running = True
-        _bg_idle.clear()
-    threading.Thread(target=_background_refresh_loop, name="reindex", daemon=True).start()
-
-
-def _background_refresh_loop() -> None:
-    global _bg_running, _bg_pending
-    while True:
-        try:
-            refresh_global_caches()
-        except Exception:
-            # refresh_global_caches が許可リストを空にしたうえで再送出する。ここでは握りつぶさず記録だけする
-            logger.exception("Background cache refresh failed.")
-        with _bg_lock:
-            if _bg_pending:
-                _bg_pending = False
-                continue
-            _bg_running = False
-            _bg_idle.set()
-            return
-
-
-def wait_for_background_refresh(timeout: float | None = None) -> bool:
-    """バックグラウンドの作り直しが全部終わるまで待つ（テスト用。終わっていれば True）"""
-    return _bg_idle.wait(timeout)
+    """索引の作り直しをバックグラウンドで頼む（待たずに戻る）"""
+    background_refresher.request()
 
 
 def _resolver_entries(files: list[dict]) -> list[NoteEntry]:
