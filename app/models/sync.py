@@ -1,5 +1,12 @@
 from pydantic import BaseModel
 
+class ExtraSource(BaseModel):
+    """追加の同期元 1 つ。src をビューアの content/<dest>/ に置く（例: Vault 直下の llm-wiki）"""
+    src: str = ""
+    dest: str = ""
+    exclude: list[str] = []   # 同期元からのパス。ここから下は運ばない
+
+
 class SyncConfig(BaseModel):
     sync_enabled: bool = False
     auto_sync_enabled: bool = False
@@ -8,6 +15,7 @@ class SyncConfig(BaseModel):
     interval_minutes: int = 60
     base_url: str = ""
     last_sync: str = ""
+    extra_sources: list[ExtraSource] = []
 
 
 # ---------- 同期の記録（F-7） ----------

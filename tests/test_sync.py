@@ -308,3 +308,191 @@ def test_更新日時は1秒を超えて違えばコピーが要る(tmp_path, di
     _write(tmp_path / "src.md", "abc", mtime=1_000_000 + diff)
     _write(tmp_path / "dst.md", "abc", mtime=1_000_000)
     assert sync._needs_copy(tmp_path / "src.md", tmp_path / "dst.md") is expected
+
+
+# ---------- F-11: 追加の同期元 ----------
+
+from app.models.sync import ExtraSource, SyncConfig
+
+
+@pytest.fixture
+def vault(tmp_path, monkeypatch):
+    """Vault（notes と llm-wiki）とビューアの content を tmp_path に作り、同期の外部とのつながりを切る"""
+    root, content = tmp_path / "vault", tmp_path / "content"
+    for d in (root / "notes", root / "llm-wiki", content, tmp_path / "media"):
+        d.mkdir(parents=True)
+    monkeypatch.setattr(sync, "CONTENT_DIR", content)
+    monkeypatch.setattr(sync, "MEDIA_DIR", tmp_path / "media")
+    monkeypatch.setattr(sync, "_pending", {})
+    monkeypatch.setattr(sync, "refresh_global_caches", lambda: None)
+    monkeypatch.setattr(sync, "save_config", lambda config: None)
+    return root, content
+
+
+def _cfg(root: Path, *extras: ExtraSource) -> SyncConfig:
+    return SyncConfig(sync_enabled=True, content_src=str(root / "notes"), extra_sources=list(extras))
+
+
+def _wiki(root: Path, **kwargs) -> ExtraSource:
+    return ExtraSource(src=str(root / "llm-wiki"), dest="llm-wiki", **kwargs)
+
+
+def test_追加の同期元は置き場所の下にコピーする(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(root / "llm-wiki" / "wiki" / "x.md", "X")
+    ok, _ = sync.perform_sync(_cfg(root, _wiki(root)))
+    assert ok
+    assert (content / "a.md").read_text(encoding="utf-8") == "A"
+    assert (content / "llm-wiki" / "wiki" / "x.md").read_text(encoding="utf-8") == "X"
+    assert not (content / "wiki").exists()
+
+
+def test_元フォルダの同期は追加の同期元の置き場所を消さない(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(root / "llm-wiki" / "x.md", "X")
+    for _ in range(2):
+        sync.perform_sync(_cfg(root, _wiki(root)))
+    assert (content / "llm-wiki" / "x.md").exists()
+
+
+def test_運ばないものはコピーせず_コピー先にあれば消す(vault):
+    root, content = vault
+    _write(root / "llm-wiki" / "wiki" / "x.md", "X")
+    _write(root / "llm-wiki" / "wiki" / "y.md", "Y")
+    for i in range(3):
+        _write(root / "llm-wiki" / f"z{i}.md", "Z")   # 消す割合を半分未満にして、保留させない
+    _write(root / "llm-wiki" / "raw" / "r.md", "R")
+    _write(root / "llm-wiki" / ".obsidian" / "app.json", "{}")
+    sync.perform_sync(_cfg(root, _wiki(root, exclude=["raw"])))
+    assert not (content / "llm-wiki" / "raw").exists()
+    assert not (content / "llm-wiki" / ".obsidian").exists()
+    # すでにコピー先にあるものは、あとから除外すると消える（同期元には残っていても）
+    sync.perform_sync(_cfg(root, _wiki(root, exclude=["raw", "wiki/y.md"])))
+    assert (content / "llm-wiki" / "wiki" / "x.md").exists()
+    assert not (content / "llm-wiki" / "wiki" / "y.md").exists()
+    assert (root / "llm-wiki" / "wiki" / "y.md").exists()
+
+
+def test_元フォルダのドットで始まるものは運ばない(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(root / "notes" / ".obsidian" / "app.json", "{}")
+    sync.perform_sync(_cfg(root))
+    assert (content / "a.md").exists() and not (content / ".obsidian").exists()
+
+
+def test_sync_directoryの運ばない判定(dirs):
+    src, dst = dirs
+    _write(src / "a.md", "A")
+    _write(src / "skip" / "b.md", "B")
+    result = sync.sync_directory(src, dst, [], excluded=lambda rel: rel.startswith("skip/"))
+    assert result.added == ["a.md"]
+    assert not (dst / "skip").exists()
+
+
+def test_元フォルダの直下に同じ名前があれば追加の同期元は飛ばして失敗にする(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(root / "notes" / "llm-wiki" / "n.md", "N")   # ぶつかる
+    _write(root / "llm-wiki" / "x.md", "X")
+    _write(root / "other" / "o.md", "O")
+    _write(content / "llm-wiki" / "old.md", "old")
+    other = ExtraSource(src=str(root / "other"), dest="other")
+    ok, message = sync.perform_sync(_cfg(root, _wiki(root), other))
+    assert not ok and "llm-wiki" in message
+    assert (content / "a.md").exists()                       # 元フォルダは同期する
+    assert (content / "other" / "o.md").exists()             # ほかの追加の同期元も同期する
+    assert not (content / "llm-wiki" / "x.md").exists()      # 飛ばしたものは運ばない
+    assert (content / "llm-wiki" / "old.md").exists()        # コピー先の中身も消さない
+
+
+def test_同期元のフォルダが無い追加の同期元は飛ばして失敗にする(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(content / "gone" / "old.md", "old")
+    ok, message = sync.perform_sync(_cfg(root, ExtraSource(src=str(root / "gone"), dest="gone")))
+    assert not ok and "gone" in message
+    assert (content / "a.md").exists() and (content / "gone" / "old.md").exists()
+
+
+def test_設定に誤りのある追加の同期元は飛ばして失敗にする(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(root / "llm-wiki" / "x.md", "X")
+    ok, message = sync.perform_sync(_cfg(root, ExtraSource(src=str(root / "llm-wiki"), dest="a/b")))
+    assert not ok and "a/b" in message
+    assert (content / "a.md").exists() and not (content / "a").exists()
+
+
+def test_飛ばしてもlast_syncは更新しキャッシュは作り直す(vault, monkeypatch):
+    root, _ = vault
+    called = []
+    monkeypatch.setattr(sync, "refresh_global_caches", lambda: called.append(1))
+    config = _cfg(root, ExtraSource(src=str(root / "gone"), dest="gone"))
+    sync.perform_sync(config)
+    assert config.last_sync and called == [1]
+
+
+def test_追加の同期元の保留はビューアのパスで一覧に出て確認で消える(vault):
+    root, content = vault
+    for i in range(4):
+        _write(root / "llm-wiki" / f"w{i}.md", "x")
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    for i in range(3):
+        (root / "llm-wiki" / f"w{i}.md").unlink()
+    sync.perform_sync(_cfg(root, _wiki(root)))
+
+    pending = sync.get_pending_deletions()
+    assert len(pending) == 1 and pending[0]["label"] == "ノート"
+    assert pending[0]["files"] == ["llm-wiki/w0.md", "llm-wiki/w1.md", "llm-wiki/w2.md"]
+    assert sync.pending_deletion_count() == 3
+    assert sync.confirm_pending_deletions() == 3
+    assert sorted(p.name for p in (content / "llm-wiki").iterdir()) == ["w3.md"]
+    assert sync.get_pending_deletions() == []
+
+
+def test_保留は同期元ごとに持つ(vault):
+    root, content = vault
+    for i in range(4):
+        _write(root / "notes" / f"n{i}.md", "x")
+        _write(root / "llm-wiki" / f"w{i}.md", "x")
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    for i in range(3):
+        (root / "notes" / f"n{i}.md").unlink()
+        (root / "llm-wiki" / f"w{i}.md").unlink()
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    files = sorted(f for p in sync.get_pending_deletions() for f in p["files"])
+    assert files == ["llm-wiki/w0.md", "llm-wiki/w1.md", "llm-wiki/w2.md", "n0.md", "n1.md", "n2.md"]
+    assert {"content", "content:llm-wiki"} == set(sync._pending)
+
+
+def test_設定から外された追加の同期元の保留は消える(vault):
+    root, _ = vault
+    for i in range(4):
+        _write(root / "llm-wiki" / f"w{i}.md", "x")
+    _write(root / "notes" / "a.md", "A")
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    for i in range(3):
+        (root / "llm-wiki" / f"w{i}.md").unlink()
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    assert sync.pending_deletion_count() == 3
+    sync.perform_sync(_cfg(root))
+    assert "content:llm-wiki" not in sync._pending   # 置き場所の中身は、元フォルダ側の保留（content）に変わる
+
+
+def test_追加の同期元が無ければ今までどおり(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    ok, _ = sync.perform_sync(_cfg(root))
+    assert ok and (content / "a.md").exists()
+
+
+def test_srcが空の追加の同期元の置き場所も元フォルダの同期で消えない(vault):
+    root, content = vault
+    _write(root / "notes" / "a.md", "A")
+    _write(content / "llm-wiki" / "old.md", "old")
+    ok, _ = sync.perform_sync(_cfg(root, ExtraSource(src="", dest="llm-wiki")))
+    assert not ok
+    assert (content / "llm-wiki" / "old.md").exists()

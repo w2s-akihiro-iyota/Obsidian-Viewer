@@ -8,7 +8,8 @@ from typing import Callable, Iterator
 
 from app import cache
 from app.config import CONTENT_DIR, MAX_EMBED_DEPTH
-from app.core.indexing import is_published, parse_frontmatter, resolve_note_path
+from app.core.indexing import is_published, parse_frontmatter
+from app.core.note_resolver import NoteResolver
 from app.core.markdown import heading_anchor
 from app.services.images import MediaIndex, image_html, is_image_name, media_url
 
@@ -62,8 +63,12 @@ class WikiLink:
 
     @classmethod
     def from_match(cls, m: re.Match) -> "WikiLink":
-        name, _, heading = (part.strip() for part in m.group(2).strip().partition('#'))
-        return cls(is_embed=m.group(1) == '!', name=name, heading=heading, alias=m.group(3))
+        target_text, alias = m.group(2), m.group(3)
+        if alias is not None and target_text.endswith("\\"):
+            # 表の中では Obsidian が | を \| と書く。区切りの | の直前の \ は名前に含めない（B-15）
+            target_text = target_text[:-1]
+        name, _, heading = (part.strip() for part in target_text.strip().partition('#'))
+        return cls(is_embed=m.group(1) == '!', name=name, heading=heading, alias=alias)
 
 
 class _FenceTracker:
@@ -232,14 +237,15 @@ def embed_media_rel(link: WikiLink, index: MediaIndex | None = None) -> str | No
 
 
 def classify_link(link: WikiLink, published_paths: set[str] | None,
-                  file_name_map: dict | None = None, path_to_slug: dict | None = None,
-                  media_index: MediaIndex | None = None) -> LinkTarget:
+                  resolver: NoteResolver | None = None, media_index: MediaIndex | None = None,
+                  source_path: str = "") -> LinkTarget:
     """
     リンク 1 件を、描画で何になるかで振り分ける
 
     published_paths を渡すと、そこに無いノートを非公開ノートとする（外部向け）。None なら全ノートを表示できる扱い。
-    file_name_map / path_to_slug / media_index は名前からノート・添付を引く表。省略時は今のキャッシュを使う
+    resolver / media_index は名前からノート・添付を引く表。省略時は今のキャッシュを使う
     （索引の作り直しの途中では、差し替える前の新しい表を渡す）。
+    source_path はリンクを書いたノートのパス。同名ノートがあるとき、同じフォルダのものを優先するのに使う。
     """
     rel = embed_media_rel(link, media_index)
     if rel:
@@ -251,9 +257,8 @@ def classify_link(link: WikiLink, published_paths: set[str] | None,
     if not link.name and link.heading:
         return LinkTarget(LinkKind.HEADING)
 
-    path = resolve_note_path(link.name,
-                             cache.FILE_NAME_CACHE if file_name_map is None else file_name_map,
-                             cache.PATH_TO_SLUG if path_to_slug is None else path_to_slug)
+    resolver = cache.NOTE_RESOLVER if resolver is None else resolver
+    path = resolver.resolve(link.name, source_path) if resolver is not None else None
     if path is None:
         return LinkTarget(LinkKind.MISSING_NOTE)
     if published_paths is not None and path not in published_paths:
@@ -340,10 +345,13 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
         {f["path"] for f in cache.GLOBAL_FILE_CACHE if f.get("published")} if ctx.published_only else None
     )
 
+    # リンク元: 埋め込みの中なら埋め込んだノート、ページ本体ならそのノート
+    source_path = ctx.stack[-1] if ctx.stack else ""
+
     def replace(match: re.Match) -> str:
         link = WikiLink.from_match(match)
         name, heading, alias = link.name, link.heading, link.alias
-        target = classify_link(link, published_paths)
+        target = classify_link(link, published_paths, source_path=source_path)
 
         if target.kind is LinkKind.IMAGE:
             return image_html(target.image_url, name, alias)

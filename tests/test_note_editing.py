@@ -190,3 +190,41 @@ def test_LFのノートはLFのまま保存する(dirs):
     _, vault_dir = dirs
     note_editing.save_note("会議/定例.md", "x\ny\n", base_hash=_hash("old"))
     assert (vault_dir / "会議" / "定例.md").read_bytes() == b"x\ny\n"
+
+
+# ---------- F-11: 追加の同期元のノートは、その同期元に保存する ----------
+
+def test_追加の同期元のノートはその同期元のファイルに保存する(dirs, tmp_path, monkeypatch):
+    from app.models.sync import ExtraSource
+    app_dir, vault_dir = dirs
+    wiki = tmp_path / "vault" / "llm-wiki"
+    (wiki / "wiki").mkdir(parents=True)
+    (app_dir / "llm-wiki" / "wiki").mkdir(parents=True)
+    (wiki / "wiki" / "x.md").write_text("old", encoding="utf-8")
+    (app_dir / "llm-wiki" / "wiki" / "x.md").write_text("old", encoding="utf-8")
+    monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig(
+        content_src=str(vault_dir), extra_sources=[ExtraSource(src=str(wiki), dest="llm-wiki")]))
+    monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [{"path": "llm-wiki/wiki/x.md"}])
+
+    assert note_editing.load_note("llm-wiki/wiki/x.md")[0] == "old"
+    result = note_editing.save_note("llm-wiki/wiki/x.md", "new", base_hash=_hash("old"))
+    assert result.host_saved is True
+    assert (wiki / "wiki" / "x.md").read_text(encoding="utf-8") == "new"
+    assert (app_dir / "llm-wiki" / "wiki" / "x.md").read_text(encoding="utf-8") == "new"
+    assert not (vault_dir / "llm-wiki").exists()
+
+
+def test_運ばないパスのノートはVault側に書かない(dirs, tmp_path, monkeypatch):
+    from app.models.sync import ExtraSource
+    app_dir, vault_dir = dirs
+    wiki = tmp_path / "vault" / "llm-wiki"
+    (wiki / "raw").mkdir(parents=True)
+    (app_dir / "llm-wiki" / "raw").mkdir(parents=True)
+    (wiki / "raw" / "r.md").write_text("vault", encoding="utf-8")
+    (app_dir / "llm-wiki" / "raw" / "r.md").write_text("app", encoding="utf-8")
+    monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig(
+        content_src=str(vault_dir), extra_sources=[ExtraSource(src=str(wiki), dest="llm-wiki", exclude=["raw"])]))
+    monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [{"path": "llm-wiki/raw/r.md"}])
+    result = note_editing.save_note("llm-wiki/raw/r.md", "new", base_hash=_hash("app"))
+    assert result.host_saved is False
+    assert (wiki / "raw" / "r.md").read_text(encoding="utf-8") == "vault"

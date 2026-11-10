@@ -85,3 +85,21 @@ def test_更新日時はJSTで持つ(tmp_path):
     mtime = scan_notes(tmp_path, tmp_path)[0].mtime
     assert mtime.strftime("%Y-%m-%d %H:%M") == "2026-10-11 05:30"
     assert mtime.utcoffset().total_seconds() == 9 * 3600
+
+
+# ---------- NoteResolver に渡す Vault のパス（F-11） ----------
+
+def test_索引の作り直しは同期元の対応表からVaultのパスを渡す(monkeypatch):
+    from app.core import content_sources, indexing
+    from app.core.note_resolver import NoteResolver
+
+    class FakeSources:
+        @staticmethod
+        def vault_path(view_path):
+            return f"notes/{view_path}" if not view_path.startswith("llm-wiki/") else view_path
+
+    monkeypatch.setattr(content_sources.ContentSources, "from_config", classmethod(lambda cls, config: FakeSources()))
+    monkeypatch.setattr("app.services.sync_config.load_config", lambda: None)
+    entries = indexing._resolver_entries([{"path": "a/b.md"}, {"path": "llm-wiki/x.md"}])
+    assert entries == [("a/b.md", "notes/a/b.md"), ("llm-wiki/x.md", "llm-wiki/x.md")]
+    assert NoteResolver(entries).resolve("notes/a/b") == "a/b.md"

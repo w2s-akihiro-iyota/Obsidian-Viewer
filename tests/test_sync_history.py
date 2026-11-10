@@ -292,3 +292,49 @@ def test_記録が無ければAPIは空を返す(env):
     res = TestClient(app, base_url=ADMIN).get("/api/sync/history")
     assert res.json() == {"history": [], "limit": sync_history.SYNC_HISTORY_LIMIT,
                           "file_limit": sync_history.SYNC_HISTORY_FILE_LIMIT}
+
+
+# ---------- F-11: 追加の同期元は「ノート」にまとめて記録する ----------
+
+def _with_wiki(config, wiki):
+    from app.models.sync import ExtraSource
+    config.extra_sources = [ExtraSource(src=str(wiki), dest="llm-wiki")]
+    return config
+
+
+def test_追加の同期元の変更はビューアのパスでノートにまとめて残す(env, tmp_path):
+    src, _ = env
+    wiki = tmp_path / "wiki"
+    _write(src / "a.md", "A")
+    _write(wiki / "wiki" / "x.md", "X")
+    ok, _ = sync.perform_sync(_with_wiki(_config(src), wiki))
+    record = _latest()
+    assert ok and record["ok"]
+    assert sorted(_files(record, "added")) == ["a.md", "llm-wiki/wiki/x.md"]
+    assert list(record["kinds"]) == ["content"]
+
+
+def test_追加の同期元を飛ばしたら失敗として残し_ほかの分は残す(env, tmp_path):
+    src, _ = env
+    _write(src / "a.md", "A")
+    ok, message = sync.perform_sync(_with_wiki(_config(src), tmp_path / "nowhere"))
+    record = _latest()
+    assert not ok and not record["ok"] and record["error"] == message
+    assert _files(record, "added") == ["a.md"]
+
+
+def test_保留は合計の件数で残し_同じ理由は1回だけつなぐ(env, tmp_path):
+    src, _ = env
+    wiki = tmp_path / "wiki"
+    for i in range(4):
+        _write(src / f"n{i}.md", "x")
+        _write(wiki / f"w{i}.md", "x")
+    config = _with_wiki(_config(src), wiki)
+    sync.perform_sync(config)
+    for i in range(3):
+        (src / f"n{i}.md").unlink()
+        (wiki / f"w{i}.md").unlink()
+    sync.perform_sync(config)
+    held = _latest()["held"]
+    assert len(held) == 1 and held[0]["kind"] == "content" and held[0]["count"] == 6
+    assert held[0]["reason"].count("を削除することになります") == 1

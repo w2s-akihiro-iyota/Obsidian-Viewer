@@ -1927,3 +1927,83 @@ input:checked+.slider:before {
 .shortcut-sheet-link:focus-visible {
     text-decoration: underline;
 }
+
+/* 追加の同期元 */
+.extra-sources-item {
+    display: block;
+}
+
+.extra-sources-item > .setting-desc {
+    font-size: 0.8em;
+    margin: 4px 0 10px;
+}
+
+.extra-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.extra-source {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.extra-source-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.extra-source .extra-source-field > label {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.extra-source .extra-source-field .setting-desc {
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.extra-source-dest {
+    max-width: 220px;
+}
+
+.extra-source-foot {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.extra-source-remove {
+    font: inherit;
+    font-size: 0.85em;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    text-decoration: underline;
+}
+
+.extra-source-remove:hover {
+    color: var(--text-normal);
+}
+
+.extra-sources-add {
+    align-self: flex-start;
+}
+
+.extra-source .setting-error {
+    margin-top: 2px;
+}
+
+.extra-sources:not(:empty) + .extra-sources-add {
+    margin-top: 12px;
+}

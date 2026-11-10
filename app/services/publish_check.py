@@ -74,7 +74,7 @@ def check_publish(source_path: str, body: str, is_published: bool) -> PublishChe
     published_paths = {path for path, f in files.items() if f.get("published")}
     for link in iter_wikilinks(body):
         # 振り分けは描画（process_wikilinks）と同じ classify_link で行い、描画でリンク切れになるものと揃える
-        target = classify_link(link, published_paths)
+        target = classify_link(link, published_paths, source_path=source_path)
         if target.kind is LinkKind.MISSING_IMAGE:
             missing_images.setdefault(link.name)
         elif is_missing_note(link, target):   # ダッシュボードの「リンク切れ」と同じ判定
