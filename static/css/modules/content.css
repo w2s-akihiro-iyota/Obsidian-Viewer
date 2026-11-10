@@ -584,6 +584,9 @@
 .markdown-body table td {
     padding: 6px 13px;
     border: 1px solid var(--border-color);
+    /* 英単語は途中で折らず、日本語だけ折り返す。収まらない長い文字列（URL など）だけ折る（D-13） */
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
 .markdown-body table tr {
@@ -1974,4 +1977,124 @@ a.view-backlink-count:hover {
     width: 100% !important;
     overflow-x: auto;
     display: block;
+}
+
+/* ---- プロパティ（記事ヘッダーの frontmatter の項目。管理者の通常表示だけ） ---- */
+.note-properties {
+    margin: 14px 0 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.note-properties > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    list-style: none;
+}
+
+.note-properties > summary::-webkit-details-marker {
+    display: none;
+}
+
+.note-properties > summary::before {
+    content: "›";
+    display: inline-block;
+    transition: transform .15s;
+    font-size: 1.1em;
+}
+
+.note-properties[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.note-properties-count {
+    font-weight: 400;
+}
+
+.note-properties-hint {
+    margin-left: auto;
+    font-weight: 400;
+    font-size: 0.75rem;
+}
+
+.note-properties-list {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 16px;
+    margin: 0;
+    padding: 4px 14px 12px;
+    font-size: 0.85rem;
+}
+
+.note-properties-list dt {
+    color: var(--text-muted);
+    font-family: var(--code-font);
+    font-size: 0.8rem;
+    padding-top: 2px;
+}
+
+.note-properties-list dd {
+    margin: 0;
+    color: var(--text-normal);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.note-property-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+}
+
+.note-property-chip {
+    display: inline-block;
+    padding: 0 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    background: var(--bg-primary);
+}
+
+.note-property-nested {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px 10px;
+}
+
+.note-property-nested span:nth-child(odd) {
+    color: var(--text-muted);
+    font-family: var(--code-font);
+    font-size: 0.75rem;
+}
+
+/* 閉じて覚えているとき、main.js が実際に閉じるまでの間（base.html が描画前に付ける）も閉じた見た目にする */
+.properties-collapsed .note-properties > .note-properties-list {
+    display: none;
+}
+
+.properties-collapsed .note-properties[open] > summary::before {
+    transform: none;
+}
+
+@media (max-width: 768px) {
+    .note-properties-list {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+
+    .note-properties-list dd {
+        margin-bottom: 8px;
+    }
+
+    .note-properties-hint {
+        display: none;
+    }
 }

@@ -170,6 +170,54 @@ def iter_wikilinks(content: str) -> Iterator[WikiLink]:
                 yield WikiLink.from_match(m)
 
 
+# frontmatter の入れ子をたどる深さの上限（索引の走査とプロパティの文字列化で共通）
+MAX_FRONTMATTER_DEPTH = 10
+
+
+def iter_frontmatter_wikilinks(value, _seen: set[int] | None = None, _depth: int = 0) -> Iterator[WikiLink]:
+    """
+    frontmatter の値（文字列・リスト・辞書。入れ子も）の中の [[...]] / ![[...]] を、出てくる順に返す（F-12）
+
+    索引のリンク元・グラフ・リンク切れ（_build_link_maps）と、記事ページのプロパティの表示が、同じこの関数で拾う。
+    frontmatter にコードブロックの記法は無いので、本文と違って文字列をそのまま探す。
+    YAML のアンカー（a: &x [1, *x]）で自分自身を指したり、同じ入れ物を何度も指して膨らんだりする値でも止まるよう、
+    同じリスト・辞書（id）は 1 回しか見ず、深さにも上限（MAX_FRONTMATTER_DEPTH）を置く。
+    """
+    if _depth > MAX_FRONTMATTER_DEPTH:
+        return
+    if isinstance(value, str):
+        for part in split_wikilinks(value):
+            if isinstance(part, WikiLink):
+                yield part
+    elif isinstance(value, (dict, list, tuple)):
+        seen = set() if _seen is None else _seen
+        if id(value) in seen:
+            return
+        seen.add(id(value))
+        for item in (value.values() if isinstance(value, dict) else value):
+            yield from iter_frontmatter_wikilinks(item, seen, _depth + 1)
+
+
+def split_wikilinks(text: str) -> Iterator[str | WikiLink]:
+    """文字列を「ただの文字」と「リンク」の部品に分けて順に返す（つなげると元の文字列に戻る。空の文字は返さない）"""
+    pos = 0
+    for m in _WIKILINK_RE.finditer(text):
+        if m.start() > pos:
+            yield text[pos:m.start()]
+        yield WikiLink.from_match(m)
+        pos = m.end()
+    if pos < len(text):
+        yield text[pos:]
+
+
+def note_href(path: str, heading: str = "") -> str:
+    """ノート（相対パス）へのリンクの href。見出しがあればそこへ飛ぶ。描画とプロパティで共通"""
+    href = f"/view/{cache.PATH_TO_SLUG.get(path, path)}"
+    if heading:
+        href += f"#{heading_anchor(heading)}"
+    return href
+
+
 def iter_searchable_text(content: str) -> Iterator[str]:
     """コードブロックとインラインコードを除いた本文を、出てくる順に切れ目ごとに返す（添付の参照を拾う用）"""
     for text, searchable in _link_segments(content, marker=''):
@@ -266,6 +314,34 @@ def classify_link(link: WikiLink, published_paths: set[str] | None,
     return LinkTarget(LinkKind.NOTE, path=path)
 
 
+@dataclass(frozen=True)
+class LinkDisplay:
+    """リンク 1 件の見え方。href が None なら、リンク切れの表示（外部向けの非公開ノートも同じ）"""
+    text: str
+    href: str | None
+
+
+def link_display(link: WikiLink, target: LinkTarget) -> LinkDisplay:
+    """
+    リンクと振り分け結果から、表示名と href を決める（本文の描画とプロパティで共通）
+
+    - 見つかった画像: 画像の URL（本文はこれを使わず画像として描く）
+    - 同じノート内の見出し: 別名か見出し、href は #見出し
+    - 見つからない画像: 名前（別名は表示サイズなので使わない）
+    - ノート: 別名か「名前 > 見出し」か名前。NOTE 以外（存在しない・非公開）は href が None
+    """
+    if target.kind is LinkKind.IMAGE:
+        return LinkDisplay(link.name, target.image_url)
+    if target.kind is LinkKind.MISSING_IMAGE:
+        return LinkDisplay(link.name, None)
+    if target.kind is LinkKind.HEADING:
+        return LinkDisplay(link.alias or link.heading, f"#{heading_anchor(link.heading)}")
+    title = link.alias or (f"{link.name} > {link.heading}" if link.heading else link.name)
+    if target.kind is not LinkKind.NOTE:
+        return LinkDisplay(title, None)
+    return LinkDisplay(title, note_href(target.path, link.heading))
+
+
 def is_missing_note(link: WikiLink, target: LinkTarget) -> bool:
     """
     存在しないノートへのリンクか（公開チェックとダッシュボードの「リンク切れ」で共通の判定）
@@ -350,32 +426,23 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
 
     def replace(match: re.Match) -> str:
         link = WikiLink.from_match(match)
-        name, heading, alias = link.name, link.heading, link.alias
         target = classify_link(link, published_paths, source_path=source_path)
 
         if target.kind is LinkKind.IMAGE:
-            return image_html(target.image_url, name, alias)
-        if target.kind is LinkKind.MISSING_IMAGE:
-            return f'<span class="internal-link-broken">{escape(name)}</span>'
-        if target.kind is LinkKind.HEADING:
-            return f'<a href="#{heading_anchor(heading)}" class="internal-link">{escape(alias or heading)}</a>'
-
-        title = escape(alias or (f"{name} > {heading}" if heading else name))
+            return image_html(target.image_url, link.name, link.alias)
+        display = link_display(link, target)
+        title = escape(display.text)
         # 存在しないノートと、外部向けの非公開ノートは同じ表示にする（非公開ノートの存在を見せない）
-        if target.kind is not LinkKind.NOTE:
+        if display.href is None:
             return f'<span class="internal-link-broken">{title}</span>'
 
-        path = target.path
-        href = f"/view/{cache.PATH_TO_SLUG.get(path, path)}"
-        if heading:
-            href += f"#{heading_anchor(heading)}"
-
         # 埋め込み。ループ・深すぎる入れ子はリンクにとどめる
-        if link.is_embed and path not in ctx.stack and ctx.depth < MAX_EMBED_DEPTH:
-            return ctx.stash(_render_embed(path, heading, href, title, ctx))
+        can_embed = link.is_embed and target.kind is LinkKind.NOTE and target.path not in ctx.stack
+        if can_embed and ctx.depth < MAX_EMBED_DEPTH:
+            return ctx.stash(_render_embed(target.path, link.heading, display.href, title, ctx))
 
         # アイコンはポストプロセス（_inject_note_icons）で付与
-        return f'<a href="{href}" class="internal-link">{title}</a>'
+        return f'<a href="{display.href}" class="internal-link">{title}</a>'
 
     return ''.join(
         _WIKILINK_RE.sub(replace, text) if searchable else text

@@ -293,6 +293,44 @@
         {% endfor %}
     </div>
     {% endif %}
+
+    {% if properties %}
+    {# プロパティ（管理者の通常表示だけ。開閉は main.js が localStorage に覚える。ちらつき防止は base.html の properties-collapsed） #}
+    {% macro property_parts(parts) -%}
+    {%- for part in parts -%}
+    {%- if part.href is defined -%}
+    {%- if part.href is none -%}<span class="internal-link-broken">{{ part.text }}</span>
+    {%- else -%}<a href="{{ part.href }}" class="internal-link">{{ part.text }}</a>{%- endif -%}
+    {%- else -%}{{ part.text }}{%- endif -%}
+    {%- endfor -%}
+    {%- endmacro %}
+    <details class="note-properties" id="note-properties" open>
+        <summary>プロパティ <span class="note-properties-count">{{ properties|length }}</span>
+            <span class="note-properties-hint">外部の人には表示されません</span></summary>
+        <dl class="note-properties-list">
+            {% for prop in properties %}
+            <dt>{{ prop.key }}</dt>
+            <dd>
+                {#- 種類は dataclass のフィールドで分ける（chips は ChipsProperty、nested は NestedProperty にだけある） -#}
+                {%- if prop.chips is defined -%}
+                <span class="note-property-chips">
+                    {%- for chip in prop.chips -%}
+                    {%- if chip|length == 1 and chip[0].href is defined -%}{{ property_parts(chip) }}
+                    {%- else -%}<span class="note-property-chip">{{ property_parts(chip) }}</span>{%- endif -%}
+                    {%- endfor -%}
+                </span>
+                {%- elif prop.nested is defined -%}
+                <span class="note-property-nested">
+                    {%- for nkey, nparts in prop.nested -%}
+                    <span>{{ nkey }}</span><span>{{ property_parts(nparts) }}</span>
+                    {%- endfor -%}
+                </span>
+                {%- else -%}{{ property_parts(prop.parts) }}{%- endif -%}
+            </dd>
+            {% endfor %}
+        </dl>
+    </details>
+    {% endif %}
 </div>
 
 {% if public_view %}

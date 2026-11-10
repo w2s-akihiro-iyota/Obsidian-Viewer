@@ -7,8 +7,8 @@
 @import url('modules/base.css');
 @import url('modules/layout.css');
 @import url('modules/sidebar.css');
-@import url('modules/content.css');
-@import url('modules/components.css?v=20261029');
+@import url('modules/content.css?v=20261111');
+@import url('modules/components.css?v=20261112');
 @import url('modules/settings.css?v=20261110c');
 @import url('modules/tutorial.css');
 @import url('modules/print.css');

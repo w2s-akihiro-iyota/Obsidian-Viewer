@@ -56,7 +56,11 @@ function addTableCopyButtons() {
         const wrapper = document.createElement('div');
         wrapper.className = 'table-wrapper';
         table.parentNode.insertBefore(wrapper, table);
-        wrapper.appendChild(table);
+        // 表だけを横スクロールの枠で包む。コピーボタンは外側（wrapper）に置き、スクロールで流れたり枠で切れたりしないようにする
+        const scroll = document.createElement('div');
+        scroll.className = 'table-scroll';
+        scroll.appendChild(table);
+        wrapper.appendChild(scroll);
 
         // Create copy button container
         const copyContainer = document.createElement('div');
@@ -84,7 +88,7 @@ function addTableCopyButtons() {
 
         copyContainer.appendChild(copyBtn);
         copyContainer.appendChild(dropdown);
-        wrapper.insertBefore(copyContainer, table);
+        wrapper.insertBefore(copyContainer, scroll);
 
         // Toggle dropdown
         copyBtn.addEventListener('click', (e) => {
