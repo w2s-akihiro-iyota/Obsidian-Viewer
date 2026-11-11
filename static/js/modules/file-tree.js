@@ -3,6 +3,11 @@
 // ==============================================
 
 const FILE_TREE_OPEN_KEY = 'fileTreeOpenFolders';
+// 前に取ったツリー（/api/tree の応答そのまま）。ページを開くたびにすぐ描けるよう、タブの中だけで持つ（Q-21）。
+// sessionStorage はオリジン（ポート）ごとに分かれるので、管理用ポートの非公開ノート入りの木が公開用ポートから読まれることはない
+const FILE_TREE_CACHE_KEY = 'fileTreeCache';
+// サイドバーのスクロール位置（同じくタブの中だけ）
+const FILE_TREE_SCROLL_KEY = 'fileTreeScroll';
 
 function initFileTree() {
     const container = document.getElementById('file-tree');
@@ -18,20 +23,75 @@ function initFileTree() {
     let currentAncestors = new Set();
     const currentSlug = getCurrentSlug();
 
+    // サイドバーのスクロール位置。ページを移っても同じ位置で描けるよう、タブの中で覚えておく（Q-21）。
+    // 覚えるのは画面に出てから（先読み（F-15）されただけのページが、自分で動かした位置で上書きしない）
+    const scroller = container.closest('.sidebar-content');
+    if (scroller) {
+        whenPageShown(() => {
+            let saving = false;
+            scroller.addEventListener('scroll', () => {
+                if (saving) return;
+                saving = true;
+                requestAnimationFrame(() => {
+                    saving = false;
+                    saveTreeScroll(scroller.scrollTop);
+                });
+            }, { passive: true });
+        });
+    }
+
+    // 前に取った木があれば、まずそれで描く（取り直しを待つと、サイドバーが空のまま出てから埋まる）。
+    // そのあと必ず取り直し、中身が変わっていたときだけ描き直す
+    const cached = loadCachedTree();
+    if (cached) showTree(cached.tree);
+
     fetch('/api/tree')
         .then(res => {
             if (!res.ok) throw new Error('Failed to load tree');
-            return res.json();
+            return res.text();
         })
-        .then(data => {
-            tree = data;
-            currentAncestors = new Set(findAncestors(tree, currentSlug) || []);
-            render();
-            scrollToActive();
+        .then(text => {
+            if (cached && text === cached.text) return;
+            const data = JSON.parse(text);
+            saveCachedTree(text);
+            // 前の木を描いたあとの描き直しでは、いまのスクロール位置を動かさない
+            showTree(data, Boolean(cached));
         })
         .catch(() => {
+            // 前に取った木を描いていれば、そのまま使う
+            if (cached) return;
             container.innerHTML = '<div class="tree-empty">ファイルツリーを読み込めませんでした</div>';
         });
+
+    /**
+     * 木を描き、サイドバーのスクロール位置を決める。
+     * keepScroll でなければ前のページで見ていた位置に戻し、開いているノートがその位置で見えなければ見える所まで動かす
+     * （ツリーで次のノートを押しても、サイドバーは動かない）
+     */
+    function showTree(data, keepScroll = false) {
+        const scrollTop = keepScroll ? scroller?.scrollTop : loadTreeScroll();
+        // 描き直すとツリーの項目が作り直されるので、キーボードで選んでいた項目を覚えておき、描いたあとに戻す
+        const focused = container.contains(document.activeElement) ? document.activeElement.title : null;
+        tree = data;
+        currentAncestors = new Set(findAncestors(tree, currentSlug) || []);
+        render();
+        if (focused) {
+            const again = Array.from(container.querySelectorAll('.tree-folder, .tree-file')).find(item => item.title === focused);
+            again?.focus({ preventScroll: true });
+        }
+        if (!scroller) return;
+        if (scrollTop != null) scroller.scrollTop = scrollTop;
+        if (!keepScroll && !isActiveInView()) scrollToActive();
+    }
+
+    function isActiveInView() {
+        const active = container.querySelector('.tree-file.active');
+        // 開いているノートが無い・ほかのタブ（履歴）を出していて見えないときは、動かさない
+        if (!active || active.offsetParent === null) return true;
+        const item = active.getBoundingClientRect();
+        const view = scroller.getBoundingClientRect();
+        return item.top >= view.top && item.bottom <= view.bottom;
+    }
 
     if (filterInput) {
         let debounceTimer;
@@ -177,6 +237,10 @@ function initFileTree() {
                 folder.append(chevron, name, count);
                 folder.addEventListener('click', () => {
                     const nowOpen = !li.classList.contains('open');
+                    // 閉じていたフォルダの中身は、初めて開いたときに作る（下を参照）
+                    if (nowOpen && !li.querySelector(':scope > .tree-list')) {
+                        li.appendChild(buildList(node.children, expandAll));
+                    }
                     li.classList.toggle('open', nowOpen);
                     folder.setAttribute('aria-expanded', String(nowOpen));
                     if (!expandAll) {
@@ -189,7 +253,8 @@ function initFileTree() {
                 });
 
                 li.appendChild(folder);
-                li.appendChild(buildList(node.children, expandAll));
+                // 閉じたフォルダの中身は作らない（全部作ると、ページを開くたびに数百項目ぶん固まる。Q-21）
+                if (isOpen) li.appendChild(buildList(node.children, expandAll));
             } else {
                 const link = document.createElement('a');
                 link.className = 'tree-file';
@@ -304,6 +369,50 @@ function filterNodes(nodes, query) {
         }
     });
     return result;
+}
+
+/**
+ * 前に取った木（{ text: 応答の文字列, tree: 読んだ木 }）。無い・壊れているときは null（サーバーから取り直す）
+ */
+function loadCachedTree() {
+    try {
+        const text = sessionStorage.getItem(FILE_TREE_CACHE_KEY);
+        if (!text) return null;
+        const tree = JSON.parse(text);
+        return Array.isArray(tree) ? { text, tree } : null;
+    } catch {
+        return null;
+    }
+}
+
+function saveCachedTree(text) {
+    try {
+        sessionStorage.setItem(FILE_TREE_CACHE_KEY, text);
+    } catch {
+        // 容量の上限などで書けなくても、次も取り直すだけ
+    }
+}
+
+/**
+ * 前のページで見ていたサイドバーのスクロール位置（無ければ null）
+ */
+function loadTreeScroll() {
+    try {
+        const saved = sessionStorage.getItem(FILE_TREE_SCROLL_KEY);
+        if (saved === null) return null;
+        const value = Number(saved);
+        return Number.isFinite(value) ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function saveTreeScroll(scrollTop) {
+    try {
+        sessionStorage.setItem(FILE_TREE_SCROLL_KEY, String(Math.round(scrollTop)));
+    } catch {
+        // 覚えられなくても、開いているノートの位置まで動かすだけ
+    }
 }
 
 function loadOpenFolders() {

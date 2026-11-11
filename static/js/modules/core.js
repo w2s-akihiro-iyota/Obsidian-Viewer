@@ -2,7 +2,8 @@
 // core.js - Shared constants, state, and utilities
 // ==============================================
 
-const DEBOUNCE_DELAY = 300;
+// 検索欄の打鍵が止まってから問い合わせるまでの待ち（Q-22）。サーバーは 10〜60ms で返すので、待ちを短くして候補を早く出す
+const DEBOUNCE_DELAY = 120;
 const SCROLL_SHOW_THRESHOLD = 300;
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 600;
@@ -24,6 +25,23 @@ async function loadMessages() {
         }
     } catch (err) {
         console.error("Failed to load messages", err);
+    }
+}
+
+/**
+ * ページが実際に画面に出たときに fn を呼ぶ（先読みでなければすぐ呼ぶ）。
+ * 先読み（F-15。base.html の speculationrules）では、まだ開いていないページの JS も裏で動く。
+ * ページを開いたときに動く処理のうち、次のものはここを通して先読み中に動かさない
+ *   - localStorage・sessionStorage への書き込み（閲覧履歴・サイドバーのスクロール位置など）
+ *   - 一度きりのフラグの読み捨てと、その判定（初回のお祝い・同期完了のトースト・ようこそモーダル）
+ *   - サーバーへの書き込み（POST など）
+ * 読むだけの取得（GET の fetch）と、画面を組み立てるだけの処理は通さなくてよい（先に済ませておくのが先読みの狙い）
+ */
+function whenPageShown(fn) {
+    if (document.prerendering) {
+        document.addEventListener('prerenderingchange', () => fn(), { once: true });
+    } else {
+        fn();
     }
 }
 
