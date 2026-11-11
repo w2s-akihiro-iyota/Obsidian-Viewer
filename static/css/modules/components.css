@@ -35,7 +35,7 @@
     color: var(--text-normal);
     cursor: pointer;
     font-size: 0.85rem;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .table-copy-btn:hover {
@@ -75,7 +75,7 @@
     cursor: pointer;
     text-align: left;
     font-size: 0.9rem;
-    transition: background-color 0.2s;
+    transition: background-color var(--motion-fast);
 }
 
 .copy-option:hover {
@@ -103,7 +103,7 @@
     border-radius: 6px;
     color: var(--text-normal);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .page-menu-btn:hover {
@@ -142,7 +142,7 @@
     cursor: pointer;
     text-align: left;
     font-size: 0.9rem;
-    transition: background-color 0.2s;
+    transition: background-color var(--motion-fast);
 }
 
 a.menu-option {
@@ -172,7 +172,7 @@ a.menu-option {
     font-size: 0.85rem;
     text-decoration: none;
     white-space: nowrap;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .public-view-toggle:hover {
@@ -561,7 +561,7 @@ a.menu-option {
     right: 0;
     bottom: 0;
     background-color: #ccc;
-    transition: .4s;
+    transition: background-color var(--motion-base) var(--ease-standard);
     border-radius: 24px;
 }
 
@@ -573,7 +573,7 @@ a.menu-option {
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .4s;
+    transition: transform var(--motion-base) var(--ease-standard);
     border-radius: 50%;
 }
 
@@ -744,7 +744,7 @@ pre.line-numbers .line-number-rows {
     gap: 12px;
     opacity: 0;
     transform: translateY(20px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
     pointer-events: auto;
     min-width: 300px;
     max-width: 90vw;
@@ -794,7 +794,7 @@ pre.line-numbers .line-number-rows {
     border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.2s;
+    transition: var(--transition-ui);
     min-width: 120px;
 }
 
@@ -814,6 +814,7 @@ pre.line-numbers .line-number-rows {
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
     border-top-color: white;
+    /* 回る速さ（繰り返しの周期なので、動きの共通値とは別） */
     animation: spin 0.8s linear infinite;
 }
 
@@ -844,7 +845,7 @@ pre.line-numbers .line-number-rows {
     cursor: pointer;
     font-size: 12px;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity var(--motion-fast);
 }
 
 pre:hover .copy-button {
@@ -996,4 +997,26 @@ pre:hover .copy-button {
     .error-page-keys {
         display: none;
     }
+}
+
+/* ===== 押した手応え（D-15） =====
+   押しているあいだ少し縮む。ボタンを足したら、ここに足し、その部品の transition を var(--transition-ui) にする
+   （transition に transform が無いと、縮むのも戻るのも一瞬で切り替わる）。
+   transform を別の動きに使っている部品（記事の右上の「＋」の中の .page-menu-btn など）には付けない。
+   .public-view-toggle はリンク（a）なので :disabled を見ない */
+.header-btn:active:not(:disabled),
+.activity-btn:active:not(:disabled),
+.primary-btn:active:not(:disabled),
+.secondary-btn:active:not(:disabled),
+.danger-btn:active:not(:disabled),
+.table-copy-btn:active:not(:disabled),
+.theme-toggle-btn:active:not(:disabled),
+.settings-btn:active:not(:disabled),
+.sidebar-toggle-btn:active:not(:disabled),
+.close-modal-btn:active:not(:disabled),
+.view-toggle-btn:active:not(:disabled),
+.mobile-search-btn:active:not(:disabled),
+.public-view-toggle:active,
+.tutorial-skip-btn:active:not(:disabled) {
+    transform: scale(0.96);
 }

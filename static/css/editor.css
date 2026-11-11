@@ -173,7 +173,7 @@ body.page-editor footer {
     cursor: col-resize;
     background: var(--border-color);
     flex-shrink: 0;
-    transition: background 0.15s;
+    transition: background var(--motion-fast);
     position: relative;
     z-index: 2;
 }

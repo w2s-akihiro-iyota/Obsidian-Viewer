@@ -3,15 +3,15 @@
    Split into modular CSS files
    ========================================= */
 
-@import url('modules/variables.css?v=20261028');
-@import url('modules/base.css?v=20261111d');
-@import url('modules/layout.css');
-@import url('modules/sidebar.css');
-@import url('modules/content.css?v=20261111');
-@import url('modules/components.css?v=20261112');
-@import url('modules/settings.css?v=20261110c');
-@import url('modules/tutorial.css');
+@import url('modules/variables.css?v=20261111f');
+@import url('modules/base.css?v=20261111f');
+@import url('modules/layout.css?v=20261111f');
+@import url('modules/sidebar.css?v=20261111f');
+@import url('modules/content.css?v=20261111f');
+@import url('modules/components.css?v=20261111f');
+@import url('modules/settings.css?v=20261111f');
+@import url('modules/tutorial.css?v=20261111f');
 @import url('modules/print.css');
 @import url('modules/graph.css');
-@import url('modules/dashboard.css');
+@import url('modules/dashboard.css?v=20261111f');
 @import url('modules/responsive.css');

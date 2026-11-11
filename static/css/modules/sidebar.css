@@ -16,7 +16,7 @@
     /* Prevent header overlap */
     /* Desktop: Shift content when sidebar is open */
     margin-left: calc(var(--sidebar-width) + var(--activity-bar-width));
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: margin-left var(--motion-slow) var(--ease-standard);
 }
 
 /* Header Adjustments for Desktop */
@@ -30,7 +30,7 @@ header {
     width: calc(100% - (var(--sidebar-width) + var(--activity-bar-width)));
     height: 60px;
     z-index: var(--z-dropdown);
-    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: left var(--motion-slow) var(--ease-standard), width var(--motion-slow) var(--ease-standard);
 
     /* Ensure header content is aligned */
     padding-left: 0;
@@ -50,7 +50,7 @@ header {
     /* Offset by Activity Bar */
     overflow: hidden;
     /* Changed from overflow-y: auto */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--motion-slow) var(--ease-standard);
     z-index: 1100;
     /* Above content, below header */
 
@@ -147,7 +147,7 @@ html.sidebar-collapsed header {
     border-radius: 6px;
     cursor: pointer;
     color: var(--text-muted);
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color var(--motion-fast), color var(--motion-fast);
     text-decoration: none;
     user-select: none;
 }
@@ -205,7 +205,7 @@ details>summary::-webkit-details-marker {
     height: 100%;
     cursor: col-resize;
     z-index: 100;
-    transition: background-color 0.2s;
+    transition: background-color var(--motion-fast);
 }
 
 .sidebar-resizer:hover,
@@ -239,7 +239,7 @@ body.resizing iframe {
     z-index: 90;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s;
+    transition: opacity var(--motion-slow) var(--ease-standard), visibility var(--motion-slow);
     backdrop-filter: blur(2px);
 }
 
@@ -277,7 +277,7 @@ body.resizing iframe {
         /* Very high to ensure visibility */
         border-right: none;
         visibility: visible !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform var(--motion-slow) var(--ease-standard);
     }
 
     .sidebar.active {
@@ -346,7 +346,7 @@ body.resizing iframe {
     flex-direction: column;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--motion-fast) var(--ease-standard);
 }
 
 .preview-tooltip.active {
@@ -445,7 +445,7 @@ body.resizing iframe {
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 600;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     border-radius: 8px;
     text-align: center;
     border-bottom: none;
@@ -458,7 +458,7 @@ body.resizing iframe {
 
 .sidebar-tab svg {
     opacity: 0.7;
-    transition: opacity 0.2s;
+    transition: opacity var(--motion-fast);
 }
 
 .sidebar-tab:hover {
@@ -511,7 +511,7 @@ body.resizing iframe {
     line-height: 1.2;
     text-align: center;
     overflow-wrap: anywhere; /* 「ダッシュボード」が狭い幅でもはみ出さず折り返す */
-    transition: color 0.2s, background-color 0.2s;
+    transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 
 .sidebar-page-link:hover {
@@ -537,7 +537,7 @@ body.resizing iframe {
 
 .sidebar-panel.active {
     display: block;
-    animation: fadeIn 0.2s ease;
+    animation: fadeIn var(--motion-fast) var(--ease-out);
 }
 
 @keyframes fadeIn {
@@ -582,7 +582,7 @@ body.resizing iframe {
     color: var(--text-muted);
     font-size: 0.85rem;
     border-radius: 4px;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     cursor: pointer;
     line-height: 1.4;
     user-select: none;
@@ -683,7 +683,7 @@ html.sidebar-collapsed .sidebar {
     cursor: pointer;
     padding: 8px;
     border-radius: 6px;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -719,7 +719,7 @@ html.sidebar-collapsed .sidebar {
     border-radius: 6px;
     color: var(--text-muted);
     text-decoration: none;
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color var(--motion-fast), color var(--motion-fast);
 }
 
 .history-link:hover {
@@ -850,7 +850,7 @@ html.sidebar-collapsed .sidebar {
     border-top: 4px solid transparent;
     border-bottom: 4px solid transparent;
     border-left: 5px solid currentColor;
-    transition: transform 0.15s;
+    transition: transform var(--motion-fast);
 }
 
 .tree-folder-item.open > .tree-folder .tree-chevron {

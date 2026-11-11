@@ -32,7 +32,7 @@
     border-radius: 4px;
     color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -60,7 +60,7 @@
     border-radius: 12px;
     margin-bottom: 12px;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: var(--transition-ui);
     box-shadow: 0 0 12px rgba(123, 97, 255, 0.15);
 }
 
@@ -141,7 +141,7 @@
     font-weight: 600;
     border: 1px solid rgba(131, 102, 230, 0.6);
     box-shadow: 0 0 12px rgba(107, 82, 217, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.1);
-    transition: all 0.2s ease;
+    transition: var(--transition-ui);
 }
 
 .file-tag:hover {
@@ -400,7 +400,7 @@
     gap: 4px;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+    transition: opacity var(--motion-fast), background-color var(--motion-fast), color var(--motion-fast);
     z-index: 10;
 }
 
@@ -495,7 +495,7 @@
     background-color: #fff;
     /* In case of transparent PNGs on dark bg */
     cursor: zoom-in;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 .markdown-body img:hover {
@@ -522,7 +522,7 @@
     align-items: center;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity var(--motion-base) var(--ease-standard), visibility var(--motion-base) var(--ease-standard);
 }
 
 .lightbox-overlay.active {
@@ -535,7 +535,7 @@
     max-height: 90vh;
     object-fit: contain;
     transform: scale(0.95);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform var(--motion-base) var(--ease-spring);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border-radius: 4px;
 }
@@ -558,7 +558,7 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color var(--motion-fast);
     z-index: 10000;
 }
 
@@ -608,7 +608,7 @@
     text-decoration: none;
     color: inherit;
     margin: 16px 0;
-    transition: transform 0.2s, border-color 0.2s;
+    transition: transform var(--motion-fast), border-color var(--motion-fast);
     background-color: var(--bg-secondary);
     height: 120px;
 }
@@ -704,7 +704,7 @@ li.task-list-item.enabled {
     vertical-align: middle;
     position: relative;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .task-list-item-checkbox:checked {
@@ -993,7 +993,7 @@ mark {
     border-radius: 12px;
     color: var(--text-muted);
     font-size: 0.85rem;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     text-decoration: none;
 }
 
@@ -1068,7 +1068,7 @@ mark {
     border-radius: 4px;
     color: var(--text-normal);
     font-size: 0.9rem;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .page-link:hover:not(.disabled) {
@@ -1115,7 +1115,7 @@ mark {
 
 .markdown-body table tbody tr {
     border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s ease;
+    transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
 .markdown-body table tbody tr:hover {
@@ -1223,7 +1223,7 @@ mark {
     border-radius: 6px;
     color: var(--text-normal);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     display: none;
     /* Hidden on desktop */
     align-items: center;
@@ -1246,7 +1246,7 @@ mark {
     max-width: 100%;
     height: auto;
     display: block;
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    transition: box-shadow var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
 }
 
 .obsidian-image:hover {
@@ -1397,7 +1397,7 @@ mark {
     color: var(--text-muted);
     font-size: 0.85em;
     border: 1px solid var(--border-color);
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -1589,7 +1589,7 @@ mark {
     font-size: 0.82rem;
     font-weight: 500;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .view-tag:hover {
@@ -1669,7 +1669,7 @@ a.view-backlink-count:hover {
     color: var(--accent-purple);
     text-decoration: none;
     font-size: 0.85rem;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .backlink-item:hover {
@@ -1745,7 +1745,7 @@ a.view-backlink-count:hover {
     color: var(--text-normal);
     text-decoration: none;
     font-size: 0.85rem;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .related-item:hover {
@@ -1790,7 +1790,7 @@ a.view-backlink-count:hover {
 
 .dataview-table tbody tr {
     border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s ease;
+    transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
 .dataview-table tbody tr:hover {
@@ -1828,7 +1828,7 @@ a.view-backlink-count:hover {
     text-decoration: none;
     font-size: 0.88rem;
     border-radius: 6px;
-    transition: background-color 0.15s ease;
+    transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
 .dataview-list-link:hover {
@@ -2006,7 +2006,7 @@ a.view-backlink-count:hover {
 .note-properties > summary::before {
     content: "›";
     display: inline-block;
-    transition: transform .15s;
+    transition: transform var(--motion-fast);
     font-size: 1.1em;
 }
 

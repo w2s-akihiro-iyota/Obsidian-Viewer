@@ -279,7 +279,7 @@ function initSidebar() {
 
         activeLink = link;
 
-        // 表示まで500msの遅延
+        // 表示まで300msの遅延（D-15。前は500msで、待たされる感じがあった）
         showTimeout = setTimeout(() => {
             showTimeout = null;
             if (activeLink !== link) return;
@@ -312,7 +312,7 @@ function initSidebar() {
                         }
                     });
             }
-        }, 500);
+        }, 300);
     }
 
     function renderPreviewContent(data, link, requestId) {
