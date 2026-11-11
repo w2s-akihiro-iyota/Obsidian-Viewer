@@ -66,12 +66,12 @@
     </script>
     <script src="/static/js/vendor/highlight.min.js?v=20260221-editor"></script>
     <script src="/static/js/vendor/htmx-1.9.10/htmx.min.js"></script>
-    <script src="/static/js/modules/core.js?v=20261111c" defer></script>
+    <script src="/static/js/modules/core.js?v=20261111g" defer></script>
     <script src="/static/js/modules/table-copy.js?v=20261112" defer></script>
     <script src="/static/js/modules/mermaid.js?v=20261028" defer></script>
-    <script src="/static/js/modules/sidebar.js?v=20261111e" defer></script>
-    <script src="/static/js/modules/file-tree.js?v=20261111d" defer></script>
-    <script src="/static/js/modules/search.js?v=20261029" defer></script>
+    <script src="/static/js/modules/sidebar.js?v=20261111g" defer></script>
+    <script src="/static/js/modules/file-tree.js?v=20261111g" defer></script>
+    <script src="/static/js/modules/search.js?v=20261111g" defer></script>
     <script src="/static/js/modules/settings.js?v=20261111c" defer></script>
     <script src="/static/js/modules/history.js?v=20261111b" defer></script>
     <script src="/static/js/modules/editor.js?v=20261110" defer></script>
@@ -110,7 +110,9 @@
    graph / dashboard / editor のどれでもなければノート（トップ・記事ページ） #}
 {% set nav_path = request.url.path if request is defined else '' %}
 {% set nav_page = {'/graph': 'graph', '/dashboard': 'dashboard', '/editor': 'editor'}.get(nav_path, 'note') %}
-<body class="{% block body_class %}{% endblock %}">
+{# 管理者の「外部の人の表示」（?as=public）のページだけ data-view-as="public" を付ける。
+   JS はこれを見て、ツリー・検索・プレビュー・つながりの API に as=public を付ける（core.js の withViewAs） #}
+<body class="{% block body_class %}{% endblock %}"{% if public_view is defined and public_view %} data-view-as="public"{% endif %}>
     {% include 'partials/_activity_bar.html' %}
 
     {% include 'partials/_header.html' %}

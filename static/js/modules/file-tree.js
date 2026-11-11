@@ -4,7 +4,8 @@
 
 const FILE_TREE_OPEN_KEY = 'fileTreeOpenFolders';
 // 前に取ったツリー（/api/tree の応答そのまま）。ページを開くたびにすぐ描けるよう、タブの中だけで持つ（Q-21）。
-// sessionStorage はオリジン（ポート）ごとに分かれるので、管理用ポートの非公開ノート入りの木が公開用ポートから読まれることはない
+// sessionStorage はオリジン（ポート）ごとに分かれるので、管理用ポートの非公開ノート入りの木が公開用ポートから読まれることはない。
+// 管理者の外部表示の木は、別の箱に入れる（treeCacheKey）
 const FILE_TREE_CACHE_KEY = 'fileTreeCache';
 // サイドバーのスクロール位置（同じくタブの中だけ）
 const FILE_TREE_SCROLL_KEY = 'fileTreeScroll';
@@ -45,7 +46,7 @@ function initFileTree() {
     const cached = loadCachedTree();
     if (cached) showTree(cached.tree);
 
-    fetch('/api/tree')
+    fetch(withViewAs('/api/tree'))
         .then(res => {
             if (!res.ok) throw new Error('Failed to load tree');
             return res.text();
@@ -376,7 +377,7 @@ function filterNodes(nodes, query) {
  */
 function loadCachedTree() {
     try {
-        const text = sessionStorage.getItem(FILE_TREE_CACHE_KEY);
+        const text = sessionStorage.getItem(treeCacheKey());
         if (!text) return null;
         const tree = JSON.parse(text);
         return Array.isArray(tree) ? { text, tree } : null;
@@ -387,10 +388,18 @@ function loadCachedTree() {
 
 function saveCachedTree(text) {
     try {
-        sessionStorage.setItem(FILE_TREE_CACHE_KEY, text);
+        sessionStorage.setItem(treeCacheKey(), text);
     } catch {
         // 容量の上限などで書けなくても、次も取り直すだけ
     }
+}
+
+/**
+ * 木の保存先。管理者の外部表示（?as=public）は公開ノートだけの木なので、通常の表示と分ける
+ * （同じ箱だと、外部表示を開いた直後に前の木（非公開入り）が一瞬出る。X-7）
+ */
+function treeCacheKey() {
+    return isPublicView() ? `${FILE_TREE_CACHE_KEY}:public` : FILE_TREE_CACHE_KEY;
 }
 
 /**

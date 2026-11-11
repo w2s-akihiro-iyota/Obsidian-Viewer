@@ -33,7 +33,6 @@ const LOCAL_GRAPH_RESIZE_DELAY = 150;
     const note = panel.querySelector('.local-graph-note');
     const radios = panel.querySelectorAll('input[name="local-graph-depth"]');
     const center = panel.dataset.center;
-    const asPublic = panel.dataset.public === 'true';
     const scriptSources = [panel.dataset.d3Src, panel.dataset.renderSrc];
 
     let lastData = null;
@@ -184,8 +183,7 @@ const LOCAL_GRAPH_RESIZE_DELAY = 150;
         loadedDepth = depth;
         if (!lastData) showMessage('読み込み中…');
         const params = new URLSearchParams({ center, depth: String(depth) });
-        if (asPublic) params.set('as', 'public');
-        const data = fetch(`/api/graph?${params}`).then(r => (r.ok ? r.json() : Promise.reject(r.status)));
+        const data = fetch(withViewAs(`/api/graph?${params}`)).then(r => (r.ok ? r.json() : Promise.reject(r.status)));
         Promise.all([data, loadLibs()])
             .then(([json]) => {
                 if (id !== requestId) return;   // 切り替えが続いたときは最後の結果だけ描く
