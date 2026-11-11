@@ -123,7 +123,8 @@ def _is_inside_content_dir(path: str) -> bool:
 
 
 @router.get("/api/preview")
-async def preview_file(request: Request, path: str):
+async def preview_file(request: Request, path: str, view_as: str = Query("", alias="as")):
+    """リンクのプレビュー（管理者の外部表示 ?as=public では、外部の人と同じ中身にする）"""
     if not _is_inside_content_dir(path):
         raise HTTPException(status_code=400, detail="Invalid path")
 
@@ -140,15 +141,15 @@ async def preview_file(request: Request, path: str):
         content = f.read()
     frontmatter, body = parse_frontmatter(content)
 
-    # 外部の人には、無いノートと同じ 404 にする（非公開ノートがあることを知らせない）
-    is_localhost = is_admin_request(request)
-    if not is_localhost and not is_published(frontmatter):
+    # 外部の人（と管理者の外部表示）には、無いノートと同じ 404 にする（非公開ノートがあることを知らせない）
+    published_only = is_public_view(request, view_as)
+    if published_only and not is_published(frontmatter):
         raise HTTPException(status_code=404, detail="File not found")
 
     # frontmatterからタイトルを取得
     title = frontmatter.get("title") or Path(path).stem
 
-    html = render_markdown(body, published_only=not is_localhost, source_path=path)
+    html = render_markdown(body, published_only=published_only, source_path=path)
     return JSONResponse(content={"title": title, "content": html})
 
 
@@ -386,12 +387,14 @@ def _legacy_search(q: str, is_localhost: bool, accept: Callable[[dict], bool] | 
 
 
 @router.get("/api/search")
-async def api_search(request: Request, q: str = ""):
+async def api_search(request: Request, q: str = "", view_as: str = Query("", alias="as")):
+    """検索（クイックスイッチャーと上の検索欄）。外部の人と管理者の外部表示（?as=public）には公開ノートだけを返す"""
     query = parse_search_query(q)
     if not query.text and not query.has_filters:
         return []
 
-    is_localhost = is_admin_request(request)
+    # 非公開ノートも対象にするか（管理者の通常の表示だけ）
+    include_private = not is_public_view(request, view_as)
     accept = query.matches if query.has_filters else None
 
     # 絞り込みだけ（tag:会議 など）のときは、条件に合うノートを新しい順に返す
@@ -404,24 +407,24 @@ async def api_search(request: Request, q: str = ""):
                 "snippet": "",
             }
             for f in cache.GLOBAL_FILE_CACHE
-            if (is_localhost or f.get("published")) and query.matches(f)
+            if (include_private or f.get("published")) and query.matches(f)
         ][:SEARCH_LIMIT]
 
     # TF-IDFインデックスが構築済みなら新方式を使用
     if cache.SEARCH_INDEX is not None:
-        return cache.SEARCH_INDEX.search(query.text, is_localhost, cache.GLOBAL_FILE_CACHE,
+        return cache.SEARCH_INDEX.search(query.text, include_private, cache.GLOBAL_FILE_CACHE,
                                          limit=SEARCH_LIMIT, accept=accept)
 
     # フォールバック: 旧方式
-    return _legacy_search(query.text, is_localhost, accept)
+    return _legacy_search(query.text, include_private, accept)
 
 
 @router.get("/api/tree")
-async def api_tree(request: Request):
-    """サイドバーのファイルツリー（外部からは公開ノートだけの木）"""
-    if is_admin_request(request):
-        return cache.GLOBAL_FILE_TREE_CACHE
-    return cache.GLOBAL_FILE_TREE_CACHE_PUBLIC
+async def api_tree(request: Request, view_as: str = Query("", alias="as")):
+    """サイドバーのファイルツリー（外部の人と管理者の外部表示 ?as=public には、公開ノートだけの木）"""
+    if is_public_view(request, view_as):
+        return cache.GLOBAL_FILE_TREE_CACHE_PUBLIC
+    return cache.GLOBAL_FILE_TREE_CACHE
 
 
 @router.get("/api/search/benchmark")

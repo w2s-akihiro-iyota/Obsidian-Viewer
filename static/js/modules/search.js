@@ -153,7 +153,7 @@ function initSearch() {
             }
 
             debounceTimer = setTimeout(() => {
-                fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                fetch(withViewAs(`/api/search?q=${encodeURIComponent(query)}`))
                     .then(response => response.json())
                     .then(data => {
                         if (searchResults) {
@@ -451,7 +451,7 @@ function initSearch() {
             }
 
             modalDebounceTimer = setTimeout(() => {
-                fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                fetch(withViewAs(`/api/search?q=${encodeURIComponent(query)}`))
                     .then(response => response.json())
                     .then(data => {
                         // 後から打った語の結果を、先に打った語の遅い応答で上書きしない

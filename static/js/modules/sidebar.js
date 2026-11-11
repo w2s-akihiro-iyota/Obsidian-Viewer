@@ -294,7 +294,7 @@ function initSidebar() {
             } else {
                 const inner = previewTooltip.querySelector('.preview-tooltip-inner');
                 if (inner) inner.innerHTML = '<div class="preview-loading">読み込み中...</div>';
-                fetch(`/api/preview?path=${encodeURIComponent(path)}`)
+                fetch(withViewAs(`/api/preview?path=${encodeURIComponent(path)}`))
                     .then(res => {
                         if (!res.ok) throw new Error('Failed to load');
                         return res.json();

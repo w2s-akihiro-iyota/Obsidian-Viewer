@@ -23,7 +23,7 @@
 <!-- 右上のアクション置き場と、ローカルグラフ（つながり）、768px 以下の「＋」の開閉（article-dial.js）。d3 と graph-render.js は、初めて開いたときに local-graph.js が読み込む -->
 <script src="/static/js/modules/article-actions.js?v=20261011" defer></script>
 <script src="/static/js/modules/local-graph-panel.js?v=20261014" defer></script>
-<script src="/static/js/modules/local-graph.js?v=20261013" defer></script>
+<script src="/static/js/modules/local-graph.js?v=20261111g" defer></script>
 <script src="/static/js/modules/article-dial.js?v=20261014" defer></script>
 
 <!-- KaTeX for Math -->
@@ -88,7 +88,7 @@
                 </button>
                 <div class="local-graph-backdrop" hidden></div>
                 <section class="local-graph" id="local-graph" role="dialog" aria-labelledby="local-graph-title" tabindex="-1" hidden
-                    data-center="{{ slug }}" data-title="{{ title }}" data-public="{{ 'true' if public_view else 'false' }}"
+                    data-center="{{ slug }}" data-title="{{ title }}"
                     data-d3-src="{{ d3lib.D3_SRC }}" data-render-src="{{ d3lib.GRAPH_RENDER_SRC }}">
                     <div class="local-graph-head">
                         <h3 class="local-graph-title" id="local-graph-title">つながり</h3>

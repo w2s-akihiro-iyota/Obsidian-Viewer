@@ -50,6 +50,23 @@ function viewUrl(slug) {
     return '/view/' + String(slug).split('/').map(encodeURIComponent).join('/');
 }
 
+/**
+ * 管理者の「外部の人の表示」（?as=public）のページか（base.html が body に data-view-as="public" を付ける）。
+ * 外部の人のページには付かない（API がもともと公開ノートだけを返す）
+ */
+function isPublicView() {
+    return document.body.dataset.viewAs === 'public';
+}
+
+/**
+ * API の URL に、外部の人の表示なら as=public を付ける（X-7）。
+ * ツリー・検索・プレビュー・つながりを、外部の人と同じ中身（公開ノートだけ）にする
+ */
+function withViewAs(url) {
+    if (!isPublicView()) return url;
+    return url + (url.includes('?') ? '&' : '?') + 'as=public';
+}
+
 // --- Toast Notification System ---
 /**
  * トーストを出す

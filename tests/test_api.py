@@ -4,6 +4,7 @@
 - 保留した削除の API は管理者だけ。同期中は 409（B-2 / B-4）
 - 新規ノートの保存は、Vault に書けなければビューア側にも書かない（B-2 の削除で消えないように）
 - 公開チェック（F-5）: 管理者は「外部の人の表示」（?as=public）で外部向けと同じ本文と、チェック結果を見られる
+- 外部の人の表示のサイドバー（X-7）: ツリー・検索・プレビューも外部の人と同じ（公開ノートだけ）
 - 記事ページのヘッダー（D-1）: パンくず・タイトル・メタ情報
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
 - 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
@@ -312,6 +313,70 @@ def test_外部では非公開ノートは404(check_site):
     client = TestClient(app, base_url=PUBLIC)
     assert _get(client, "秘密.md").status_code == 404
     assert _get(client, "秘密.md", **{"as": "public"}).status_code == 404
+
+
+# ---------- X-7: 管理者の外部表示では、ツリー・検索・プレビューも外部の人と同じ ----------
+
+_PRIVATE_NOTES = {"秘密.md", "秘密埋め込み.md", "コード内秘密.md", "資料/非公開資料.md"}
+
+
+def _tree_paths(nodes):
+    """ツリー（/api/tree の応答）に出るノートのパス"""
+    paths = set()
+    for node in nodes:
+        if node["type"] == "directory":
+            paths |= _tree_paths(node["children"])
+        else:
+            paths.add(node["path"])
+    return paths
+
+
+def test_外部表示のページだけbodyに印を付ける(check_site):
+    admin = TestClient(app, base_url=ADMIN)
+    marked = re.compile(r'<body class="[^"]*" data-view-as="public">')
+    assert marked.search(_get(admin, "公開ページ.md", **{"as": "public"}).text)
+    # 非公開ノートを外部表示で開いたとき（404 にせず案内を出す画面）も外部表示
+    assert marked.search(_get(admin, "秘密.md", **{"as": "public"}).text)
+    assert "data-view-as" not in _get(admin, "公開ページ.md").text
+    assert "data-view-as" not in _get(TestClient(app, base_url=PUBLIC), "公開ページ.md", **{"as": "public"}).text
+
+
+def test_管理者の外部表示のツリーは公開ノートだけ(check_site):
+    admin, public = TestClient(app, base_url=ADMIN), TestClient(app, base_url=PUBLIC)
+    public_tree = _tree_paths(public.get("/api/tree").json())
+    assert public_tree and not public_tree & _PRIVATE_NOTES
+    assert _tree_paths(admin.get("/api/tree", params={"as": "public"}).json()) == public_tree
+    assert _PRIVATE_NOTES <= _tree_paths(admin.get("/api/tree").json())
+    # 外部の人が as=public を付けても変わらない
+    assert _tree_paths(public.get("/api/tree", params={"as": "public"}).json()) == public_tree
+
+
+@pytest.mark.parametrize("q", ["秘密", "path:資料"])   # 本文の語で探す（TF-IDF）と、絞り込みだけ
+def test_管理者の外部表示の検索は公開ノートだけ(check_site, q):
+    admin, public = TestClient(app, base_url=ADMIN), TestClient(app, base_url=PUBLIC)
+
+    def found(client, **params):
+        return {r["path"] for r in client.get("/api/search", params={"q": q, **params}).json()}
+
+    assert found(admin, **{"as": "public"}) == found(public) == found(public, **{"as": "public"})
+    assert not found(public) & _PRIVATE_NOTES
+    assert found(admin) & _PRIVATE_NOTES
+
+
+def test_管理者の外部表示のプレビューは外部の人と同じ(check_site):
+    admin, public = TestClient(app, base_url=ADMIN), TestClient(app, base_url=PUBLIC)
+
+    def preview(client, path, **params):
+        return client.get("/api/preview", params={"path": path, **params})
+
+    # 非公開ノートは、外部と同じく無いノートと同じ 404
+    assert preview(admin, "秘密.md", **{"as": "public"}).status_code == 404
+    assert preview(admin, "秘密.md").status_code == 200
+    # 公開ノートの中身も外部向けと同じ（非公開ノートへのリンクはリンク切れ、Dataview は公開ノートだけ）
+    with_as = preview(admin, "公開ページ.md", **{"as": "public"}).json()
+    assert with_as == preview(public, "公開ページ.md").json()
+    assert "非公開資料" not in with_as["content"]
+    assert "非公開資料" in preview(admin, "公開ページ.md").json()["content"]
 
 
 # ---------- D-1: 記事ページのヘッダー ----------
@@ -954,7 +1019,8 @@ def test_記事ページにつながりのパネルと全体グラフへのリ�
     slug = cache.PATH_TO_SLUG["中心.md"]
     html = _view(TestClient(app, base_url=ADMIN), "中心.md")
     assert re.search(r'<section class="local-graph" id="local-graph" role="dialog"[^>]*hidden', html)
-    assert f'data-center="{slug}"' in html and 'data-public="false"' in html
+    # 外部表示かどうかはパネルではなく body の data-view-as で渡す（X-7 の test_外部表示のページだけbodyに印を付ける）
+    assert f'data-center="{slug}"' in html
     # d3 と描画処理は開いたときに読み込むので、ページの script には無く、読み込み先だけを渡す
     assert re.search(r'data-d3-src="/static/js/vendor/d3-[\d.]+/d3\.min\.js"', html) and 'data-render-src="/static/js/modules/graph-render.js' in html
     assert not re.search(r'<script src="[^"]*(d3\.min\.js|graph-render\.js)', html)
@@ -962,8 +1028,6 @@ def test_記事ページにつながりのパネルと全体グラフへのリ�
     # 深さの切り替えは config の LOCAL_GRAPH_DEPTHS から作り、先頭を選んでおく
     assert re.findall(r'name="local-graph-depth" value="(\d+)"', html) == ["1", "2"]
     assert 'value="1" id="local-graph-depth-1" checked' in html
-    html = _get(TestClient(app, base_url=ADMIN), "中心.md", **{"as": "public"}).text
-    assert 'data-public="true"' in html
 
 
 def test_全体グラフのページはd3と描画処理を読み込む(graph_site):
