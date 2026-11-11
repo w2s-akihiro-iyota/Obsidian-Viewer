@@ -19,6 +19,9 @@ function initNoteProperties() {
 document.addEventListener('DOMContentLoaded', async () => {
     // await の前に実行する（メッセージの取得を待たずに、閉じた状態へ切り替える）
     initNoteProperties();
+    // ファイルツリーもメッセージを使わないので、取得を待たずに描く。前に取った木（Q-21）があれば、
+    // 最初の描画に間に合い、サイドバーが空のまま出てから埋まることがない
+    initFileTree();
 
     // Load messages first
     await loadMessages();
@@ -252,25 +255,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Initialize modules ---
     initSearch();
     initSidebar();
-    initFileTree();
     initHistory();
     initSettingsModule();
     initEditor();
     initShortcutSheet();
 
-    // --- Celebration check ---
-    if (localStorage.getItem('showCelebration') === 'true') {
-        localStorage.removeItem('showCelebration');
-        setTimeout(() => showCelebration(), 300);
-    }
+    // 一度きりの知らせは、先読み（F-15）中に読み捨てないよう、画面に出てから確かめる
+    whenPageShown(() => {
+        // --- Celebration check ---
+        if (localStorage.getItem('showCelebration') === 'true') {
+            localStorage.removeItem('showCelebration');
+            setTimeout(() => showCelebration(), 300);
+        }
 
-    // --- Sync completion message check ---
-    const syncMsg = sessionStorage.getItem('syncCompletedMessage');
-    if (syncMsg) {
-        sessionStorage.removeItem('syncCompletedMessage');
-        // 「内訳を見る」で設定の「ファイル同期」にある同期の記録（F-7）へ移る
-        setTimeout(() => showToast(syncMsg, "success", { label: "内訳を見る", onClick: openSyncReport }), 400);
-    }
+        // --- Sync completion message check ---
+        const syncMsg = sessionStorage.getItem('syncCompletedMessage');
+        if (syncMsg) {
+            sessionStorage.removeItem('syncCompletedMessage');
+            // 「内訳を見る」で設定の「ファイル同期」にある同期の記録（F-7）へ移る
+            setTimeout(() => showToast(syncMsg, "success", { label: "内訳を見る", onClick: openSyncReport }), 400);
+        }
+    });
 
     // --- HTMX の読み込みに失敗したとき（F-10） ---
     // 部分読み込みにはエラー画面を返さない（app/api/errors.py）ので、何も起きないように見えないよう知らせる

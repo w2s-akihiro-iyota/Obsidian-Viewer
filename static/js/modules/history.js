@@ -7,10 +7,12 @@ const HISTORY_MAX = 30;
 const SIDEBAR_TAB_KEY = 'sidebarTab';
 
 function initHistory() {
-    // viewページ閲覧時に履歴を記録
-    recordHistory();
-    // サイドバーに履歴リストを描画
-    renderHistoryList();
+    // viewページ閲覧時に履歴を記録し、サイドバーに履歴リストを描画する。
+    // 先読み（F-15）中は記録しない（マウスを乗せただけのノートを履歴に載せない）
+    whenPageShown(() => {
+        recordHistory();
+        renderHistoryList();
+    });
     // タブ切替イベント
     initSidebarTabs();
 }

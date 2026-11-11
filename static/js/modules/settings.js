@@ -99,13 +99,15 @@ function initWelcomeModal() {
     const closeWelcomeBtn = document.getElementById('close-welcome-modal');
     const welcomeStartBtn = document.getElementById('welcome-start-btn');
 
-    // 初回判定: localStorageにフラグがなければ1秒後にポップアップ表示
-    if (!localStorage.getItem('welcomeShown')) {
+    // 初回判定: localStorageにフラグがなければ、画面に出てから1秒後にポップアップ表示。
+    // 判定も画面に出てからする（先読み（F-15）の時点で判定すると、そのあと別のページで閉じても、先読みしたページでまた出る）
+    whenPageShown(() => {
+        if (localStorage.getItem('welcomeShown')) return;
         setTimeout(() => {
             welcomeModal.classList.add('active');
             document.body.classList.add('no-scroll');
         }, 1000);
-    }
+    });
 
     const closeWelcome = () => {
         welcomeModal.classList.add('closing');

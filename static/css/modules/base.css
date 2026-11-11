@@ -7,9 +7,91 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Page Navigation Transition */
+/* Page Navigation Transition（D-14）
+   ページを移るとき、変わらない部分は動かさず、本文だけを短く替える。
+   画面まるごとフェードさせると、変わらない部分まで一緒にフワッとしてちらついて見える。
+
+   部分               | 移るあいだに出すもの                               | 理由
+   -------------------|----------------------------------------------------|---------------------------------------------
+   ヘッダー           | 新しいページの絵をすぐ出す（前の絵は出さない）     | サーバーが描くので、最初の描画で出そろう
+   アクティビティバー | 同上                                               | 同上
+   サイドバー         | 前のページの絵を、本文が出きるまで出しておく       | ツリーは JS が描くので、最初の描画に間に合わない
+                      |                                                    | ことがある（空の枠が一瞬出る）。スクロール位置は
+                      |                                                    | file-tree.js が引き継ぐので、替わるのは開いている
+                      |                                                    | ノートの印だけ
+   本文（root）       | 前は 90ms で消し、新しい方は少し下から 200ms で出す | 
+
+   types で「ページの移動」だけに絞る（テーマの切り替え（settings.js の startViewTransition）は、今まで通り画面全体を溶かす）。
+   動きを減らす設定のときは、ページの移動に遷移を使わない（@view-transition は @media の中に書ける） */
 @view-transition {
     navigation: auto;
+    types: page-nav;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    @view-transition {
+        navigation: none;
+    }
+}
+
+/* 名前は 1 ページに 1 つだけ（重なると遷移ごと飛ばされる）。本文に <header> が書かれても当たらないよう、body 直下に絞る。
+   3 つとも元から position: fixed なので、名前を付けても重なり順・中の部品の位置は変わらない */
+body > header {
+    view-transition-name: app-header;
+}
+
+body > .activity-bar {
+    view-transition-name: app-activity-bar;
+}
+
+#sidebar {
+    view-transition-name: app-sidebar;
+}
+
+/* ヘッダー・アクティビティバー: 新しいページの絵をすぐ出す */
+html:active-view-transition-type(page-nav)::view-transition-group(app-header),
+html:active-view-transition-type(page-nav)::view-transition-new(app-header),
+html:active-view-transition-type(page-nav)::view-transition-group(app-activity-bar),
+html:active-view-transition-type(page-nav)::view-transition-new(app-activity-bar) {
+    animation: none;
+}
+
+html:active-view-transition-type(page-nav)::view-transition-old(app-header),
+html:active-view-transition-type(page-nav)::view-transition-old(app-activity-bar) {
+    display: none;
+}
+
+/* サイドバー: 前のページの絵を出しておき、新しい絵は遷移が終わるまで隠す */
+html:active-view-transition-type(page-nav)::view-transition-group(app-sidebar),
+html:active-view-transition-type(page-nav)::view-transition-old(app-sidebar) {
+    animation: none;
+}
+
+html:active-view-transition-type(page-nav)::view-transition-new(app-sidebar) {
+    animation: none;
+    opacity: 0;
+}
+
+/* 本文: 前のページはすぐ消し、新しいページは少し下から浮き上がるように出す */
+html:active-view-transition-type(page-nav)::view-transition-old(root) {
+    animation: 90ms ease-in both page-nav-out;
+}
+
+html:active-view-transition-type(page-nav)::view-transition-new(root) {
+    animation: 200ms cubic-bezier(0.16, 1, 0.3, 1) both page-nav-in;
+}
+
+@keyframes page-nav-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes page-nav-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
 }
 
 * {

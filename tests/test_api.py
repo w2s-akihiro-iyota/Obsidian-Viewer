@@ -11,9 +11,11 @@
 - ダッシュボード（F-6 / D-8）: 手入れが必要なノート（リンク切れ・孤立・タグなし）・ヒートマップ・0 件の表示
 - ローカルグラフ（F-8）: /api/graph?center=&depth= の点と距離・深さの不正値・404・外部には公開ノートだけ・上限
 - ノートを読む回数（Q-1）: 索引の作り直しは各ノートを 1 回だけ読む。記事ページは描画キャッシュが効いていれば読み直さない
+- 先読み（F-15）: どの画面も、先読みするのは同じサイトの記事（/view/*）だけ。外部サイト・添付・エディタ・API・新しいタブ・download は対象にしない
 """
 import builtins
 import copy
+import json
 import os
 import pathlib
 import re
@@ -1371,3 +1373,28 @@ def test_循環するfrontmatterの記事も200で開き索引も作れる(site)
     res = _get(TestClient(app, base_url=ADMIN), "循環.md")
     assert res.status_code == 200 and "…" in _properties_html(res.text)
     assert "循環.md" in [bl["path"] for bl in cache.BACKLINK_CACHE["子.md"]]
+
+
+# --- 先読み（F-15） ---
+
+def _speculation_rules(html):
+    found = re.findall(r'<script type="speculationrules">(.*?)</script>', html, re.S)
+    assert len(found) == 1
+    return json.loads(found[0])
+
+
+# ルールは base.html に 1 つだけ。どの画面でも、どちらのポートでも同じものが入る（代表としてトップ・記事・エラー画面を見る）
+@pytest.mark.parametrize("base, path", [(ADMIN, "/"), (PUBLIC, "/view/{slug}"), (ADMIN, "/view/存在しないノート")])
+def test_先読みは同じサイトの記事だけを対象にする(site, base, path):
+    # エラー画面（F-10）はブラウザからの読み込み（Accept: text/html）のときだけアプリの枠で出る
+    html = TestClient(app, base_url=base).get(path.format(slug=cache.PATH_TO_SLUG["親.md"]),
+                                              headers={"Accept": "text/html"}).text
+    rules = _speculation_rules(html)
+    assert list(rules) == ["prerender"], "先読みの種類は prerender だけ（ほかの種類で別の URL を足さない）"
+    (rule,) = rules["prerender"]
+    conditions = rule["where"]["and"]
+    assert [c["href_matches"] for c in conditions if "href_matches" in c] == ["/view/*"], (
+        "対象は相手のサイトを書かない相対パスの記事だけ（外部サイト・/media・/editor・/api は当たらない）")
+    assert {"not": {"selector_matches": "[target=_blank], [download]"}} in conditions, (
+        "新しいタブで開くリンクと download 付きは先読みしない")
+    assert rule["eagerness"] == "moderate", "乗せたときだけ読む（immediate・eager でページを開いた瞬間に読まない）"
