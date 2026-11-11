@@ -2,11 +2,6 @@
    Base Styles: Transitions, Box-sizing, Body, Scrollbar, Links, Scroll-lock
    ========================================= */
 
-/* Fallback Transition */
-body {
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
 /* Page Navigation Transition（D-14）
    ページを移るとき、変わらない部分は動かさず、本文だけを短く替える。
    画面まるごとフェードさせると、変わらない部分まで一緒にフワッとしてちらついて見える。
@@ -19,7 +14,7 @@ body {
                       |                                                    | ことがある（空の枠が一瞬出る）。スクロール位置は
                       |                                                    | file-tree.js が引き継ぐので、替わるのは開いている
                       |                                                    | ノートの印だけ
-   本文（root）       | 前は 90ms で消し、新しい方は少し下から 200ms で出す | 
+   本文（root）       | 前は速く（fast）消し、新しい方は少し下から（base）出す |
 
    types で「ページの移動」だけに絞る（テーマの切り替え（settings.js の startViewTransition）は、今まで通り画面全体を溶かす）。
    動きを減らす設定のときは、ページの移動に遷移を使わない（@view-transition は @media の中に書ける） */
@@ -74,11 +69,11 @@ html:active-view-transition-type(page-nav)::view-transition-new(app-sidebar) {
 
 /* 本文: 前のページはすぐ消し、新しいページは少し下から浮き上がるように出す */
 html:active-view-transition-type(page-nav)::view-transition-old(root) {
-    animation: 90ms ease-in both page-nav-out;
+    animation: var(--motion-fast) var(--ease-in) both page-nav-out;
 }
 
 html:active-view-transition-type(page-nav)::view-transition-new(root) {
-    animation: 200ms cubic-bezier(0.16, 1, 0.3, 1) both page-nav-in;
+    animation: var(--motion-base) var(--ease-out) both page-nav-in;
 }
 
 @keyframes page-nav-out {
@@ -98,6 +93,26 @@ html:active-view-transition-type(page-nav)::view-transition-new(root) {
     box-sizing: border-box;
 }
 
+/* 動きを減らす設定（D-15）: 飾りの動きは止める（Windows の「アニメーション効果」をオフにしただけでも当たる）。
+   ただし処理中の輪（.spinner）は止めずにゆっくり回す（止めると固まったように見える）。
+   0s にはしない（動き終わり（transitionend）を待って消すトーストが、合図が来ずに残る）。
+   ページを移るときの遷移（::view-transition-*）は * に当たらないので、上の @view-transition を none にして止めている */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .spinner {
+        animation-duration: 2.4s !important;
+        animation-iteration-count: infinite !important;
+    }
+}
+
 body {
     background-color: var(--bg-primary);
     color: var(--text-normal);
@@ -105,7 +120,7 @@ body {
     margin: 0;
     padding: 0;
     line-height: 1.6;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard);
 }
 
 /* モーダルを開くとき body.no-scroll でスクロールバーが消えても、ページの幅が変わらないように

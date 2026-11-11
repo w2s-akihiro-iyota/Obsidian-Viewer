@@ -19,7 +19,6 @@
     padding-top: 80px;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
     backdrop-filter: blur(5px);
 }
 
@@ -38,12 +37,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transform: translateY(-20px);
-    transition: transform 0.3s ease;
-}
-
-.search-modal.active .search-modal-content {
-    transform: translateY(0);
 }
 
 .search-modal-header {
@@ -78,7 +71,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, color 0.2s;
+    transition: var(--transition-ui);
 }
 
 .close-modal-btn:hover {
@@ -174,13 +167,44 @@
     justify-content: center;
     opacity: 0;
     visibility: hidden;
-    /* 全画面の要素なので、見た目の切り替えに要るものだけをアニメーションさせる */
-    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .settings-modal.active {
     opacity: 1;
     visibility: visible;
+}
+
+/* モーダルの出入り（D-15）。検索・設定・ヘルプ・フォルダ選択・ショートカット一覧で共通
+   （ようこそ画面は tutorial.css で弾む動きにしている）。
+   全画面の要素なので、動かすのは透明度と visibility だけ。開くときは中身が少し小さく上にずれた所から浮き出し、
+   閉じるときは速く消す。visibility は消え終わってから切り替える（押せない透明な膜を残さない） */
+.search-modal,
+.settings-modal {
+    transition: opacity var(--motion-fast) var(--ease-in), visibility 0s linear var(--motion-fast);
+}
+
+.search-modal.active,
+.settings-modal.active {
+    transition: opacity var(--motion-base) var(--ease-out), visibility 0s;
+}
+
+.search-modal-content,
+.settings-modal-container,
+.shortcut-sheet {
+    transform: translateY(-8px) scale(0.98);
+    transition: transform var(--motion-fast) var(--ease-in);
+}
+
+/* 開いたら元の位置へ。設定・ヘルプ・フォルダ選択（.settings-modal）の中身もここで戻す
+   （前は検索の中の .settings-modal-container しか戻しておらず、開いても 20px 上にずれたままだった。B-18）。
+   設定は直下の子だけに当てる（フォルダ選択の .settings-modal は設定の中に入れ子なので、子孫に当てると開く前から戻ってしまう）。
+   ようこそ画面は #welcome-modal（tutorial.css）の方が詳細度で勝ち、弾む動きのまま */
+.search-modal.active .search-modal-content,
+.search-modal.active .settings-modal-container,
+.settings-modal.active > .settings-modal-container,
+.shortcut-sheet-modal.active .shortcut-sheet {
+    transform: none;
+    transition: transform var(--motion-base) var(--ease-out);
 }
 
 .settings-modal-container {
@@ -196,12 +220,6 @@
     flex-direction: row;
     overflow: hidden;
     position: relative;
-    transform: translateY(-20px);
-    transition: transform 0.3s ease;
-}
-
-.search-modal.active .settings-modal-container {
-    transform: translateY(0);
 }
 
 .settings-sidebar {
@@ -245,7 +263,7 @@
     text-align: left;
     cursor: pointer;
     font-size: 0.95rem;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
 }
 
 .settings-nav-item:hover {
@@ -285,7 +303,7 @@
 
 .settings-tab-pane.active {
     display: block;
-    animation: fadeIn 0.2s ease;
+    animation: fadeIn var(--motion-fast) var(--ease-out);
 }
 
 .settings-header.line-bottom {
@@ -488,7 +506,7 @@
     font-size: 0.95rem;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     min-width: 100px;
 }
 
@@ -758,7 +776,7 @@
     font-size: 0.95rem;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     min-width: 100px;
 }
 
@@ -827,7 +845,7 @@
     right: 0;
     bottom: 0;
     background-color: var(--border-color);
-    transition: .4s;
+    transition: background-color var(--motion-base) var(--ease-standard);
     border-radius: 34px;
 }
 
@@ -839,7 +857,7 @@
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .4s;
+    transition: transform var(--motion-base) var(--ease-standard);
     border-radius: 50%;
 }
 
@@ -927,7 +945,7 @@ input:checked+.slider:before {
     gap: 12px;
     min-width: 300px;
     transform: translateY(-20px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
     font-size: 0.95rem;
     pointer-events: auto;
     /* Catch clicks on toast */
@@ -967,7 +985,7 @@ input:checked+.slider:before {
     padding: 0;
     display: none;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--motion-fast) var(--ease-standard);
     pointer-events: auto;
     /* Allow interaction (scrolling, clicking links inside) */
 }
@@ -1055,7 +1073,7 @@ input:checked+.slider:before {
     gap: 10px;
     padding: 10px 12px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--motion-fast);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1132,7 +1150,7 @@ input:checked+.slider:before {
     gap: 12px;
     min-width: 300px;
     transform: translateY(-20px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
     font-size: 0.95rem;
     pointer-events: auto;
     /* Catch clicks on toast */
@@ -1172,7 +1190,7 @@ input:checked+.slider:before {
     padding: 0;
     display: none;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--motion-fast) var(--ease-standard);
     pointer-events: auto;
     /* Allow interaction (scrolling, clicking links inside) */
 }
@@ -1180,6 +1198,21 @@ input:checked+.slider:before {
 .preview-tooltip.active {
     display: block;
     opacity: 1;
+}
+
+/* リンクのプレビューが出るとき（D-15）: 少し下・少し小さい所から浮き出る。
+   出る瞬間に display が none から切り替わるので、始まりの見た目は @starting-style で決める（無いと透明度が飛んで急に出る）。
+   上の .preview-tooltip は同じものが 2 回書かれている（Q-23）。動きはここだけで決める */
+.preview-tooltip.active {
+    transform: none;
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
+}
+
+@starting-style {
+    .preview-tooltip.active {
+        opacity: 0;
+        transform: translateY(4px) scale(0.98);
+    }
 }
 
 .preview-header {
@@ -1260,7 +1293,7 @@ input:checked+.slider:before {
     gap: 10px;
     padding: 10px 12px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--motion-fast);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1317,7 +1350,7 @@ input:checked+.slider:before {
     cursor: pointer;
     font-size: 0.9rem;
     color: var(--text-muted);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: var(--transition-ui);
     user-select: none;
     text-align: center;
     flex: 1 1 0;
@@ -1372,7 +1405,7 @@ input:checked+.slider:before {
     text-decoration: none;
     border-radius: 6px;
     border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
+    transition: var(--transition-ui);
     font-size: 0.9rem;
     font-weight: 500;
 }
@@ -1404,7 +1437,7 @@ input:checked+.slider:before {
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1533,7 +1566,7 @@ input:checked+.slider:before {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 16px;
-    transition: transform 0.2s, border-color 0.2s;
+    transition: transform var(--motion-fast), border-color var(--motion-fast);
 }
 
 .help-card:hover {
@@ -1609,7 +1642,7 @@ input:checked+.slider:before {
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 500;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: var(--transition-ui);
     border-radius: 6px 6px 0 0;
     margin-top: 8px;
     position: relative;
@@ -1646,7 +1679,7 @@ input:checked+.slider:before {
 
 .help-panel {
     display: none;
-    animation: helpPanelFadeIn 0.3s ease-out;
+    animation: helpPanelFadeIn var(--motion-base) var(--ease-out);
 }
 
 .help-panel.active {
@@ -1704,7 +1737,7 @@ input:checked+.slider:before {
     border-radius: 50%;
     background: var(--accent-purple);
     cursor: pointer;
-    transition: box-shadow 0.2s;
+    transition: box-shadow var(--motion-fast);
 }
 
 .setting-range::-webkit-slider-thumb:hover {
@@ -1741,7 +1774,7 @@ input:checked+.slider:before {
     justify-content: center;
     color: var(--text-muted);
     opacity: 0.3;
-    transition: opacity 0.2s, color 0.2s;
+    transition: opacity var(--motion-fast), color var(--motion-fast);
     border-radius: 0 0 8px 0;
 }
 
@@ -1851,12 +1884,6 @@ input:checked+.slider:before {
     font-size: 0.85rem;
     overflow: hidden;
     outline: none;
-    transform: translateY(-20px);
-    transition: transform 0.3s ease;
-}
-
-.shortcut-sheet-modal.active .shortcut-sheet {
-    transform: translateY(0);
 }
 
 .shortcut-sheet-head {

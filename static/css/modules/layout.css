@@ -44,7 +44,7 @@ header {
     border-radius: 6px;
     color: var(--text-normal);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -79,7 +79,7 @@ header {
     align-items: center;
     gap: 12px;
     text-decoration: none;
-    transition: opacity 0.2s;
+    transition: opacity var(--motion-fast);
 }
 
 .brand:hover {
@@ -163,7 +163,7 @@ header {
     text-decoration: none;
     border-bottom: 1px solid var(--border-color);
     font-size: 0.9em;
-    transition: background-color 0.2s;
+    transition: background-color var(--motion-fast);
 }
 
 .search-result-item:hover {
@@ -216,7 +216,7 @@ footer {
     opacity: 0;
     visibility: hidden;
     transform: translateY(20px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out), visibility var(--motion-base), box-shadow var(--motion-fast) var(--ease-standard);
     z-index: var(--z-dropdown);
 }
 
@@ -290,7 +290,7 @@ footer {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: var(--transition-ui);
     position: relative;
     border-radius: 0;
 }
@@ -340,7 +340,7 @@ footer {
     /* Revert to standard padding */
     border-radius: 6px;
     display: flex;
-    transition: background-color 0.2s, color 0.2s;
+    transition: var(--transition-ui);
     margin: 0;
     /* Remove extra margin */
 }
@@ -428,7 +428,7 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
     }
 
     .article-dial-ready .article-dial-toggle svg {
-        transition: transform var(--article-dial-duration) ease;
+        transition: transform var(--motion-base) var(--ease-standard);
     }
 
     .article-dial-ready .article-dial.is-open .article-dial-toggle {
@@ -457,7 +457,7 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
         border-radius: 50%;
         border: 2px solid var(--bg-primary);
         background-color: var(--accent-purple);
-        transition: opacity var(--article-dial-duration);
+        transition: opacity var(--motion-base);
     }
 
     .article-dial-ready .article-dial.is-open .article-dial-dot {
@@ -472,7 +472,7 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
         background-color: var(--article-dial-backdrop);
         opacity: 0;
         visibility: hidden;
-        transition: opacity var(--article-dial-duration), visibility var(--article-dial-duration);
+        transition: opacity var(--motion-base), visibility var(--motion-base);
     }
 
     .article-dial-ready .article-dial.is-open .article-dial-backdrop {
@@ -534,8 +534,8 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
         opacity: 0;
         visibility: hidden;
         transform: translateY(-14px);
-        transition: opacity var(--article-dial-duration) ease, transform var(--article-dial-duration) ease,
-            visibility var(--article-dial-duration);
+        transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard),
+            visibility var(--motion-base);
     }
 
     .article-dial-ready .article-dial.is-open .article-dial-label,
@@ -546,7 +546,7 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
         transform: none;
         pointer-events: auto;
         /* 開くときは visibility をすぐ切り替える（開いた直後に最初の項目へフォーカスを移せるように） */
-        transition: opacity var(--article-dial-duration) ease, transform var(--article-dial-duration) ease, visibility 0s;
+        transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard), visibility 0s;
     }
 
     .article-dial-ready .article-dial.is-open .article-dial-menu > * {

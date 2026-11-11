@@ -10,8 +10,28 @@
     --accent-purple: #7b61ff;
     --border-color: #333;
     --header-height: 50px;
-    /* Web フォントは読み込まない（Q-3。オフラインでも同じ見た目にする）。OS に入っている日本語フォントを順に使う */
-    --font-family: 'Consolas', "BIZ UDPGothic", "Yu Gothic UI", "Meiryo UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+    /* Web フォントは読み込まない（Q-3。オフラインでも同じ見た目にする）。OS に入っている日本語フォントを順に使う。
+       Noto Sans JP が入っていればそれを使う（Q-3 までは Google Fonts で全員 Noto Sans JP だった。D-17） */
+    --font-family: 'Consolas', "Noto Sans JP", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+    /* 動きの速さとカーブ（D-15）。transition・animation の秒数はここから選ぶ
+       - fast: ホバーの色・押した感など、触った手応え
+       - base: モーダル・トースト・プレビューなど、出る・消える
+       - slow: サイドバーなど、大きく動くもの
+       - ease-standard: 状態の切り替え（色・位置）。ease-out: 出る・開く（すっと出て静かに止まる）。ease-in: 消える・閉じる */
+    --motion-fast: 120ms;
+    --motion-base: 180ms;
+    --motion-slow: 260ms;
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    /* 弾む登場（ようこそ画面・お祝い・画像の拡大）。少しはみ出して戻る */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* ボタン・タブ・札など、触ると色や影が変わる部品の transition。
+       色・枠・影に加えて opacity と transform も入っている（押した感の scale もこれで動く。components.css の末尾）。
+       「すべてのプロパティ」（all）は使わない（幅や位置まで動いて重くなり、意図しない動きも出る） */
+    --transition-ui: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard),
+        color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard),
+        opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
     --code-font: 'Consolas', 'Monaco', 'Courier New', monospace;
     --sidebar-width: 280px;
     --activity-bar-width: 50px;
@@ -25,7 +45,6 @@
     /* 768px 以下の右上の「＋」（D-11。layout.css の .article-dial）: 出てくるボタンどうしの間と、まわりの薄い暗幕 */
     --article-dial-gap: 10px;
     --article-dial-backdrop: rgba(0, 0, 0, 0.18);
-    --article-dial-duration: 0.18s;
     /* 記事ページの「つながり」（F-8）: パネルの幅とグラフの高さ、768px 以下のシートの高さ、影と暗幕 */
     --local-graph-panel-width: 340px;
     --local-graph-canvas-height: 240px;
