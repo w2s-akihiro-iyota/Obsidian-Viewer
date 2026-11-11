@@ -9,7 +9,8 @@
 <script src="/static/js/modules/error-page.js?v=20261029" defer></script>
 {% endblock %}
 
-{% block body_class %}error-page-body{% endblock %}
+{# is-note-missing: ノートの URL（/view/...）の 404。history.js がそのノートを閲覧履歴から外す（B-19） #}
+{% block body_class %}error-page-body{% if page.for_note %} is-note-missing{% endif %}{% endblock %}
 
 {% block content %}
 <div class="error-page">
