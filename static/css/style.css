@@ -3,13 +3,13 @@
    Split into modular CSS files
    ========================================= */
 
-@import url('modules/variables.css?v=20261111f');
+@import url('modules/variables.css?v=20261112c');
 @import url('modules/base.css?v=20261111f');
 @import url('modules/layout.css?v=20261111f');
 @import url('modules/sidebar.css?v=20261112b');
 @import url('modules/content.css?v=20261111f');
-@import url('modules/components.css?v=20261112b');
-@import url('modules/settings.css?v=20261112b');
+@import url('modules/components.css?v=20261112c');
+@import url('modules/settings.css?v=20261112c');
 @import url('modules/tutorial.css?v=20261111f');
 @import url('modules/print.css');
 @import url('modules/graph.css');

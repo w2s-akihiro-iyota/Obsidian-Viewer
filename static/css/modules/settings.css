@@ -974,10 +974,8 @@ input:checked+.slider:before {
     width: 100%;
 }
 
-/* 太字は、前にこのあたりが 2 回貼られたとき、ラベルの指定が混ざって付いたもの。見た目を変えないよう残す（Q-23） */
 .setting-input-group input {
     flex: 1;
-    font-weight: 600;
 }
 
 /* 公開状態の切り替え（ノート一覧のツールバー） */
