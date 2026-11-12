@@ -155,7 +155,7 @@
 
     .markdown-body table th {
         /* Let the theme's default TH style apply (purple header from previous CSS) */
-        background-color: var(--accent-purple) !important;
+        background-color: var(--accent-fill) !important;
         color: white !important;
         font-weight: bold !important;
     }

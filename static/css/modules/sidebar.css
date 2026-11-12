@@ -402,8 +402,8 @@ body.resizing iframe {
 
 .sidebar-tab.active {
     color: white;
-    background-color: var(--accent-purple);
-    box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+    background-color: var(--accent-fill);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-purple) 30%, transparent);
 }
 
 .sidebar-tab.active svg {
@@ -524,7 +524,7 @@ body.resizing iframe {
 .toc-item.active {
     color: #a390ff;
     /* Light purple active text */
-    background-color: rgba(123, 97, 255, 0.1);
+    background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
 }
 
 /* Icons */
@@ -828,7 +828,7 @@ html.sidebar-collapsed .sidebar {
 .file-tree .tree-file.active {
     border-left-width: 2px;
     color: var(--accent-purple);
-    background: linear-gradient(90deg, rgba(123, 97, 255, 0.15), transparent);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent-purple) 15%, transparent), transparent);
 }
 
 /* 矢印キーで選んでいる位置 */
