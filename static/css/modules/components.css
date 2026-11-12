@@ -720,12 +720,16 @@ pre.line-numbers .line-number-rows {
 /* =========================================
    Toast Notifications
    ========================================= */
+/* 画面の上の中央に、画面の半分の幅で出す。
+   前はここと settings.css に別々の位置（下の中央・右上）が書かれていて、混ざってこの形になっていた。
+   見た目を変えないよう、その形のまま 1 か所にまとめた（Q-23） */
 #toast-container {
     position: fixed;
-    bottom: 24px;
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: var(--z-overlay);
+    width: calc(50% - 20px);
+    z-index: 10000;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -736,18 +740,20 @@ pre.line-numbers .line-number-rows {
     background-color: var(--bg-secondary);
     color: var(--text-normal);
     border: 1px solid var(--border-color);
-    padding: 12px 20px;
+    padding: 12px 16px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     display: flex;
     align-items: center;
     gap: 12px;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
-    pointer-events: auto;
     min-width: 300px;
     max-width: 90vw;
+    font-size: 0.95rem;
+    pointer-events: auto;
+    /* 上から少し下りながら出る */
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
 }
 
 .toast.show {
@@ -755,28 +761,170 @@ pre.line-numbers .line-number-rows {
     transform: translateY(0);
 }
 
+/* 種類は左の線の色で分ける（線があるのは success と error だけ。warning・info は線なし）。アイコンは文字と同じ色 */
 .toast-success {
-    border-left: 4px solid #2e7d32;
-}
-
-.toast-success svg {
-    color: #2e7d32;
+    border-left: 4px solid var(--accent-purple);
 }
 
 .toast-error {
-    border-left: 4px solid #d32f2f;
+    border-left: 4px solid #ff4444;
 }
 
-.toast-error svg {
-    color: #d32f2f;
+.toast svg {
+    flex-shrink: 0;
+    color: inherit;
 }
 
-.toast-warning {
-    border-left: 4px solid #f9a825;
+/* トーストのボタン（「内訳を見る」など） */
+.toast-action {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: none;
+    color: var(--accent-purple);
+    font: inherit;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
 }
 
-.toast-warning svg {
-    color: #f9a825;
+.toast-action:hover {
+    background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
+}
+
+/* =========================================
+   Link Preview Tooltip
+   ========================================= */
+/* 本文のリンクに乗せると出るプレビュー（sidebar.js）。
+   中身（.preview-content）は .markdown-body も兼ねるので、content.css より後ろのここに置く（前に置くと余白が .markdown-body のものになる）。
+   前は sidebar.css と settings.css（2 回）に分かれて書かれていた。勝っていた値で 1 か所にまとめた（Q-23） */
+.preview-tooltip {
+    position: absolute;
+    z-index: var(--z-dropdown);
+    width: var(--preview-width, 400px);
+    max-width: 90vw;
+    max-height: var(--preview-max-height, 300px);
+    /* 中が長いときは、プレビューの中でスクロールする */
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: none;
+    opacity: 0;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+    /* 中のスクロールやリンクを押せるように */
+    pointer-events: auto;
+}
+
+/* 出るとき（D-15）: 少し下・少し小さい所から浮き出る。
+   出る瞬間に display が none から切り替わるので、始まりの見た目は @starting-style で決める（無いと透明度が飛んで急に出る） */
+.preview-tooltip.active {
+    display: block;
+    opacity: 1;
+    transform: none;
+    transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
+}
+
+@starting-style {
+    .preview-tooltip.active {
+        opacity: 0;
+        transform: translateY(4px) scale(0.98);
+    }
+}
+
+.preview-tooltip-inner {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
+.preview-header {
+    padding: 8px 12px;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-normal);
+    flex-shrink: 0;
+}
+
+[data-theme="light"] .preview-header {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.preview-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-normal);
+}
+
+.preview-content {
+    padding: 12px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-normal);
+    flex: 1;
+    min-height: 0;
+}
+
+.preview-content :first-child {
+    margin-top: 0;
+}
+
+/* 読み込み中・読めなかったとき */
+.preview-loading,
+.preview-error {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.preview-error {
+    color: #ff4444;
+}
+
+/* 右下のつまみで大きさを変える（sidebar.js） */
+.preview-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    opacity: 0.3;
+    transition: opacity var(--motion-fast), color var(--motion-fast);
+    border-radius: 0 0 8px 0;
+}
+
+.preview-resize-handle:hover {
+    opacity: 1;
+    color: var(--accent-purple);
+}
+
+.preview-tooltip.resizing .preview-resize-handle {
+    opacity: 1;
+    color: var(--accent-purple);
+}
+
+/* 大きさを変えている間は動かさない（.active の transition より後ろに置く） */
+.preview-tooltip.resizing {
+    user-select: none;
+    transition: none;
 }
 
 /* =========================================
