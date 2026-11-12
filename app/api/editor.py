@@ -14,7 +14,8 @@ from app.api import templates
 logger = logging.getLogger("app.editor")
 from app import cache
 from app.config import CONTENT_DIR
-from app.core.indexing import is_published, parse_frontmatter, refresh_global_caches, schedule_background_refresh
+from app.core.frontmatter import is_published, parse_frontmatter
+from app.core.indexing import refresh_global_caches, schedule_background_refresh
 from app.services.content import render_markdown
 from app.services.note_editing import (
     NoteConflictError, NoteNotFoundError, NoteWriteError, VaultWriteError, load_note, save_note,

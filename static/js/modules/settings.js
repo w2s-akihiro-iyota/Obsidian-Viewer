@@ -504,24 +504,21 @@ function initSettings() {
                 localStorage.setItem('theme', val);
                 document.documentElement.setAttribute('data-theme', val);
                 // コードの配色（codeTheme）は画面テーマとは別の設定なので、ここでは変えない
+                // Mermaid の図の色が「画面テーマに合わせる」なら描き直す。図は data-theme から色を決めるので、
+                // 必ず data-theme を変えたあとで呼ぶ（B-14。前は startViewTransition の外で呼び、変える前の色で描かれることがあった）。
+                // 描き終わりの Promise を返し、画面の切り替えの動きが描き直しを待つようにする
+                const savedMermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
+                if (savedMermaidTheme === 'default' && typeof window.updateMermaidConfig === 'function') {
+                    return window.updateMermaidConfig();
+                }
             };
 
             // Use View Transitions API if supported
             if (document.startViewTransition) {
-                document.startViewTransition(() => {
-                    updateTheme();
-                });
+                document.startViewTransition(updateTheme);
             } else {
                 // Fallback
                 updateTheme();
-            }
-
-            // For Mermaid, we need to check if we can re-render without reload.
-            const savedMermaidTheme = localStorage.getItem('mermaidTheme') || 'default';
-            if (savedMermaidTheme === 'default') {
-                if (typeof window.updateMermaidConfig === 'function') {
-                    window.updateMermaidConfig();
-                }
             }
         });
     }

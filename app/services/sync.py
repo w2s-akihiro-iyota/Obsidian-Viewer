@@ -301,9 +301,32 @@ def perform_sync(config: SyncConfig, trigger: str = SyncTrigger.MANUAL) -> tuple
             success, message = False, f"{get_system('S103')}: {str(e)}"
             logger.error(message, exc_info=True)
         _record(run, "" if success else message)
+        _mark_sync_finished()
         return success, message
     finally:
         _sync_lock.release()
+
+
+# 最後に同期を終えた時刻（_clock() の値）。自動同期の次の時刻を、手動・自動を問わずここから数える（B-17）。
+# 起動したばかりで一度も同期していなければ None（すぐに自動同期する）
+_last_sync_finished: float | None = None
+# 経過時間を測る時計。テストではこれだけを差し替える（time.monotonic を差し替えると asyncio の時計も止まる）
+_clock = time.monotonic
+
+
+def _mark_sync_finished() -> None:
+    global _last_sync_finished
+    _last_sync_finished = _clock()
+
+
+def seconds_until_auto_sync(interval_seconds: float) -> float:
+    """次の自動同期までの秒数。0 以下ならもう同期してよい（B-17）
+
+    手動で同期した直後に自動同期がもう 1 回走らないよう、最後の同期（手動・自動）から interval を数える
+    """
+    if _last_sync_finished is None:
+        return 0
+    return interval_seconds - (_clock() - _last_sync_finished)
 
 
 def _perform_sync(config: SyncConfig, run: SyncRun) -> tuple[bool, str]:
@@ -418,15 +441,21 @@ async def background_sync_loop() -> None:
     while True:
         try:
             config = load_config()
+            interval = config.interval_minutes * 60
+            # 自動同期が無効なら、設定が変わるまで待つ
+            wait_time = interval if config.auto_sync_enabled else None
             if config.sync_enabled and config.auto_sync_enabled:
-                logger.info("Auto-sync triggered")
-                loop = asyncio.get_event_loop()
-                try:
-                    await loop.run_in_executor(None, perform_sync, config, SyncTrigger.AUTO)
-                except SyncInProgressError:
-                    logger.info("Auto-sync skipped: another sync is running")
-
-            wait_time = (config.interval_minutes * 60) if config.auto_sync_enabled else None
+                # 最後の同期（手動を含む）から interval たっていなければ、残りの時間だけ待つ。
+                # 手動の同期のあとは config_updated_event で起こされるが、ここで待ち直すので 2 回目の同期はしない（B-17）
+                wait_time = seconds_until_auto_sync(interval)
+                if wait_time <= 0:
+                    logger.info("Auto-sync triggered")
+                    loop = asyncio.get_running_loop()
+                    try:
+                        await loop.run_in_executor(None, perform_sync, config, SyncTrigger.AUTO)
+                    except SyncInProgressError:
+                        logger.info("Auto-sync skipped: another sync is running")
+                    wait_time = interval
 
             try:
                 await asyncio.wait_for(config_updated_event.wait(), timeout=wait_time)

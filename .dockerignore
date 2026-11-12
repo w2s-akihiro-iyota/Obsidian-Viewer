@@ -46,6 +46,3 @@ app/server_config.yaml
 app/sync_history.json
 **/*.log
 .env
-
-# 作業の名残
-encoding_test.txt

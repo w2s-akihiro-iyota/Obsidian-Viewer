@@ -3,6 +3,7 @@
 B-2: Vault で消したファイルを消す（保護対象は残す・空や大量削除は保留して確認後に実行）
 B-3: 前回の同期時刻ではなく、コピー先と比べてコピーする
 B-4: 同期は同時に 1 本だけ
+B-17: 自動同期の時刻は、最後の同期（手動を含む）から数える。手動で同期した直後に自動同期をもう 1 回走らせない
 """
 import os
 import time
@@ -263,6 +264,79 @@ def test_同期中に同期を始めようとすると断る():
             sync.confirm_pending_deletions()
     finally:
         sync._sync_lock.release()
+
+
+# ---------- B-17: 自動同期の時刻は、最後の同期（手動を含む）から数える ----------
+
+@pytest.fixture
+def clock(monkeypatch):
+    """同期の時計を進められるものにし、最後の同期の時刻を消しておく"""
+    now = {"t": 1000.0}
+    monkeypatch.setattr(sync, "_clock", lambda: now["t"])
+    monkeypatch.setattr(sync, "_last_sync_finished", None)
+    return now
+
+
+def test_一度も同期していなければすぐ自動同期する(clock):
+    assert sync.seconds_until_auto_sync(1800) <= 0
+
+
+def test_同期のあとはintervalたつまで自動同期しない(clock):
+    sync._mark_sync_finished()
+    assert sync.seconds_until_auto_sync(1800) == 1800
+    clock["t"] += 1799
+    assert sync.seconds_until_auto_sync(1800) == 1
+    clock["t"] += 1
+    assert sync.seconds_until_auto_sync(1800) <= 0
+
+
+def test_同期を実行したら時刻を残す_同期が無効なら残さない(clock, monkeypatch):
+    monkeypatch.setattr(sync, "_perform_sync", lambda config, run: (False, "失敗"))
+    monkeypatch.setattr(sync, "_record", lambda run, error: None)
+    sync.perform_sync(sync.SyncConfig(sync_enabled=False, content_src="/x"))
+    assert sync._last_sync_finished is None
+    # 失敗した同期も「同期した」に数える（失敗のたびにすぐ繰り返さない）
+    sync.perform_sync(sync.SyncConfig(sync_enabled=True, content_src="/x"))
+    assert sync._last_sync_finished == clock["t"]
+
+
+def test_手動で同期したあとは自動同期をもう1回走らせない(clock, monkeypatch):
+    import asyncio
+    import contextlib
+
+    calls = []
+
+    def fake_sync(config, trigger=sync.SyncTrigger.MANUAL):
+        calls.append(trigger)
+        sync._mark_sync_finished()
+        return True, "ok"
+
+    monkeypatch.setattr(sync, "perform_sync", fake_sync)
+    monkeypatch.setattr(sync, "load_config", lambda: sync.SyncConfig(
+        sync_enabled=True, auto_sync_enabled=True, interval_minutes=30, content_src="/x"))
+    monkeypatch.setattr(sync, "background_task_running", False)
+
+    async def scenario():
+        event = asyncio.Event()
+        monkeypatch.setattr(sync, "config_updated_event", event)
+        task = asyncio.create_task(sync.background_sync_loop())
+        await asyncio.sleep(0.1)
+        assert calls == [sync.SyncTrigger.AUTO]          # 起動直後の自動同期
+        # 手動の同期（api/sync.py と同じく、終わったら通知してループを起こす）
+        fake_sync(None)
+        event.set()
+        await asyncio.sleep(0.1)
+        assert calls == [sync.SyncTrigger.AUTO, sync.SyncTrigger.MANUAL]   # 自動同期は走らない
+        # interval がたってから起こされたら、自動同期する
+        clock["t"] += 30 * 60
+        event.set()
+        await asyncio.sleep(0.1)
+        assert calls[-1] == sync.SyncTrigger.AUTO and len(calls) == 3
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    asyncio.run(scenario())
 
 
 # ---------- 部品: 保護対象の判定・コピーの要否 ----------

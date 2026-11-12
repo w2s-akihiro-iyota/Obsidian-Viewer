@@ -4,7 +4,6 @@ from pathlib import Path
 import itertools
 import math
 import re
-import yaml
 import os
 import logging
 import threading
@@ -14,38 +13,15 @@ from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP, SCAN_WORKERS
 from app import cache
 from app.core.background_refresh import BackgroundRefresher
+from app.core.frontmatter import is_published, parse_frontmatter
 from app.core.note_resolver import NoteEntry, NoteResolver
+from app.services.wikilinks import classify_link, is_missing_note, iter_frontmatter_wikilinks, iter_wikilinks
 from app.utils.slug import slugify_path
 
 logger = logging.getLogger("app.indexing")
 
 # スラッグ化は日本語→ローマ字変換が重い（710 件で約 1.5 秒）。同じパスは同じ結果なので覚えておく（Q-20）
 _slugify_path_cached = lru_cache(maxsize=None)(slugify_path)
-
-def parse_frontmatter(content: str) -> tuple[dict, str]:
-    frontmatter = {}
-    body = content
-    if content.startswith('\ufeff'):
-        content = content[1:]
-        body = content
-
-    content_normalized = content.replace('\r\n', '\n')
-
-    if content_normalized.strip().startswith("---"):
-        match = re.match(r'^\s*---\s*\n(.*?)\n---(?:\s*\n|$)', content_normalized, re.DOTALL)
-        if match:
-            yaml_content = match.group(1)
-            try:
-                frontmatter = yaml.safe_load(yaml_content) or {}
-                body = content_normalized[match.end():]
-            except Exception:
-                pass
-    return frontmatter, body
-
-def is_published(frontmatter: dict) -> bool:
-    """frontmatterのpublishフィールドがTrueかどうかを判定します。"""
-    publish_state = frontmatter.get('publish')
-    return publish_state is True or str(publish_state).lower() == 'true'
 
 # 一覧の抜粋の文字数
 PREVIEW_LENGTH = 200
@@ -287,9 +263,6 @@ def _build_link_maps(files: list[dict], bodies: dict[str, str], resolver: NoteRe
     あわせて、存在しないノートへのリンク先の名前を各ノートの "missing_links" に入れる
     （ダッシュボードの「リンク切れ」用。判定は公開チェックと同じ is_missing_note）。
     """
-    # wikilinks は indexing を読み込むため、循環しないようここで読み込む
-    from app.services.wikilinks import classify_link, is_missing_note, iter_frontmatter_wikilinks, iter_wikilinks
-
     backlinks = {}   # {target_path: [{title, path}]}
     forward = {}     # {source_path: [target_path]}
 

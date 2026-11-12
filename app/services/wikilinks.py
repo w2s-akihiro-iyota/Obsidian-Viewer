@@ -8,7 +8,7 @@ from typing import Callable, Iterator
 
 from app import cache
 from app.config import CONTENT_DIR, MAX_EMBED_DEPTH
-from app.core.indexing import is_published, parse_frontmatter
+from app.core.frontmatter import is_published, parse_frontmatter
 from app.core.note_resolver import NoteResolver
 from app.core.markdown import heading_anchor
 from app.services.images import MediaIndex, image_html, is_image_name, media_url
