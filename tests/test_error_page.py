@@ -5,7 +5,10 @@
 - 外部の人が非公開ノートを開いたときは、無いノートと同じ 404（存在を知らせない）
 - 管理者にだけ、開こうとしたパスと次の一手（新規作成・同期）を出す
 - 500 は例外の中身を外に出さない。エラー画面の描画まで失敗したら素の HTML で返す
+- 閲覧履歴（B-19）: ノートが見つからない画面だけ body に is-note-missing を付ける（history.js が履歴から外す。載せるのは page-view だけ）
 """
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -78,6 +81,27 @@ def test_エラー画面はHTMLとして安全に組み立てる(site):
     assert res.status_code == 404
     assert "<script>alert(1)</script>" not in res.text
     assert "&lt;script&gt;" in _page(res)
+
+
+# --- 閲覧履歴（B-19）: history.js は body の印で、載せるか・外すかを決める ---
+
+def _body_classes(res):
+    m = re.search(r'<body class="([^"]*)"', res.text)
+    assert m, "body が見つからない"
+    return set(m.group(1).split())
+
+
+def test_ノートが見つからない画面だけ履歴から外す印を付ける(site):
+    admin, public = TestClient(app, base_url=ADMIN), TestClient(app, base_url=PUBLIC)
+    # 無いノートと、外部の人が開いた非公開ノート（無いノートと同じ 404）
+    for client, path in ((public, "/view/無いノート"), (admin, "/view/無いノート"), (public, f"/view/{_slug('秘密.md')}")):
+        classes = _body_classes(client.get(path, headers=BROWSER))
+        assert "is-note-missing" in classes and "page-view" not in classes, path
+    # ノート以外の URL の 404 には付けない（履歴に関係しない）
+    assert "is-note-missing" not in _body_classes(public.get("/settingz", headers=BROWSER))
+    # 開けたノートは記事ページの印（page-view）だけ。history.js はこれだけを履歴に載せる
+    classes = _body_classes(public.get(f"/view/{_slug('公開.md')}", headers=BROWSER))
+    assert "page-view" in classes and "is-note-missing" not in classes
 
 
 # --- 非公開ノートは 404 にそろえる ---

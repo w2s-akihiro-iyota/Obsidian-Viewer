@@ -7,10 +7,10 @@ const HISTORY_MAX = 30;
 const SIDEBAR_TAB_KEY = 'sidebarTab';
 
 function initHistory() {
-    // viewページ閲覧時に履歴を記録し、サイドバーに履歴リストを描画する。
-    // 先読み（F-15）中は記録しない（マウスを乗せただけのノートを履歴に載せない）
+    // ページを開いたら閲覧履歴を更新し、サイドバーに履歴リストを描画する。
+    // 先読み（F-15）中は動かさない（マウスを乗せただけのノートを履歴に載せない・外さない）
     whenPageShown(() => {
-        recordHistory();
+        updateHistory();
         renderHistoryList();
     });
     // タブ切替イベント
@@ -18,33 +18,33 @@ function initHistory() {
 }
 
 /**
- * 現在のviewページを履歴に記録
+ * いま開いているページで閲覧履歴を更新する（B-19）。どちらのページかは body の印で見分ける
+ * - 記事ページ（page-view）: 先頭に載せる。同じノートの前の記録は消して先頭へ移す
+ * - ノートが見つからない画面（is-note-missing。/view/... の 404。error.html）: そのノートを外す
+ *   （404 の画面は載せない。前に載せたあとで消えた・名前が変わったノートも、開いて 404 になった時点で消える）
+ * - そのほか（ほかのエラー画面・一覧など）: 何もしない
  */
-function recordHistory() {
+function updateHistory() {
     const path = window.location.pathname;
     if (!path.startsWith('/view/')) return;
+    const opened = document.body.classList.contains('page-view');
+    if (!opened && !document.body.classList.contains('is-note-missing')) return;
 
-    const filePath = path.replace('/view/', '');
-    const title = document.title.replace(' - Obsidian Viewer', '');
+    const filePath = path.slice('/view/'.length);
+    const history = getHistory();
+    const others = history.filter(h => h.path !== filePath);
 
-    let history = getHistory();
-
-    // 同じパスの既存エントリを除去（最新に移動）
-    history = history.filter(h => h.path !== filePath);
-
-    // 先頭に追加
-    history.unshift({
-        path: filePath,
-        title: title,
-        timestamp: Date.now()
-    });
-
-    // 上限を超えたら古いものを削除
-    if (history.length > HISTORY_MAX) {
-        history = history.slice(0, HISTORY_MAX);
+    if (opened) {
+        others.unshift({
+            path: filePath,
+            title: document.title.replace(' - Obsidian Viewer', ''),
+            timestamp: Date.now()
+        });
+    } else if (others.length === history.length) {
+        return;   // 外すものが無ければ書かない
     }
 
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(others.slice(0, HISTORY_MAX)));
 }
 
 /**
