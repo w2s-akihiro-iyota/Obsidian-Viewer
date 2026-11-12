@@ -83,6 +83,11 @@
     --notice-warning-bg: rgba(217, 119, 6, 0.12);
     --notice-danger-border: #dc2626;
     --notice-danger-bg: rgba(220, 38, 38, 0.12);
+    /* トーストの種類の色（D-18）。左の線とアイコンに使う。
+       暗い地（dark・midnight）は明るめにし、トーストの地（--bg-secondary）に対してアイコンでも 4:1 以上を保つ */
+    --toast-success: #16a34a;
+    --toast-error: #ef4444;
+    --toast-warning: #d97706;
 }
 
 /* Light Theme */
@@ -94,6 +99,10 @@
     --text-muted: #717171;
     --accent-purple: #7b61ff;
     --border-color: #e0e0e0;
+    /* トーストの種類の色（D-18）。明るい地では暗めにする */
+    --toast-success: #15803d;
+    --toast-error: #dc2626;
+    --toast-warning: #b45309;
     /* 明るい地では h2・h3 を暗めにする（黄色の h3 は白地で 1.9:1 しかなかった） */
     --heading-h1: #8B4513;
     --heading-h2: #B3561A;
@@ -117,6 +126,10 @@
     --accent-purple: #d4a373;
     /* Warm Orange/Brown Accent */
     --border-color: #e6e2da;
+    /* トーストの種類の色（D-18）。明るい地では暗めにする */
+    --toast-success: #15803d;
+    --toast-error: #dc2626;
+    --toast-warning: #b45309;
     /* 明るい地では h2・h3 を暗めにする（黄色の h3 は白地で 1.9:1 しかなかった） */
     --heading-h1: #8B4513;
     --heading-h2: #B3561A;

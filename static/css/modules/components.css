@@ -720,23 +720,31 @@ pre.line-numbers .line-number-rows {
 /* =========================================
    Toast Notifications
    ========================================= */
-/* 画面の上の中央に、画面の半分の幅で出す。
-   前はここと settings.css に別々の位置（下の中央・右上）が書かれていて、混ざってこの形になっていた。
-   見た目を変えないよう、その形のまま 1 か所にまとめた（Q-23） */
+/* 画面の下の中央に、幅をそろえて積む（D-18）。ヘッダーの検索や右上のボタンにかぶらない。
+   新しいものほど下に出る。入れ物は画面の幅いっぱいだが透明で、クリックは下へ通す */
 #toast-container {
     position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(50% - 20px);
+    left: 16px;
+    right: 16px;
+    bottom: 24px;
     z-index: 10000;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
     pointer-events: none;
 }
 
+/* 768px 以下: 右下の「上へ戻る」（下から 24px・高さ 52px）にかぶらないよう、その上に出す */
+@media (max-width: 768px) {
+    #toast-container {
+        bottom: 88px;
+    }
+}
+
 .toast {
+    /* スマホでは左右 16px をあけて幅いっぱい */
+    width: min(420px, 100%);
     background-color: var(--bg-secondary);
     color: var(--text-normal);
     border: 1px solid var(--border-color);
@@ -746,13 +754,11 @@ pre.line-numbers .line-number-rows {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-width: 300px;
-    max-width: 90vw;
     font-size: 0.95rem;
     pointer-events: auto;
-    /* 上から少し下りながら出る */
+    /* 下から少し浮き上がって出る */
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(12px);
     transition: opacity var(--motion-base) var(--ease-out), transform var(--motion-base) var(--ease-out);
 }
 
@@ -761,18 +767,37 @@ pre.line-numbers .line-number-rows {
     transform: translateY(0);
 }
 
-/* 種類は左の線の色で分ける（線があるのは success と error だけ。warning・info は線なし）。アイコンは文字と同じ色 */
+/* 種類は左の線とアイコンの色で分ける（D-18。色は variables.css）。info にはアイコンが無い */
 .toast-success {
-    border-left: 4px solid var(--accent-purple);
+    border-left: 4px solid var(--toast-success);
+}
+
+.toast-success svg {
+    color: var(--toast-success);
 }
 
 .toast-error {
-    border-left: 4px solid #ff4444;
+    border-left: 4px solid var(--toast-error);
+}
+
+.toast-error svg {
+    color: var(--toast-error);
+}
+
+.toast-warning {
+    border-left: 4px solid var(--toast-warning);
+}
+
+.toast-warning svg {
+    color: var(--toast-warning);
+}
+
+.toast-info {
+    border-left: 4px solid var(--accent-purple);
 }
 
 .toast svg {
     flex-shrink: 0;
-    color: inherit;
 }
 
 /* トーストのボタン（「内訳を見る」など） */
