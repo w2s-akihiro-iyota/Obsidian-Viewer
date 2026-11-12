@@ -325,7 +325,7 @@
 }
 
 .settings-section h4 {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font-size: 0.85rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -415,7 +415,7 @@
     width: 32px;
     height: 32px;
     margin-right: 12px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     /* Unified theme color */
     flex-shrink: 0;
 }
@@ -436,7 +436,7 @@
     display: block;
     margin-bottom: 4px;
     font-size: 0.95rem;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .copyright {
@@ -697,7 +697,7 @@
     padding: 0;
     border: none;
     background: none;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font: inherit;
     cursor: pointer;
 }
@@ -960,7 +960,7 @@ input:checked+.slider:before {
 
 .dir-item svg {
     flex-shrink: 0;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .dir-item.parent-dir {
@@ -1097,7 +1097,7 @@ input:checked+.slider:before {
 }
 
 .header-btn:hover {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     background-color: var(--bg-primary);
 }
 
@@ -1232,7 +1232,7 @@ input:checked+.slider:before {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .help-card p {
@@ -1310,7 +1310,7 @@ input:checked+.slider:before {
 }
 
 .help-tab.active {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     background: var(--bg-primary);
     border-bottom: 2px solid var(--accent-purple);
     /* Elevation effect requested by user */
@@ -1408,7 +1408,7 @@ input:checked+.slider:before {
 
 .setting-value-label {
     font-size: 0.8rem;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font-weight: 600;
     margin-left: 4px;
 }
@@ -1565,7 +1565,7 @@ input:checked+.slider:before {
     padding: 0;
     border: none;
     background: none;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font: inherit;
     cursor: pointer;
 }

@@ -1008,7 +1008,7 @@ mark {
 .tag-chip.active {
     background-color: color-mix(in srgb, var(--accent-purple) 20%, transparent);
     border-color: var(--accent-purple);
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 /* Updated File List */
@@ -1267,7 +1267,7 @@ mark {
 
 /* Obsidian Internal Link Styling */
 .internal-link {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
     border-bottom: 1px solid transparent;
 }
@@ -1328,7 +1328,7 @@ mark {
 }
 
 .markdown-embed-link:hover {
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .markdown-embed-content {
@@ -1417,7 +1417,7 @@ mark {
 .tag-chip.active {
     background-color: color-mix(in srgb, var(--accent-purple) 15%, transparent);
     border-color: var(--accent-purple);
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font-weight: 600;
 }
 
@@ -1549,7 +1549,7 @@ mark {
     border: 1px solid var(--accent-purple);
     border-radius: 12px;
     background-color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font-size: 0.8rem;
     overflow-wrap: anywhere;
     text-decoration: none;
@@ -1567,7 +1567,7 @@ mark {
 
 .filter-clear {
     font-size: 0.8rem;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 /* ページビュー内タグ */
@@ -1589,7 +1589,7 @@ mark {
     background-color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
     border-radius: 14px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font-size: 0.82rem;
     font-weight: 500;
     text-decoration: none;
@@ -1629,7 +1629,7 @@ mark {
 }
 
 a.view-backlink-count:hover {
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 /* 読了時間 (index.html file-meta) */
@@ -1670,7 +1670,7 @@ a.view-backlink-count:hover {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
     font-size: 0.85rem;
     transition: var(--transition-ui);
@@ -1755,7 +1755,7 @@ a.view-backlink-count:hover {
 .related-item:hover {
     border-color: var(--accent-purple);
     background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
 }
 
@@ -1828,7 +1828,7 @@ a.view-backlink-count:hover {
     align-items: center;
     gap: 8px;
     padding: 6px 16px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
     font-size: 0.88rem;
     border-radius: 6px;
@@ -1849,7 +1849,7 @@ a.view-backlink-count:hover {
 }
 
 .dataview-list-link:hover .dataview-note-icon {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     opacity: 1;
 }
 
@@ -1860,7 +1860,7 @@ a.view-backlink-count:hover {
 }
 
 .dataview-link {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
     font-weight: 500;
 }
@@ -1875,7 +1875,7 @@ a.view-backlink-count:hover {
     background-color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent-purple) 25%, transparent);
     border-radius: 10px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font-size: 0.78rem;
     margin: 1px 2px;
 }

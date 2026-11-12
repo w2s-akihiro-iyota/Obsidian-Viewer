@@ -225,7 +225,7 @@ a.menu-option {
     margin-left: auto;
     flex-shrink: 0;
     font-weight: 600;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     white-space: nowrap;
 }
 
@@ -332,7 +332,7 @@ a.menu-option {
 }
 
 .publish-check-list a {
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .publish-check-path {
@@ -808,7 +808,7 @@ pre.line-numbers .line-number-rows {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background: none;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     font: inherit;
     font-size: 0.85rem;
     white-space: nowrap;
@@ -938,12 +938,12 @@ pre.line-numbers .line-number-rows {
 
 .preview-resize-handle:hover {
     opacity: 1;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .preview-tooltip.resizing .preview-resize-handle {
     opacity: 1;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 /* 大きさを変えている間は動かさない（.active の transition より後ろに置く） */
@@ -1061,7 +1061,7 @@ pre:hover .copy-button {
     display: grid;
     place-items: center;
     background: color-mix(in srgb, var(--accent-purple) 14%, transparent);
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .error-page-status {

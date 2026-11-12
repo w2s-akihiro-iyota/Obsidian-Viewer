@@ -122,7 +122,7 @@
 .local-graph-toggle:hover,
 .local-graph-toggle[aria-expanded="true"] {
     border-color: var(--accent-purple);
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .local-graph-toggle:focus-visible {
@@ -336,7 +336,7 @@
 }
 
 .local-graph-foot a {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
 }
 

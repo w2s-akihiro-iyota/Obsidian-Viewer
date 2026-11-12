@@ -21,10 +21,10 @@
 <meta name="twitter:description" content="{{ description }}">
 
 <!-- 右上のアクション置き場と、ローカルグラフ（つながり）、768px 以下の「＋」の開閉（article-dial.js）。d3 と graph-render.js は、初めて開いたときに local-graph.js が読み込む -->
-<script src="/static/js/modules/article-actions.js?v=20261011" defer></script>
-<script src="/static/js/modules/local-graph-panel.js?v=20261014" defer></script>
-<script src="/static/js/modules/local-graph.js?v=20261111g" defer></script>
-<script src="/static/js/modules/article-dial.js?v=20261014" defer></script>
+<script src="{{ static_url('js/modules/article-actions.js') }}" defer></script>
+<script src="{{ static_url('js/modules/local-graph-panel.js') }}" defer></script>
+<script src="{{ static_url('js/modules/local-graph.js') }}" defer></script>
+<script src="{{ static_url('js/modules/article-dial.js') }}" defer></script>
 
 <!-- KaTeX for Math -->
 <link rel="stylesheet" href="/static/js/vendor/katex-0.16.9/katex.min.css">

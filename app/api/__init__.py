@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from app import shortcuts
 from app.config import TEMPLATES_DIR
 from app.utils.messages import get_system
+from app.utils.static_version import static_url, stylesheet_urls
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["timestamp"] = int(datetime.now().timestamp())
@@ -12,3 +13,6 @@ templates.env.globals["timestamp"] = int(datetime.now().timestamp())
 templates.env.globals["system_message"] = get_system
 # ショートカットの定義（F-9）。ヘルプの表・チートシート・下の段のヒントは、すべてここから描く（例: shortcuts.group("tree")）
 templates.env.globals["shortcuts"] = shortcuts
+# CSS・JS の URL に中身から作った版（?v=）を付ける（Q-5。例: {{ static_url("js/modules/core.js") }}）
+templates.env.globals["static_url"] = static_url
+templates.env.globals["stylesheet_urls"] = stylesheet_urls
