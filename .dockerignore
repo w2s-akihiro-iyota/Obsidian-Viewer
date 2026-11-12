@@ -1,0 +1,51 @@
+# イメージに入れない物（Q-19）
+# docker-compose.yml では app・templates・static・content・media をマウントするので、イメージの中の物は、
+# マウントしないで動かすときの控えになる。控えには Git で管理している物だけを入れ、
+# 手元の Vault の中身・設定・開発用の物は入れない（.gitignore と同じ考え方）
+
+# Git・CI・エディタ・AI の作業用
+.git
+.gitattributes
+.gitignore
+.github
+.claude
+.agents
+.roadmap
+CLAUDE.md
+CLAUDE.local.md
+_tmp
+
+# Python のキャッシュ
+**/__pycache__
+**/*.py[cod]
+.venv
+venv
+
+# テスト（実行するときは docker cp でコンテナに入れる。CLAUDE.md の Testing）
+tests
+pytest.ini
+requirements-dev.txt
+
+# Docker の設定そのもの
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# 手元の Vault の中身と添付。アプリ同梱のサンプルだけ入れる
+content/*
+!content/samples
+media/*
+!media/_viewer-samples
+static/images/*
+!static/images/logo.png
+!static/images/samples
+images
+
+# 手元の設定と記録（Git 管理外）。設定の例（server_config.yaml.example）は初回に使うので入れる
+app/server_config.yaml
+app/sync_history.json
+**/*.log
+.env
+
+# 作業の名残
+encoding_test.txt

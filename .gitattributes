@@ -1,2 +1,4 @@
 # ライブラリ（版を固定して置いた配布物）は改行を変換しない。中身を配布元と同じバイト列に保ち、sha256 で照合できるようにする
 static/js/vendor/** -text
+# .dockerignore は Docker が読む。手元の改行の変換に左右されないよう LF に固定する（Q-19）
+.dockerignore text eol=lf

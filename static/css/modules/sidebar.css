@@ -12,7 +12,7 @@
     position: relative;
     max-width: 100%;
     margin: 0 auto;
-    padding-top: 60px;
+    padding-top: var(--header-height);
     /* Prevent header overlap */
     /* Desktop: Shift content when sidebar is open */
     margin-left: calc(var(--sidebar-width) + var(--activity-bar-width));
@@ -28,7 +28,7 @@ header {
     left: calc(var(--sidebar-width) + var(--activity-bar-width));
     /* 50px Activity Bar + 280px Sidebar */
     width: calc(100% - (var(--sidebar-width) + var(--activity-bar-width)));
-    height: 60px;
+    height: var(--header-height);
     z-index: var(--z-dropdown);
     transition: left var(--motion-slow) var(--ease-standard), width var(--motion-slow) var(--ease-standard);
 
@@ -304,12 +304,12 @@ body.resizing iframe {
         display: block;
         margin-left: 0 !important;
         /* No shift on mobile */
-        margin-top: 60px;
+        margin-top: var(--header-height);
         /* Offset for fixed header */
-        min-height: calc(100vh - 60px);
+        min-height: calc(100vh - var(--header-height));
     }
 
-    /* 記事ページ（D-11）: 上の padding-top: 60px と二重になって、固定ヘッダーの下に 60px の空きができていたので詰める。
+    /* 記事ページ（D-11）: 上の padding-top（ヘッダーの高さ）と二重になって、固定ヘッダーの下にヘッダー 1 つ分の空きができていたので詰める。
        ほかのページ（一覧・ダッシュボード・エディタ・グラフ）にも同じ空きがあるが、グラフ（calc(100vh - 120px)）など高さの計算と
        合わせて見直す必要があるので、ここでは記事ページだけに当てる */
     body.page-view .app-wrapper {
