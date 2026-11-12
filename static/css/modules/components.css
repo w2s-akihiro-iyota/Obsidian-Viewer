@@ -79,7 +79,7 @@
 }
 
 .copy-option:hover {
-    background-color: rgba(123, 97, 255, 0.1);
+    background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
 }
 
 .copy-option:not(:last-child) {
@@ -150,7 +150,7 @@ a.menu-option {
 }
 
 .menu-option:hover {
-    background-color: rgba(123, 97, 255, 0.1);
+    background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
 }
 
 .menu-option svg {
@@ -183,7 +183,7 @@ a.menu-option {
 
 .public-view-toggle.is-active {
     border-color: var(--accent-purple);
-    background-color: rgba(123, 97, 255, 0.12);
+    background-color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
 }
 
 .publish-check-count {
@@ -451,14 +451,14 @@ a.menu-option {
     }
 
     .markdown-body table thead {
-        background-color: var(--accent-purple) !important;
+        background-color: var(--accent-fill) !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
     .markdown-body table thead th {
         color: white !important;
-        background-color: var(--accent-purple) !important;
+        background-color: var(--accent-fill) !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
@@ -961,7 +961,7 @@ pre.line-numbers .line-number-rows {
     justify-content: center;
     gap: 8px;
     padding: 8px 16px;
-    background-color: var(--accent-purple);
+    background-color: var(--accent-fill);
     color: white;
     border: none;
     border-radius: 6px;
@@ -972,7 +972,7 @@ pre.line-numbers .line-number-rows {
 }
 
 .primary-btn:hover:not(:disabled) {
-    background-color: #6a4ce0;
+    background-color: color-mix(in srgb, var(--accent-fill) 88%, black);
 }
 
 .primary-btn:disabled {
@@ -1137,7 +1137,7 @@ pre:hover .copy-button {
     display: inline-block;
     padding: 0 6px;
     border-radius: 4px;
-    background: var(--accent-purple);
+    background: var(--accent-fill);
     color: var(--badge-text);
     font-size: 0.7rem;
     font-weight: 700;

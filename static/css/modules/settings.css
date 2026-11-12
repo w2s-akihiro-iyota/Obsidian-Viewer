@@ -272,7 +272,7 @@
 }
 
 .settings-nav-item.active {
-    background-color: var(--accent-purple);
+    background-color: var(--accent-fill);
     color: white;
 }
 
@@ -872,7 +872,7 @@ input:checked+.slider:before {
 #sync-settings-wrapper select:focus {
     border-color: var(--accent-purple);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(123, 97, 255, 0.2);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-purple) 20%, transparent);
 }
 
 #sync-settings-wrapper label {
@@ -955,7 +955,7 @@ input:checked+.slider:before {
 }
 
 .dir-item:hover {
-    background: rgba(123, 97, 255, 0.1);
+    background: color-mix(in srgb, var(--accent-purple) 10%, transparent);
 }
 
 .dir-item svg {
@@ -1019,10 +1019,10 @@ input:checked+.slider:before {
 }
 
 .segmented-control input[type="radio"]:checked+label {
-    background-color: var(--accent-purple);
+    background-color: var(--accent-fill);
     color: white;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(123, 97, 255, 0.4);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-purple) 40%, transparent);
 }
 
 /* Mobile specific search refinements */
@@ -1064,11 +1064,11 @@ input:checked+.slider:before {
 }
 
 .page-link:hover:not(.disabled) {
-    background: var(--accent-purple);
+    background: var(--accent-fill);
     color: white;
     border-color: var(--accent-purple);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-purple) 30%, transparent);
 }
 
 .page-link.disabled {
@@ -1256,7 +1256,7 @@ input:checked+.slider:before {
 }
 
 .step-num {
-    background: var(--accent-purple);
+    background: var(--accent-fill);
     color: white;
     width: 24px;
     height: 24px;
@@ -1306,7 +1306,7 @@ input:checked+.slider:before {
 
 .help-tab:hover {
     color: var(--text-normal);
-    background: rgba(123, 97, 255, 0.05);
+    background: color-mix(in srgb, var(--accent-purple) 5%, transparent);
 }
 
 .help-tab.active {
@@ -1394,7 +1394,7 @@ input:checked+.slider:before {
 }
 
 .setting-range::-webkit-slider-thumb:hover {
-    box-shadow: 0 0 0 4px rgba(123, 97, 255, 0.2);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-purple) 20%, transparent);
 }
 
 .setting-range::-moz-range-thumb {
@@ -1422,7 +1422,7 @@ input:checked+.slider:before {
 }
 
 .search-modal-results .search-result-item.selected {
-    background-color: var(--accent-purple);
+    background-color: var(--accent-fill);
     color: white;
 }
 

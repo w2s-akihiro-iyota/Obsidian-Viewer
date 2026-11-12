@@ -56,8 +56,8 @@
 
 /* ===== Tutorial Banner ===== */
 #tutorial-banner {
-    background: linear-gradient(135deg, rgba(123, 97, 255, 0.12) 0%, rgba(72, 219, 251, 0.08) 100%);
-    border: 1px solid rgba(123, 97, 255, 0.3);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-purple) 12%, transparent) 0%, rgba(72, 219, 251, 0.08) 100%);
+    border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
     border-radius: 10px;
     padding: 16px 20px;
     margin-bottom: 20px;
@@ -133,14 +133,14 @@
 }
 
 .tutorial-dot.active {
-    background: var(--accent-purple);
+    background: var(--accent-fill);
     color: #fff;
     border-color: var(--accent-purple);
-    box-shadow: 0 0 0 4px rgba(123, 97, 255, 0.2);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-purple) 20%, transparent);
 }
 
 .tutorial-dot.completed {
-    background: var(--accent-purple);
+    background: var(--accent-fill);
     color: #fff;
     border-color: var(--accent-purple);
     opacity: 0.6;
@@ -193,10 +193,10 @@
 
 @keyframes tutorialPulse {
     0%, 100% {
-        box-shadow: 0 0 0 0 rgba(123, 97, 255, 0.4);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-purple) 40%, transparent);
     }
     50% {
-        box-shadow: 0 0 0 6px rgba(123, 97, 255, 0);
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-purple) 0%, transparent);
     }
 }
 

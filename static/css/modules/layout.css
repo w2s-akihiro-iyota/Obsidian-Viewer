@@ -176,7 +176,7 @@ header {
 }
 
 .search-result-item:hover {
-    background-color: var(--accent-purple);
+    background-color: var(--accent-fill);
     color: white;
     text-decoration: none;
 }
@@ -204,7 +204,8 @@ footer {
     right: 24px;
     width: 52px;
     height: 52px;
-    background: linear-gradient(135deg, var(--accent-purple), #9575ff);
+    /* 白いアイコンを載せるので、塗り専用の色から明るい側へ（D-20・D-21。前は 2 つめの色が紫の直書き） */
+    background: linear-gradient(135deg, var(--accent-fill), color-mix(in srgb, var(--accent-fill) 80%, white));
     border: none;
     border-radius: 50%;
     color: white;
@@ -212,7 +213,7 @@ footer {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(123, 97, 255, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-purple) 30%, transparent);
     opacity: 0;
     visibility: hidden;
     transform: translateY(20px);
@@ -228,7 +229,7 @@ footer {
 
 .scroll-to-top:hover {
     transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(123, 97, 255, 0.4);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-purple) 40%, transparent);
 }
 
 .scroll-to-top:active {
