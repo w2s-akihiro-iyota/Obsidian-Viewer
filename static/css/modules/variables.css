@@ -15,7 +15,9 @@
        アクセント色そのままだと地に対して 4.5:1 に届かないテーマがあるので、文字だけ読める濃さにする。dark は明るい紫 */
     --accent-text: #9d86ff;
     --border-color: #333;
-    --header-height: 50px;
+    /* 固定ヘッダーの高さ（sidebar.css の header）。本文の上の空き・見出しへ飛んだときの上端もこれで決める
+       （Q-16。前は 50px のままで、実際の高さ 60px とずれていた） */
+    --header-height: 60px;
     /* Web フォントは読み込まない（Q-3。オフラインでも同じ見た目にする）。OS に入っている日本語フォントを順に使う。
        Noto Sans JP が入っていればそれを使う（Q-3 までは Google Fonts で全員 Noto Sans JP だった。D-17） */
     --font-family: 'Consolas', "Noto Sans JP", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
@@ -42,10 +44,10 @@
     --sidebar-width: 280px;
     --activity-bar-width: 50px;
     /* 記事ページの右上のアクション置き場（layout.css の .article-actions）: ボタンの大きさ、
-       スクロールしたときの上端（ヘッダーの実際の高さ 60px ＋ 12px。--header-height は実際より低いので使わない）、
+       スクロールしたときの上端（ヘッダーの高さ＋12px）、
        本文の端・ヘッダーの行との間、外側に置くときに画面の右端に残す余白（article-actions.js も読む） */
     --article-action-size: 40px;
-    --article-actions-top: 72px;
+    --article-actions-top: calc(var(--header-height) + 12px);
     --article-actions-gap: 12px;
     --article-actions-edge-margin: 12px;
     /* 768px 以下の右上の「＋」（D-11。layout.css の .article-dial）: 出てくるボタンどうしの間と、まわりの薄い暗幕 */

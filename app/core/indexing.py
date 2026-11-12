@@ -47,24 +47,6 @@ def is_published(frontmatter: dict) -> bool:
     publish_state = frontmatter.get('publish')
     return publish_state is True or str(publish_state).lower() == 'true'
 
-def parse_obsidian_date(date_str: str) -> datetime | None:
-    if not date_str: return None
-    if isinstance(date_str, (datetime, datetime.date)): return date_str
-    
-    date_str = str(date_str).strip()
-    patterns = [
-        '%Y-%m-%d %H:%M:%S',
-        '%Y-%m-%d %H:%M',
-        '%Y-%m-%dT%H:%M:%S',
-        '%Y-%m-%d'
-    ]
-    for fmt in patterns:
-        try:
-            return datetime.strptime(date_str, fmt)
-        except ValueError:
-            continue
-    return None
-
 # 一覧の抜粋の文字数
 PREVIEW_LENGTH = 200
 
