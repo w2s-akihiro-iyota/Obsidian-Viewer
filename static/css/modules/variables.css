@@ -123,8 +123,9 @@
     /* Soft Black/Dark Brown */
     --text-muted: #5d5a56;
     /* Muted Brownish Grey */
-    --accent-purple: #d4a373;
-    /* Warm Orange/Brown Accent */
+    /* 温かい茶色のアクセント。文字（リンクなど）にも、白い文字を載せる塗り（ボタン・表の見出し）にも使うので、
+       地に対しても白い文字に対しても 4.5:1 以上になる濃さにする（D-19。前の #d4a373 はどちらも約 2:1） */
+    --accent-purple: #946033;
     --border-color: #e6e2da;
     /* トーストの種類の色（D-18）。明るい地では暗めにする */
     --toast-success: #15803d;
