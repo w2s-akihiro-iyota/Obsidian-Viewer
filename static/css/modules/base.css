@@ -157,7 +157,7 @@ html {
 }
 
 a {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     text-decoration: none;
 }
 

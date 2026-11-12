@@ -2,16 +2,18 @@
    Obsidian Viewer - Main Stylesheet
    Split into modular CSS files
    ========================================= */
+/* 読み込む順の一覧。アプリのページは、この @import の順に各ファイルを <link> で 1 つずつ読み込み、
+   版（?v=）は中身から自動で付ける（Q-5。app/utils/static_version.py の stylesheet_urls）。ここには版を書かない */
 
-@import url('modules/variables.css?v=20261112e');
-@import url('modules/base.css?v=20261111f');
-@import url('modules/layout.css?v=20261112e');
-@import url('modules/sidebar.css?v=20261112e');
-@import url('modules/content.css?v=20261112e');
-@import url('modules/components.css?v=20261112e');
-@import url('modules/settings.css?v=20261112e');
-@import url('modules/tutorial.css?v=20261112e');
-@import url('modules/print.css?v=20261112e');
-@import url('modules/graph.css?v=20261112e');
-@import url('modules/dashboard.css?v=20261111f');
+@import url('modules/variables.css');
+@import url('modules/base.css');
+@import url('modules/layout.css');
+@import url('modules/sidebar.css');
+@import url('modules/content.css');
+@import url('modules/components.css');
+@import url('modules/settings.css');
+@import url('modules/tutorial.css');
+@import url('modules/print.css');
+@import url('modules/graph.css');
+@import url('modules/dashboard.css');
 @import url('modules/responsive.css');

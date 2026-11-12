@@ -43,7 +43,8 @@ app/
 │   └── media_migration.py # 起動時に static/images の添付を media/ へ移す
 ├── utils/
 │   ├── helpers.py         # 管理者判定・CSRF判定等のユーティリティ
-│   └── messages.py        # i18nメッセージリーダー
+│   ├── messages.py        # i18nメッセージリーダー
+│   └── static_version.py  # CSS・JS の URL に中身から作った版（?v=）を付ける（テンプレートの static_url / stylesheet_urls）
 ├── cache.py               # インメモリキャッシュのインスタンス管理
 ├── config.py              # アプリケーションのパス・定数設定
 ├── events.py              # バックグラウンド処理用のイベント管理
@@ -56,7 +57,7 @@ app/
 templates/                 # Jinja2ベーステンプレート群
 media/                     # Vault の添付の同期先（/media で配信。同梱サンプルの _viewer-samples/ だけ Git 管理）
 static/
-├── css/style.css          # メインCSS (変数を多用したテーマ管理)
+├── css/style.css          # 読み込む CSS（modules/）の順の一覧。ページはこの順に 1 つずつ <link> で読み込む
 ├── images/                # アプリの部品（logo.png・samples/ のヘルプ画像）だけ。Vault の添付は置かない
 └── js/
     ├── script.js          # メインローダー
@@ -80,6 +81,8 @@ static/
 - 動的更新には HTMX を使用 (SPAフレームワークは使わない)
 - JSコードは ES6 モジュール(`static/js/modules/`) に機能ごとに分割して管理
 - テーマは CSS Custom Properties (`--variable`) で切り替え
+  - アクセント色は用途で使い分ける: 線・地・飾りは `--accent-purple`、文字は `--accent-text`、白い文字を載せる塗りは `--accent-fill`（どれもテーマごとの値は `variables.css`）。色を直書きしない
+- テンプレートから CSS・JS を読み込むときは `{{ static_url("js/modules/x.js") }}` を使う。版（`?v=`）は中身から自動で付くので、手で書かない。CSS を足すときは `static/css/style.css` に `@import` を足す
 - 状態管理は `localStorage` (テーマ、サイドバー状態、サイドバー幅)
 - アイコンは Lucide SVG を使用
 

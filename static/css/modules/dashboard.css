@@ -43,7 +43,7 @@
 .stat-value {
     font-size: 2.2rem;
     font-weight: 700;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     line-height: 1.2;
     margin-bottom: 8px;
     font-feature-settings: "tnum";
@@ -303,7 +303,7 @@
 }
 
 .health-table a:hover {
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .health-cause {

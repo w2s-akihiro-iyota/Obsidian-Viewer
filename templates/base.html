@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Obsidian Viewer{% endblock %}</title>
     <link rel="icon" href="/static/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="/static/css/style.css?v=20261112e">
+    {# CSS は static/css/style.css の @import の順に 1 つずつ読み込む。版（?v=）は中身から作る（Q-5。app/utils/static_version.py） #}
+    {% for href in stylesheet_urls() %}
+    <link rel="stylesheet" href="{{ href }}">
+    {% endfor %}
     <script>
         // Apply theme immediately to prevent flash
         (function () {
@@ -64,19 +67,19 @@
             if (link && saved) link.href = window.codeThemeHref(saved);
         })();
     </script>
-    <script src="/static/js/vendor/highlight.min.js?v=20260221-editor"></script>
+    <script src="{{ static_url('js/vendor/highlight.min.js') }}"></script>
     <script src="/static/js/vendor/htmx-1.9.10/htmx.min.js"></script>
-    <script src="/static/js/modules/core.js?v=20261111g" defer></script>
-    <script src="/static/js/modules/table-copy.js?v=20261112" defer></script>
-    <script src="/static/js/modules/mermaid.js?v=20261028" defer></script>
-    <script src="/static/js/modules/sidebar.js?v=20261111g" defer></script>
-    <script src="/static/js/modules/file-tree.js?v=20261111g" defer></script>
-    <script src="/static/js/modules/search.js?v=20261111g" defer></script>
-    <script src="/static/js/modules/settings.js?v=20261111c" defer></script>
-    <script src="/static/js/modules/history.js?v=20261111h" defer></script>
-    <script src="/static/js/modules/editor.js?v=20261110" defer></script>
-    <script src="/static/js/modules/shortcuts.js?v=20261016" defer></script>
-    <script src="/static/js/modules/main.js?v=20261111c" defer></script>
+    <script src="{{ static_url('js/modules/core.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/table-copy.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/mermaid.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/sidebar.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/file-tree.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/search.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/settings.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/history.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/editor.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/shortcuts.js') }}" defer></script>
+    <script src="{{ static_url('js/modules/main.js') }}" defer></script>
     <!-- 先読み（F-15）: リンクにマウスを乗せているあいだ（約 0.2 秒。スマホは押した瞬間）に次のノートを裏で読み込み、
          押したらすぐ切り替える（Chrome の Speculation Rules。対応しないブラウザは無視する）。
          対象は同じサイトの記事（/view/*）だけ。外部サイト・添付（/media）・エディタ・API は先読みしない（GET だけで、書き込みは起きない）。

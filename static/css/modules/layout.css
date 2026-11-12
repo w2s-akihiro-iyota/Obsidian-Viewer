@@ -168,7 +168,7 @@ header {
 
 .search-result-item:hover {
     background-color: var(--bg-primary);
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .search-result-item:last-child {
@@ -302,7 +302,7 @@ footer {
 }
 
 .activity-btn.active {
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .activity-btn.active::before {
@@ -434,7 +434,7 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
 
     .article-dial-ready .article-dial.is-open .article-dial-toggle {
         border-color: var(--accent-purple);
-        color: var(--accent-purple);
+        color: var(--accent-text);
     }
 
     /* 開くと 45° 回って「×」になる */
@@ -618,7 +618,7 @@ main:has(> .article-actions:not(.is-outside)) .view-header-top {
 }
 
 .breadcrumb a:hover {
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .breadcrumb-sep {

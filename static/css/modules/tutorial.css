@@ -88,7 +88,7 @@
     gap: 8px;
     font-weight: 600;
     font-size: 0.95rem;
-    color: var(--accent-purple);
+    color: var(--accent-text);
 }
 
 .tutorial-skip-btn {

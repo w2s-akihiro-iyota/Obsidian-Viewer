@@ -164,11 +164,11 @@ html.sidebar-collapsed header {
     background-color: rgba(0, 0, 0, 0.05);
 }
 
+/* 左の線の色は .file-tree .tree-file.active でも変えないので、ここで決まる（前は紫の直書きで、どのテーマでも紫だった。D-22） */
 .tree-file.active {
-    background: linear-gradient(90deg, rgba(89, 64, 196, 0.1), transparent);
-    color: #8366e6;
-    /* Accent color */
-    border-left: 3px solid #8366e6;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent-purple) 10%, transparent), transparent);
+    color: var(--accent-text);
+    border-left: 3px solid var(--accent-purple);
 }
 
 .tree-folder {
@@ -445,7 +445,7 @@ body.resizing iframe {
 }
 
 .sidebar-page-link.active {
-    color: var(--accent-purple);
+    color: var(--accent-text);
     background-color: var(--bg-primary);
 }
 
@@ -522,8 +522,7 @@ body.resizing iframe {
 }
 
 .toc-item.active {
-    color: #a390ff;
-    /* Light purple active text */
+    color: var(--accent-text);
     background-color: color-mix(in srgb, var(--accent-purple) 10%, transparent);
 }
 
@@ -538,8 +537,8 @@ body.resizing iframe {
 }
 
 .type-header {
-    color: #a390ff;
-    /* Purple color for 'H' icon */
+    /* 見出しの「H」の印 */
+    color: var(--accent-text);
 }
 
 .type-item {
@@ -556,8 +555,7 @@ body.resizing iframe {
 
 /* Hover/Active states matching purple theme */
 .toc-item.active .toc-text {
-    color: #9d86ff;
-    /* Purple active text */
+    color: var(--accent-text);
 }
 
 /* Indentation adjustments are handled by nesting ULs */
@@ -827,7 +825,7 @@ html.sidebar-collapsed .sidebar {
 
 .file-tree .tree-file.active {
     border-left-width: 2px;
-    color: var(--accent-purple);
+    color: var(--accent-text);
     background: linear-gradient(90deg, color-mix(in srgb, var(--accent-purple) 15%, transparent), transparent);
 }
 

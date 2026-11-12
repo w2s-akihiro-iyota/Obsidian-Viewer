@@ -6,7 +6,7 @@
 
 {% block head %}
 <meta name="robots" content="noindex">
-<script src="/static/js/modules/error-page.js?v=20261029" defer></script>
+<script src="{{ static_url('js/modules/error-page.js') }}" defer></script>
 {% endblock %}
 
 {# is-note-missing: ノートの URL（/view/...）の 404。history.js がそのノートを閲覧履歴から外す（B-19） #}
