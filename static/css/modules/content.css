@@ -1191,8 +1191,9 @@ mark {
     text-shadow: none;
 }
 
+/* 白い文字が読めるよう、アクセント色から少し濃い茶色へ（D-19。前の #d4a373→#c59363 では約 2.5:1） */
 :root[data-theme="letter"] .file-tag {
-    background: linear-gradient(135deg, #d4a373, #c59363);
+    background: linear-gradient(135deg, var(--accent-purple), #7f5229);
     color: white;
     border-color: rgba(212, 163, 115, 0.6);
     box-shadow: 0 0 12px rgba(212, 163, 115, 0.4), inset 0 0 8px rgba(255, 255, 255, 0.3);
@@ -1923,20 +1924,11 @@ a.view-backlink-count:hover {
 }
 
 /* Letter テーマオーバーライド */
-:root[data-theme="letter"] .dataview-table thead,
-:root[data-theme="letter"] .dataview-table thead th {
-    background-color: #c59363 !important;
-}
-
+/* 表の見出し・タグの文字・リンクは、共通の指定（アクセント色）のまま。
+   前は letter だけ薄い色（#c59363・#a07850）にしていて、白い文字やリンクが読みにくかった（D-19） */
 :root[data-theme="letter"] .dataview-tag {
     background-color: rgba(212, 163, 115, 0.15);
     border-color: rgba(212, 163, 115, 0.3);
-    color: #a07850;
-}
-
-:root[data-theme="letter"] .dataview-link,
-:root[data-theme="letter"] .dataview-list-link {
-    color: #a07850;
 }
 
 :root[data-theme="letter"] .dataview-list-link:hover {
