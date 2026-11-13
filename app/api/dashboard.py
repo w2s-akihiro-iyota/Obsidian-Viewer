@@ -10,7 +10,7 @@ from app.config import DASHBOARD_HEALTH_ROW_LIMIT, DASHBOARD_HEATMAP_WEEKS, DASH
 from app.core.heatmap import HEATMAP_LEVEL_COUNT, build_heatmap
 from app.core.note_health import build_note_health
 from app.core.note_list import count_tags
-from app.utils.helpers import is_admin_request
+from app.utils.helpers import is_admin_request, viewer_context
 
 router = APIRouter()
 
@@ -42,7 +42,7 @@ async def dashboard_page(request: Request):
 
     return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "request": request,
-        "is_localhost": True,
+        **viewer_context(request),
         "total_files": total_files,
         "public_files": public_files,
         "private_files": private_files,

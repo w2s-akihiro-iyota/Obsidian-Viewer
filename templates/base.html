@@ -101,9 +101,10 @@
     {% block head %}{% endblock %}
 </head>
 
-{# 管理者向けの表示を出すか（ヘルプとショートカット一覧で共通）。記事ページの「外部の人の表示」（?as=public）では
-   is_localhost が False になるが、管理者には出す（is_admin は記事ページだけが渡す。ほかのページは is_localhost で判定する） #}
-{% set viewer_is_admin = is_admin if is_admin is defined else is_localhost %}
+{# 閲覧者の種類（どのルートも app/utils/helpers.py の viewer_context で渡す。Q-14）
+   - is_admin: 管理者か。「外部の人の表示」（?as=public）のあいだも True（ヘルプ・ショートカット一覧の管理者向けの説明）
+   - show_admin_ui: 管理者向けの操作（編集・同期・ダッシュボードへの入口など）を出すか。外部の人の表示のあいだは False
+   - public_view: 管理者が外部の人の表示を見ているか（記事ページだけ） #}
 {# いまの画面（ショートカット一覧で、この画面で使えるグループを上に出すのに使う） #}
 {% set shortcut_page_now = shortcuts.find_page(self.body_class()) %}
 {# キー表記のマクロ。include した部品（ヘルプ・チートシート・検索）からも見える #}
@@ -115,7 +116,7 @@
 {% set nav_page = {'/graph': 'graph', '/dashboard': 'dashboard', '/editor': 'editor'}.get(nav_path, 'note') %}
 {# 管理者の「外部の人の表示」（?as=public）のページだけ data-view-as="public" を付ける。
    JS はこれを見て、ツリー・検索・プレビュー・つながりの API に as=public を付ける（core.js の withViewAs） #}
-<body class="{% block body_class %}{% endblock %}"{% if public_view is defined and public_view %} data-view-as="public"{% endif %}>
+<body class="{% block body_class %}{% endblock %}"{% if public_view %} data-view-as="public"{% endif %}>
     {% include 'partials/_activity_bar.html' %}
 
     {% include 'partials/_header.html' %}
@@ -147,7 +148,7 @@
                         <span>グラフ</span>
                     </a>
                     {# アクティビティバーと同じ条件（管理者のときだけ） #}
-                    {% if is_localhost %}
+                    {% if show_admin_ui %}
                     <a href="/dashboard" class="sidebar-page-link{% if nav_page == 'dashboard' %} active{% endif %}"{% if nav_page == 'dashboard' %} aria-current="page"{% endif %}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -248,7 +249,7 @@
     {% include 'partials/_modal_settings.html' %}
     {% include 'partials/_modal_shortcuts.html' %}
     {# ファイルツリーの非公開の印（file-tree.js が複製する）。一覧と同じマクロから描く。外部の人のツリーに非公開ノートは無いので管理者だけ #}
-    {% if viewer_is_admin %}
+    {% if is_admin %}
     <template id="private-mark-template">{{ nm.private_mark('tree-private-badge') }}</template>
     {% endif %}
 </body>

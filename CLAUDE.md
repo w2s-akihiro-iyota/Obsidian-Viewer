@@ -90,6 +90,7 @@ static/
 - base.html をベースレイアウトとして継承
 - テンプレートは `templates/` ディレクトリに配置
 - HTMX属性 (`hx-get`, `hx-target` 等) で動的コンテンツを実現
+- 閲覧者の種類は、画面を返すルートがすべて `viewer_context()`（`app/utils/helpers.py`）で渡す。管理者向けの操作は `show_admin_ui`（外部の人の表示では False）、ヘルプなどの管理者向けの説明は `is_admin` で出し分ける
 
 ## Security Rules
 - 公開用ポート（8000）と管理用ポート（コンテナ内 8001 / ホストの `127.0.0.1:8002`）を 1 プロセスで待ち受ける（`app/server.py`）
@@ -112,6 +113,7 @@ static/
 - 添付の索引: `MEDIA_INDEX`（名前 → `media/` からの相対パス）。索引の作り直しで 1 回だけ走査し、描画では全走査しない
 - 索引の作り直しでは `scan_notes()` で各ノートを 1 回だけ読み、一覧・ツリー・リンクの表・添付の許可リストを全部そこから作る
 - 記事ページの描画キャッシュには、公開チェックと OGP に要るもの（本文・description・画像の元）も入れ、表示のたびに読み直さない
+- リンクのグラフ（`LINK_GRAPH`・外部向けの `LINK_GRAPH_PUBLIC`）も索引の作り直しで作り、記事ページのつながりの数と `/api/graph` は `cached_link_graph()` で使う
 - キャッシュ更新は `refresh_global_caches()` で一括実行
 
 ## Messages & i18n

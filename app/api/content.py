@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app import cache
 from app.api import templates
 from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT
-from app.core.graph import build_link_graph, neighbor_count
+from app.core.graph import cached_link_graph, neighbor_count
 from app.core.frontmatter import is_published, parse_frontmatter
 from app.core.properties import build_properties
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
@@ -26,7 +26,7 @@ from app.core.search import parse_search_query
 from app.services.content import render_markdown
 from app.services.media_access import first_image_href
 from app.services.publish_check import check_publish
-from app.utils.helpers import is_admin_request, is_public_view
+from app.utils.helpers import is_admin_request, is_public_view, viewer_context
 from app.utils.messages import get_all_messages
 
 router = APIRouter()
@@ -161,9 +161,10 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
 
     検索語 q・タグ・公開状態（管理者だけ）で絞り込み、sort で並べ替える（app/core/note_list.py）。
     """
-    is_localhost = is_admin_request(request)
-    query = ListQuery.from_params(q=q, tag=tag, visibility=visibility, sort=sort, page=page, is_admin=is_localhost)
-    note_list = build_note_list(cache.GLOBAL_FILE_CACHE, query, is_admin=is_localhost,
+    viewer = viewer_context(request)
+    is_admin = viewer["is_admin"]
+    query = ListQuery.from_params(q=q, tag=tag, visibility=visibility, sort=sort, page=page, is_admin=is_admin)
+    note_list = build_note_list(cache.GLOBAL_FILE_CACHE, query, is_admin=is_admin,
                                 top_tag_count=LIST_TOP_TAG_COUNT)
 
     # ページ送り。総ページ数を超えたら最後のページに丸める（0件なら1）
@@ -182,7 +183,7 @@ async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "",
         "note_list": note_list,
         "visibility_options": LIST_VISIBILITIES,
         "sort_options": {k: v[0] for k, v in LIST_SORTS.items()},
-        "is_localhost": is_localhost,
+        **viewer,
         "og_url": str(request.url)
     })
 
@@ -226,11 +227,10 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         raise HTTPException(status_code=404, detail="File not found")
 
     mtime = full_path.stat().st_mtime
-    is_localhost = is_admin_request(request)
+    viewer = viewer_context(request, view_as)
+    is_admin = viewer["is_admin"]
     # 本文・バックリンク・関連記事を公開ノートだけに絞るか（外部の人と、管理者の外部表示）
     published_only = is_public_view(request, view_as)
-    # 管理者が外部の人の表示を確かめているとき
-    public_view = is_localhost and published_only
 
     # Check cache
     # 外部向けは Dataview の結果が変わるため、閲覧者の種類ごとに別のキャッシュにする
@@ -265,12 +265,12 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
 
     # 外部の人には、無いノートと同じ 404 にする（非公開ノートがあることを知らせない）。
     # 管理者の外部表示では、404 になることを画面で知らせる
-    if not is_localhost and not is_pub:
+    if not is_admin and not is_pub:
         raise HTTPException(status_code=404, detail="File not found")
 
     # 公開チェックは管理者にだけ行う（外部の人には計算もしない）
     publish_check = None
-    if is_localhost:
+    if is_admin:
         publish_check = check_publish(file_path, entry['body'], is_pub)
 
     # キャッシュから読了時間を取得
@@ -308,11 +308,10 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
     slug = cache.PATH_TO_SLUG.get(file_path, file_path)
 
     # つながりのボタンの数（1 歩でつながっているノート）。外部表示では公開ノートだけで数える（/api/graph と同じ範囲）
-    link_graph = build_link_graph(cache.GLOBAL_FILE_CACHE, cache.FORWARD_LINK_CACHE, published_only)
-    local_graph_count = neighbor_count(link_graph, file_path)
+    local_graph_count = neighbor_count(cached_link_graph(published_only), file_path)
 
     # プロパティ（frontmatter の項目）は管理者の通常表示にだけ出す。外部の人と外部表示には計算もしない
-    properties = build_properties(frontmatter, file_path) if is_localhost and not public_view else ()
+    properties = build_properties(frontmatter, file_path) if viewer["show_admin_ui"] else ()
 
     return templates.TemplateResponse(request=request, name="view.html", context={
         "request": request,
@@ -325,10 +324,8 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         "updated": datetime.fromtimestamp(mtime, JST),
         "frontmatter": frontmatter,
         "is_published": is_pub,
-        # 外部表示中は、編集メニューなどを外部の人と同じく出さない
-        "is_localhost": is_localhost and not public_view,
-        "is_admin": is_localhost,
-        "public_view": public_view,
+        # 外部表示中は、編集メニューなどを外部の人と同じく出さない（show_admin_ui が False）
+        **viewer,
         "publish_check": publish_check,
         "reading_time": reading_time,
         "description": description,
@@ -347,13 +344,13 @@ async def api_get_messages():
     return get_all_messages()
 
 
-def _legacy_search(q: str, is_localhost: bool, accept: Callable[[dict], bool] | None = None) -> list[dict]:
+def _legacy_search(q: str, include_private: bool, accept: Callable[[dict], bool] | None = None) -> list[dict]:
     """旧方式の線形スキャン検索（ベンチマーク比較用に抽出）"""
     q_lower = q.lower()
     results = []
 
     for f in cache.GLOBAL_FILE_CACHE:
-        if not is_localhost and not f.get('published'):
+        if not include_private and not f.get('published'):
             continue
         if accept is not None and not accept(f):
             continue
@@ -453,7 +450,7 @@ async def api_search_benchmark(request: Request):
     for q in test_queries:
         # 旧方式
         t0 = time.perf_counter()
-        old_results = _legacy_search(q, is_localhost=True)
+        old_results = _legacy_search(q, include_private=True)
         old_time = (time.perf_counter() - t0) * 1000  # ms
 
         # 新方式

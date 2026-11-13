@@ -69,7 +69,7 @@
                     </div>
 
                     <div class="list-toolbar">
-                        {% if is_localhost %}
+                        {% if show_admin_ui %}
                         <div class="segmented-control" role="radiogroup" aria-label="公開状態">
                             {% for value, label in visibility_options.items() %}
                             <input type="radio" name="visibility" value="{{ value }}" id="v-{{ value }}" data-autosubmit
@@ -153,8 +153,8 @@
                                         <div class="file-name">
                                             {{ file.title }}
                                             {# 管理者には非公開ノートにだけ印を付ける。外部の人には非公開ノート自体が一覧に来ない（全部公開）ので出さない。
-                                               is_localhost の判定は、その前提が崩れても外部に印を出さないための念押し #}
-                                            {% if is_localhost and not file.published %}{{ nm.private_mark() }}{% endif %}
+                                               show_admin_ui の判定は、その前提が崩れても外部に印を出さないための念押し #}
+                                            {% if show_admin_ui and not file.published %}{{ nm.private_mark() }}{% endif %}
                                         </div>
                                         <div class="file-meta">
                                             <span class="file-updated">更新 {{ file.updated }}</span>

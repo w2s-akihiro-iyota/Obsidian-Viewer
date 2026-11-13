@@ -256,9 +256,9 @@ class SearchIndex:
         suffix = "..." if end < len(body_text) else ""
         return prefix + body_text[start:end] + suffix
 
-    def search(self, query: str, is_localhost: bool, file_cache: list[dict],
+    def search(self, query: str, include_private: bool, file_cache: list[dict],
                limit: int = 20, accept: Callable[[dict], bool] | None = None) -> list[dict]:
-        """TF-IDFスコア付き検索を実行（accept を渡すと、それを満たすノートだけを対象にする）"""
+        """TF-IDFスコア付き検索を実行（include_private が False なら公開ノートだけ。accept を渡すと、それを満たすノートだけを対象にする）"""
         query_tokens = tokenize_query(query)
         if not query_tokens:
             return []
@@ -279,7 +279,7 @@ class SearchIndex:
 
         # 公開フィルタ用のルックアップ
         published_set = None
-        if not is_localhost:
+        if not include_private:
             published_set = {f["path"] for f in file_cache if f.get("published")}
 
         # ファイル情報のルックアップ

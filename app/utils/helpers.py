@@ -41,6 +41,19 @@ def is_public_view(request: Request, view_as: str = "") -> bool:
     return (not is_admin_request(request)) or view_as == "public"
 
 
+def viewer_context(request: Request, view_as: str = "") -> dict[str, bool]:
+    """
+    テンプレートに渡す、閲覧者の種類（base.html とその部品が見る。画面を返すルートはすべてこれで渡す）
+
+    - is_admin: 管理者か。「外部の人の表示」のあいだも True（ヘルプの管理者向けの説明などに使う）
+    - public_view: 管理者が「外部の人の表示」（?as=public）を見ているか。view_as を渡すのは記事ページだけ
+    - show_admin_ui: 管理者向けの操作（編集・同期・ダッシュボードへの入口など）を出すか。外部の人の表示のあいだは False
+    """
+    is_admin = is_admin_request(request)
+    public_view = is_admin and view_as == "public"
+    return {"is_admin": is_admin, "public_view": public_view, "show_admin_ui": is_admin and not public_view}
+
+
 def admin_guard(request: Request) -> JSONResponse | None:
     """
     管理者のリクエストでない場合、403 JSONResponseを返す。

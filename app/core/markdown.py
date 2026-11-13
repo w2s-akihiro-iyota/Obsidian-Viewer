@@ -196,7 +196,15 @@ def heading_anchor(text: str) -> str:
 
 
 def heading_ids(state):
-    """見出しに id を付ける（[[ノート#見出し]] で飛べるようにする）。同じ見出しは -1, -2 で区別する"""
+    """
+    見出しに id を付ける（[[ノート#見出し]] で飛べるようにする）。同じ見出しは -1, -2 で区別する
+
+    埋め込んだノートの描画では、env の heading_id_prefix（embed1_ など）を頭に付ける（B-5）。
+    埋め込みは親ページと別に描画するので、付けないと親ページの見出しと同じ id になり、
+    #見出し で親ページの見出しではなく埋め込みの中へ飛ぶことがある。
+    heading_anchor は _ を落とすので、頭に付けた id が親ページの見出しの id と同じになることはない。
+    """
+    prefix = state.env.get("heading_id_prefix", "")
     used = {}
     tokens = state.tokens
     for i, token in enumerate(tokens):
@@ -209,7 +217,7 @@ def heading_ids(state):
         base = heading_anchor(text) or "section"
         count = used.get(base, 0)
         used[base] = count + 1
-        token.attrSet("id", base if count == 0 else f"{base}-{count}")
+        token.attrSet("id", prefix + (base if count == 0 else f"{base}-{count}"))
 
 
 md.core.ruler.push("heading_ids", heading_ids)

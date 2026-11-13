@@ -30,7 +30,7 @@ BROWSER = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;
 def site(tmp_path, monkeypatch):
     for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
                  "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
-                 "SLUG_TO_PATH", "PATH_TO_SLUG"):
+                 "SLUG_TO_PATH", "PATH_TO_SLUG", "LINK_GRAPH", "LINK_GRAPH_PUBLIC"):
         monkeypatch.setattr(cache, name, getattr(cache, name))
     for module in (content_api, editor_api, indexing, wikilinks):
         monkeypatch.setattr(module, "CONTENT_DIR", tmp_path)

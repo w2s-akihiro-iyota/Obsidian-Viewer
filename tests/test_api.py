@@ -9,8 +9,10 @@
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
 - 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
 - ノート一覧（D-2 / D-10）: 並び替え・タグの件数（外部には公開ノートだけで数える）・条件のチップ・抜粋・非公開の印
+  - 検索欄の tag:・path: はクイックスイッチャーと同じく絞り込む（B-8）
 - ダッシュボード（F-6 / D-8）: 手入れが必要なノート（リンク切れ・孤立・タグなし）・ヒートマップ・0 件の表示
 - ローカルグラフ（F-8）: /api/graph?center=&depth= の点と距離・深さの不正値・404・外部には公開ノートだけ・上限
+  - グラフは索引の作り直しで作り、記事ページと /api/graph はそれを使う（Q-15）
 - ノートを読む回数（Q-1）: 索引の作り直しは各ノートを 1 回だけ読む。記事ページは描画キャッシュが効いていれば読み直さない
 - 先読み（F-15）: どの画面も、先読みするのは同じサイトの記事（/view/*）だけ。外部サイト・添付・エディタ・API・新しいタブ・download は対象にしない
 """
@@ -46,7 +48,7 @@ PUBLIC = "http://localhost:8000"
 def site(tmp_path, monkeypatch):
     for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
                  "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
-                 "SLUG_TO_PATH", "PATH_TO_SLUG"):
+                 "SLUG_TO_PATH", "PATH_TO_SLUG", "LINK_GRAPH", "LINK_GRAPH_PUBLIC"):
         monkeypatch.setattr(cache, name, getattr(cache, name))
     for module in (content_api, editor_api, indexing, wikilinks):
         monkeypatch.setattr(module, "CONTENT_DIR", tmp_path)
@@ -766,6 +768,19 @@ def test_数値のタイトルでも一覧の検索と並び替えができる(l
     assert _titles(client.get("/", params={"sort": "title"}).text)[0] == "2024"
 
 
+def test_一覧の検索欄のtagとpathはクイックスイッチャーと同じく絞り込む(list_site):
+    # B-8: 同じ検索語なら、一覧とクイックスイッチャー（/api/search）で同じノートが出る
+    admin = TestClient(app, base_url=ADMIN)
+    for q in ("tag:秘密タグ", "TAG:共通 path:中間"):
+        listed = _titles(admin.get("/", params={"q": q}).text)
+        assert listed and set(listed) == {r["title"] for r in admin.get("/api/search", params={"q": q}).json()}
+    assert _titles(admin.get("/", params={"q": "tag:共通 alpha"}).text) == ["Alpha"]
+    # 外部の人には、非公開ノートのタグで探しても出さない
+    public = TestClient(app, base_url=PUBLIC)
+    assert _titles(public.get("/", params={"q": "tag:秘密タグ"}).text) == []
+    assert set(_titles(public.get("/", params={"q": "tag:共通"}).text)) == {"Alpha", "Charlie"}
+
+
 def test_抜粋のリンクの閉じ忘れは次の行を巻き込まない():
     assert indexing.make_preview("[閉じ忘れ](http://a\n次の行) と [[壊れ\n本文]]") == "[閉じ忘れ](http://a 次の行) と [[壊れ 本文]]"
 
@@ -1078,6 +1093,25 @@ def test_外部ではつながりの数を公開ノートだけで数える(grap
     button = _toggle(_view(TestClient(app, base_url=PUBLIC), "B2.md"))
     assert not COUNT_RE.search(button) and "is-empty" in button
     assert COUNT_RE.findall(_toggle(_view(TestClient(app, base_url=ADMIN), "B2.md"))) == ["1"]
+
+
+def test_索引の作り直しで管理者用と外部向けのグラフを作る(graph_site):
+    assert "秘密B.md" in cache.LINK_GRAPH.nodes and ("中心.md", "秘密B.md") in cache.LINK_GRAPH.links
+    assert "秘密B.md" not in cache.LINK_GRAPH_PUBLIC.nodes
+    assert all("秘密B.md" not in link for link in cache.LINK_GRAPH_PUBLIC.links)
+    assert ("中心.md", "A.md") in cache.LINK_GRAPH_PUBLIC.links
+
+
+def test_記事ページとグラフのAPIは索引の作り直しで作ったグラフを使う(graph_site, monkeypatch):
+    # Q-15: 表示のたびにグラフを作らない。キャッシュのグラフだけを差し替えると、つながりの数も /api/graph もそれに従う
+    from app.core.graph import LinkGraph
+    nodes = {p: cache.LINK_GRAPH.nodes[p] for p in ("中心.md", "孤立.md")}
+    monkeypatch.setattr(cache, "LINK_GRAPH", LinkGraph(nodes, [("孤立.md", "中心.md")]))
+    client = TestClient(app, base_url=ADMIN)
+    assert COUNT_RE.findall(_toggle(_view(client, "中心.md"))) == ["1"]
+    assert _distances(_local(client, "中心.md")) == {"中心.md": 0, "孤立.md": 1}
+    # 外部向けは別のグラフ（差し替えていない）を使う
+    assert COUNT_RE.findall(_toggle(_view(TestClient(app, base_url=PUBLIC), "中心.md"))) == ["2"]
 
 
 def test_ショートカットの定義に記事ページのGがありヘルプとチートシートに載る(graph_site):

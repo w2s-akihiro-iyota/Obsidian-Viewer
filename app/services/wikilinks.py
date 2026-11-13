@@ -1,4 +1,5 @@
 """Obsidian 記法のリンク・埋め込み（[[...]] / ![[...]]）を HTML にする"""
+import itertools
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -27,12 +28,16 @@ class EmbedContext:
     - 埋め込み HTML の退避（Markdown 変換で崩れないよう目印に置き換え、変換後に差し戻す）
     - 埋め込みの入れ子の深さとループ検出
     - 埋め込んだノートの記録（キャッシュの作り直し判定用）
+    - 埋め込んだノートの見出しの id の頭に付ける文字（親ページの見出しと同じ id にしない。B-5）
     """
     published_only: bool
     render: Callable[[str, "EmbedContext"], str]   # 埋め込み先の本文を描画する関数（render_markdown の本体）
     deps: set | None = None                 # 埋め込んだノートのパスを集める
     stack: tuple[str, ...] = ()             # 描画中のノートと、いま埋め込み中のノート（ループ検出）
     depth: int = 0                          # 埋め込みの入れ子の深さ（ページ本体は 0）
+    heading_id_prefix: str = ""             # 見出しの id の頭に付ける文字（ページ本体は空。埋め込みは embed1_ など）
+    # 埋め込みの通し番号。1 回の描画（入れ子の埋め込みも含む）で共有し、同じノートを 2 回埋め込んでも別の番号にする
+    _embed_numbers: Iterator[int] = field(default_factory=lambda: itertools.count(1))
     _stash: list[str] = field(default_factory=list)
     # 本文に偶然現れない目印にするため、描画ごとに乱数を混ぜる
     _token: str = field(default_factory=lambda: f"OVEMBED{uuid.uuid4().hex[:12]}N")
@@ -40,7 +45,9 @@ class EmbedContext:
     def child(self, path: str) -> "EmbedContext":
         """path を埋め込むときの、1段深い描画の情報"""
         return EmbedContext(published_only=self.published_only, render=self.render, deps=self.deps,
-                            stack=self.stack + (path,), depth=self.depth + 1)
+                            stack=self.stack + (path,), depth=self.depth + 1,
+                            heading_id_prefix=f"embed{next(self._embed_numbers)}_",
+                            _embed_numbers=self._embed_numbers)
 
     def stash(self, html: str) -> str:
         self._stash.append(html)

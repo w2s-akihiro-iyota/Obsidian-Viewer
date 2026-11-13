@@ -21,7 +21,7 @@ from app.services.note_editing import (
     NoteConflictError, NoteNotFoundError, NoteWriteError, VaultWriteError, load_note, save_note,
 )
 from app.services.sync_config import load_config
-from app.utils.helpers import is_admin_request, admin_guard
+from app.utils.helpers import is_admin_request, admin_guard, viewer_context
 from app.utils.messages import get_error, get_system
 
 router = APIRouter()
@@ -47,7 +47,7 @@ async def editor_page(request: Request, path: str = ""):
 
     return templates.TemplateResponse(request=request, name="editor.html", context={
         "request": request,
-        "is_localhost": True,
+        **viewer_context(request),
         "edit_path": edit_path,
         "edit_slug": edit_slug,
     })
