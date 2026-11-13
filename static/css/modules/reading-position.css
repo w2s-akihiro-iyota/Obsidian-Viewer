@@ -1,0 +1,77 @@
+/* =========================================
+   前回の続きから読むボタン（X-3）
+   画面の下のまん中に浮く札。reading-position.js が条件がそろったときだけ出す
+   ========================================= */
+
+.reading-resume {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: var(--z-dropdown);
+    display: flex;
+    align-items: center;
+    /* left: 50% だと使える幅が画面の半分になり、スマホで文言が 2 行に折れるので折り返さない */
+    white-space: nowrap;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);   /* トースト（.toast）と同じ影 */
+    opacity: 0;
+    transition: opacity var(--motion-base) var(--ease-standard);
+}
+
+.reading-resume[hidden] {
+    display: none;
+}
+
+.reading-resume.is-visible {
+    opacity: 1;
+}
+
+.reading-resume button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    transition: var(--transition-ui);
+}
+
+.reading-resume button:hover {
+    background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+}
+
+.reading-resume-go {
+    padding: 8px 8px 8px 16px;
+    border-radius: 999px 0 0 999px;
+    color: var(--accent-text);
+    font-weight: 700;
+}
+
+.reading-resume-pct {
+    color: var(--text-muted);
+    font-size: 0.8em;
+    font-weight: 400;
+}
+
+.reading-resume-close {
+    padding: 8px 14px 8px 8px;
+    border-radius: 0 999px 999px 0;
+    color: var(--text-muted);
+}
+
+/* スマホ: 右下の先頭へ戻るボタン・トーストと同じ高さに合わせる */
+@media (max-width: 768px) {
+    .reading-resume {
+        bottom: var(--above-scroll-top-bottom);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reading-resume {
+        transition: none;
+    }
+}

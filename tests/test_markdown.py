@@ -6,12 +6,34 @@
 - cardlink: ```cardlink のフェンスをリンクカードにする
 - mark: ==text== を <mark> にする
 """
+import re
+import threading
+
 import pytest
 
 from app.core.markdown import CALLOUT_ICONS, md, process_admonition_blocks
+from app.core.tag_syntax import tag_href
 
 
 # ---------- mark ----------
+
+def _render_within(src, seconds=5):
+    """描画を別スレッドで動かし、終わらなければ失敗にする（B-21。止まらない描画でテスト全体を固めない）"""
+    result = {}
+    worker = threading.Thread(target=lambda: result.update(html=md.render(src)), daemon=True)
+    worker.start()
+    worker.join(timeout=seconds)
+    assert not worker.is_alive(), f"描画が {seconds} 秒で終わらない: {src!r}"
+    return result["html"]
+
+
+@pytest.mark.parametrize("src, link_text", [
+    ("[==a== b](https://x)", "<mark>a</mark> b"),
+    ("[x ==a==](https://x)", "x <mark>a</mark>"),
+])
+def test_リンクの文字の中のmarkでも描画が止まらずリンクになる(src, link_text):
+    html = _render_within(src)
+    assert f'<a href="https://x">{link_text}</a>' in html
 
 def test_イコール2つで囲むとmarkにする():
     assert "<mark>強調</mark>" in md.render("==強調==")
@@ -182,3 +204,62 @@ def test_cardlink以外のコードブロックは通常どおりエスケープ
     assert "<pre><code" in html
     assert "&lt;b&gt;" in html
     assert "link-card" not in html
+
+
+# ---------- 本文の #タグ（X-1） ----------
+
+def _inline_tags(html):
+    return re.findall(r'<a href="([^"]*)" class="inline-tag" title="([^"]*)">([^<]*)</a>', html)
+
+
+def test_本文のタグはノート一覧へのリンクになる():
+    html = md.render("今週は #製品テスト の予定")
+    assert _inline_tags(html) == [(tag_href("製品テスト"), "「#製品テスト」のノート一覧へ", "#製品テスト")]
+
+
+def test_タグのhrefはtag_hrefと同じ():
+    html = md.render("#a/b")
+    assert f'href="{tag_href("a/b")}"' in html
+
+
+def test_行頭と引用とリストの中のタグもリンクになる():
+    for src in ("#タグ", "> #タグ", "- #タグ", "1行目\n#タグ"):
+        assert len(_inline_tags(md.render(src))) == 1, src
+
+
+@pytest.mark.parametrize("src", ["#2024", "#18）", "C# の話", "文字#a", "# 見出し"])
+def test_数字だけやタグの形でないものはリンクにしない(src):
+    assert "inline-tag" not in md.render(src)
+
+
+def test_インラインコードとフェンスコードの中はリンクにしない():
+    assert "inline-tag" not in md.render("`#a`")
+    assert "inline-tag" not in md.render("```\n#a\n```")
+
+
+def test_Markdownのリンクの文字の中はリンクにしない():
+    html = md.render("[文字 #x](https://example.com) と #y")
+    assert html.count("<a ") == 2
+    assert _inline_tags(html) == [(tag_href("y"), "「#y」のノート一覧へ", "#y")]
+
+
+def test_内部リンクのaの中はリンクにしない():
+    html = md.render('<a href="/view/x" class="internal-link">ノート #x</a> #y')
+    assert html.count("<a ") == 2
+    assert [t[2] for t in _inline_tags(html)] == ["#y"]
+
+
+def test_タグに使えない記号の手前でタグが切れる():
+    html = md.render("#a&b")
+    assert _inline_tags(html) == [(tag_href("a"), "「#a」のノート一覧へ", "#a")]
+    assert html.strip().endswith("</a>&amp;b</p>")
+
+
+def test_タグの後ろの文字はそのまま残る():
+    assert md.render("#タグ。続き").strip().endswith("</a>。続き</p>")
+
+
+def test_見出しの中のタグもリンクになる():
+    html = md.render("## 見出し #タグ")
+    assert "<h2" in html
+    assert _inline_tags(html)[0][2] == "#タグ"

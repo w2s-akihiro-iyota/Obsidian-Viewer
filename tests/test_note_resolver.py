@@ -69,3 +69,48 @@ def test_has_stem():
 
 def test_大文字小文字は区別する():
     assert NoteResolver(ENTRIES).resolve("Layering") is None
+
+
+# ---------- X-2: frontmatter の別名（aliases） ----------
+
+ALIAS_ENTRIES = [("会議/定例.md", None), ("メモ/下書き.md", None), ("a/同名.md", None), ("b/同名.md", None)]
+
+
+def test_別名で引ける():
+    r = NoteResolver(ALIAS_ENTRIES, [("週次", "会議/定例.md")])
+    assert r.resolve("週次") == "会議/定例.md"
+    assert r.resolve("週次.md") == "会議/定例.md"
+    assert r.resolve("/週次") == "会議/定例.md"
+
+
+def test_ファイル名が別名より優先される():
+    r = NoteResolver(ALIAS_ENTRIES, [("下書き", "会議/定例.md")])
+    assert r.resolve("下書き") == "メモ/下書き.md"
+
+
+def test_パス指定でも見つからなければ別名を引く():
+    r = NoteResolver(ALIAS_ENTRIES, [("x/週次", "会議/定例.md")])
+    assert r.resolve("x/週次") == "会議/定例.md"
+    # パスとして見つかるものは別名より優先する
+    r = NoteResolver(ALIAS_ENTRIES, [("メモ/下書き", "会議/定例.md")])
+    assert r.resolve("メモ/下書き") == "メモ/下書き.md"
+
+
+def test_別名が複数のノートにあれば同名ノートと同じ選び方で並び順に依存しない():
+    aliases = [("共通", "z/深い/b.md"), ("共通", "z/a.md"), ("共通", "y/a.md"), ("共通", "w/x/c.md")]
+    entries = [(p, None) for _, p in aliases]
+    expected_by_source = {"": "y/a.md", "z/深い/x.md": "z/深い/b.md", "w/x/q.md": "w/x/c.md"}
+    for perm in itertools.permutations(aliases):
+        r = NoteResolver(entries, perm)
+        for source, expected in expected_by_source.items():
+            assert r.resolve("共通", source) == expected
+
+
+def test_has_stemは別名を見ない():
+    r = NoteResolver(ALIAS_ENTRIES, [("週次", "会議/定例.md")])
+    assert r.has_stem("定例") and not r.has_stem("週次")
+
+
+def test_別名が無いときの挙動は今までどおり():
+    r = NoteResolver(ALIAS_ENTRIES)
+    assert r.resolve("週次") is None

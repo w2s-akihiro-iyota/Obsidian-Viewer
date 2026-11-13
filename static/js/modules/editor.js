@@ -11,6 +11,9 @@ function initEditor() {
 
     if (!textarea || !preview) return; // エディタページでなければスキップ
 
+    // 名前入りで開いた新規作成（/editor?name=...）は、名前を決めてあるので本文から書き始める
+    if (filenameInput && filenameInput.value) textarea.focus();
+
     let previewTimer = null;
     const PREVIEW_DEBOUNCE = 500;
 

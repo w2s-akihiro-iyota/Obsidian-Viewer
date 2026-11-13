@@ -46,6 +46,9 @@
     /* 記事ページの右上のアクション置き場（layout.css の .article-actions）: ボタンの大きさ、
        スクロールしたときの上端（ヘッダーの高さ＋12px）、
        本文の端・ヘッダーの行との間、外側に置くときに画面の右端に残す余白（article-actions.js も読む） */
+    /* 768px 以下で、右下の「上へ戻る」（下から 24px＋高さ 52px）の上に浮かせる札の下端（24+52+12。X-3・D-18）。
+       トースト（components.css）と「前回の続きから読む」（reading-position.css）が同じ高さに出る */
+    --above-scroll-top-bottom: 88px;
     --article-action-size: 40px;
     --article-actions-top: calc(var(--header-height) + 12px);
     --article-actions-gap: 12px;

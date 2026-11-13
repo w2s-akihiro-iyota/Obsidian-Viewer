@@ -739,7 +739,7 @@ pre.line-numbers .line-number-rows {
 /* 768px 以下: 右下の「上へ戻る」（下から 24px・高さ 52px）にかぶらないよう、その上に出す */
 @media (max-width: 768px) {
     #toast-container {
-        bottom: 88px;
+        bottom: var(--above-scroll-top-bottom);
     }
 }
 

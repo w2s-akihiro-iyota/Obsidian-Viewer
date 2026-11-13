@@ -68,7 +68,7 @@
         {% endif %}
         {% if page.for_note %}
         <div class="error-page-admin-actions">
-            <a href="/editor" class="secondary-btn">エディタで新規作成</a>
+            <a href="{% if requested_note %}/editor?name={{ requested_note|urlencode }}{% else %}/editor{% endif %}" class="secondary-btn">エディタで新規作成</a>
             <button type="button" class="secondary-btn" data-open-sync>同期の画面を開く</button>
         </div>
         {% endif %}

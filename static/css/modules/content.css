@@ -1602,6 +1602,24 @@ mark {
     text-decoration: none;
 }
 
+/* 本文中の #タグ（X-1。ノート一覧の絞り込みへのリンク。見た目は .view-tag の小さい版） */
+.markdown-body a.inline-tag {
+    display: inline-block;
+    padding: 0 7px;
+    background-color: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-purple) 30%, transparent);
+    border-radius: 10px;
+    color: var(--accent-text);
+    font-size: 0.9em;
+    text-decoration: none;
+    transition: var(--transition-ui);
+}
+
+.markdown-body a.inline-tag:hover {
+    background-color: color-mix(in srgb, var(--accent-purple) 22%, transparent);
+    text-decoration: none;
+}
+
 /* 読了時間 (view.html breadcrumb) */
 .reading-time {
     display: inline-flex;

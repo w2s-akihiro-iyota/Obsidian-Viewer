@@ -13,9 +13,10 @@ from datetime import datetime, timezone, timedelta
 from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP, SCAN_WORKERS
 from app import cache
 from app.core.background_refresh import BackgroundRefresher
-from app.core.frontmatter import is_published, parse_frontmatter
+from app.core.frontmatter import is_published, note_aliases, read_frontmatter
 from app.core.graph import build_link_graph
 from app.core.note_resolver import NoteEntry, NoteResolver
+from app.core.tags import body_tags, note_tags
 from app.services.wikilinks import classify_link, is_missing_note, iter_frontmatter_wikilinks, iter_wikilinks
 from app.utils.slug import slugify_path
 
@@ -95,6 +96,9 @@ class NoteRecord:
     # 読み直すかどうかの判定用（Q-20）。この 2 つと相対パスが前回と同じなら、前回の記録をそのまま使う
     mtime_ns: int = 0
     size: int = 0
+    frontmatter_error: str = ""   # frontmatter が読めなかった理由（読めたなら空。F-14）
+    # 本文の #タグ（描画でタグの札になるもの）。解析が重いので、読み込んだときに 1 回だけ作り、使い回す記録に持たせる（Q-26）
+    body_tags: tuple[str, ...] = ()
 
     @property
     def title(self) -> str:
@@ -131,9 +135,10 @@ def scan_notes(directory: Path, relative_to: Path,
         mtime = datetime.fromtimestamp(st.st_mtime, JST)
         with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
-        frontmatter, body = parse_frontmatter(content)
-        return NoteRecord(rel_path=rel_posix, name=file, mtime=mtime, frontmatter=frontmatter, body=body,
-                          mtime_ns=st.st_mtime_ns, size=st.st_size)
+        parsed = read_frontmatter(content)
+        return NoteRecord(rel_path=rel_posix, name=file, mtime=mtime, frontmatter=parsed.data, body=parsed.body,
+                          mtime_ns=st.st_mtime_ns, size=st.st_size, frontmatter_error=parsed.error,
+                          body_tags=tuple(body_tags(parsed.body)))
 
     # stat も読み込みも、バインドマウント越しだと 1 回数 ms かかる待ち時間なので、スレッドで重ねる
     with ThreadPoolExecutor(max_workers=SCAN_WORKERS) as pool:
@@ -152,13 +157,8 @@ def scan_notes(directory: Path, relative_to: Path,
 
 def _file_entry(note: NoteRecord) -> dict:
     """一覧（GLOBAL_FILE_CACHE）の 1 件"""
-    tags = note.frontmatter.get('tags')
-    if tags is None:
-        tags = []
-    elif isinstance(tags, str):
-        tags = [tags]
-    # Cleanup tags: remove leading '#' and whitespace
-    tags = [t.strip().lstrip('#') for t in tags if t and str(t).strip()]
+    # frontmatter のタグと本文の #タグ（X-1。数値のタグでも落ちない）
+    tags = note_tags(note.frontmatter, note.body_tags)
 
     # マークアップ除去したプレーンテキスト（全文検索・読了時間用）
     body_text = re.sub(r'<[^>]+>', '', note.body)
@@ -180,6 +180,7 @@ def _file_entry(note: NoteRecord) -> dict:
         "tags": tags,
         "published": note.published,
         "frontmatter": note.frontmatter,
+        "frontmatter_error": note.frontmatter_error,
         # 一覧の抜粋（Markdown の記号を除いた本文）
         "preview": make_preview(note.body),
         "body_text": body_text,
@@ -350,6 +351,11 @@ def _resolver_entries(files: list[dict]) -> list[NoteEntry]:
     return [NoteEntry(f["path"], sources.vault_path(f["path"])) for f in files]
 
 
+def _resolver_aliases(files: list[dict]) -> list[tuple[str, str]]:
+    """NoteResolver に渡す (別名, ビューアのパス) の列。frontmatter の aliases から作る（X-2）"""
+    return [(alias, f["path"]) for f in files for alias in note_aliases(f["frontmatter"])]
+
+
 def _refresh_global_caches() -> None:
     # 循環しないようここで読み込む（どちらも wikilinks 経由で indexing を読み込む）
     from app.services.images import build_media_index
@@ -369,7 +375,7 @@ def _refresh_global_caches() -> None:
     media_index = build_media_index(MEDIA_DIR)
 
     # [[名前]] からノートを引く表。Vault のパス（[[notes/…]] の解決用）は同期の設定の対応表から取る
-    resolver = NoteResolver(_resolver_entries(files))
+    resolver = NoteResolver(_resolver_entries(files), _resolver_aliases(files))
 
     # スラッグマッピングの構築
     slug_to_path = {}

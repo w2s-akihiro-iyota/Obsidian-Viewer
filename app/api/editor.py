@@ -28,11 +28,13 @@ router = APIRouter()
 
 
 @router.get("/editor", response_class=HTMLResponse)
-async def editor_page(request: Request, path: str = ""):
+async def editor_page(request: Request, path: str = "", name: str = ""):
     """
     エディタページを表示する（localhost限定）
 
     path（スラッグまたは実パス）を渡すと既存ノートの編集、無ければ新規作成として開く。
+    新規作成では name を渡すと、ファイル名の入力欄にその名前を入れて開く（無いノートの画面から、その名前のまま書き始める）。
+    path があるときは name を無視する。
     """
     if not is_admin_request(request):
         raise HTTPException(status_code=403, detail=get_error("E101"))
@@ -45,11 +47,18 @@ async def editor_page(request: Request, path: str = ""):
             raise HTTPException(status_code=404, detail=get_error("E205"))
         edit_slug = cache.PATH_TO_SLUG[edit_path]
 
+    # エディタはフォルダを選べず、保存 API は / を弾くので、パスの最後の部分だけを名前にする
+    initial_name = ""
+    if not edit_path:
+        initial_name = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+        initial_name = initial_name.removesuffix(".md").strip()
+
     return templates.TemplateResponse(request=request, name="editor.html", context={
         "request": request,
         **viewer_context(request),
         "edit_path": edit_path,
         "edit_slug": edit_slug,
+        "initial_name": initial_name,
     })
 
 

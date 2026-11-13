@@ -123,7 +123,7 @@
 
 {# 公開チェックで、埋め込んだ公開ノートの中で見つけたものに、書いてあるノートを添える（直す場所を示す。X-5） #}
 {% macro check_via(via) -%}
-{% if via %} <span class="publish-check-via">埋め込んだ「<a href="/view/{{ via.slug }}">{{ via.title }}</a>」の中</span>{% endif %}
+{% if via %} <span class="publish-check-via">埋め込んだ「<a href="/view/{{ via.slug }}">{{ via.title }}</a>」<span class="publish-check-path">{{ via.path }}</span> の中</span>{% endif %}
 {%- endmacro %}
 
 {% macro check_row(label, count) %}
@@ -289,12 +289,10 @@
     </div>
     {% endif %}
 
-    {% if frontmatter.tags %}
+    {% if tags %}
     <div class="view-tags">
-        {% set tags = frontmatter.tags if frontmatter.tags is iterable and frontmatter.tags is not string else
-        [frontmatter.tags] %}
         {% for tag in tags %}
-        <a href="/?tag={{ tag }}" class="view-tag">#{{ tag }}</a>
+        <a href="{{ tag_href(tag) }}" class="view-tag">#{{ tag }}</a>
         {% endfor %}
     </div>
     {% endif %}
@@ -449,6 +447,25 @@
     </ul>
 </section>
 {% endif %}
+
+<!-- 前回の続きから読むボタン（X-3）。reading-position.js が条件がそろったときだけ出す -->
+<div class="reading-resume" hidden>
+    <button type="button" class="reading-resume-go">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="m19 12-7 7-7-7"></path>
+        </svg>
+        <span>前回の続きから読む</span> <span class="reading-resume-pct"></span>
+    </button>
+    <button type="button" class="reading-resume-close" aria-label="閉じる">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+        </svg>
+    </button>
+</div>
 
 <!-- Lightbox Overlay -->
 <div id="lightbox-overlay" class="lightbox-overlay" aria-hidden="true">
