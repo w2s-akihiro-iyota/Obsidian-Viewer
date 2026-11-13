@@ -124,6 +124,21 @@ def test_見出しが無ければその旨を出す(vault):
     assert "markdown-embed" in html and "見出しが見つかりません" in html
 
 
+def test_タグの直後の埋め込みはタグの名前にくっつかない(vault):
+    # 埋め込みは描画のあいだ目印に置き換わる。目印がタグの名前に入ると、href に埋め込みの HTML が入って壊れる（X-1）
+    html = render("#tag![[公開メモ]]")
+    assert 'class="inline-tag" title="「#tag」のノート一覧へ">#tag</a>' in html
+    assert "markdown-embed" in html and "公開メモの本文" in html
+    assert "OVEMBED" not in html
+
+
+def test_リンクの表示名の中の井桁はタグにしない(vault):
+    # リンク切れ（span）でも、表示名の # はタグの札にしない（X-1）
+    html = render("[[無いノート|メモ #重要]] と [[公開メモ|公開 #x]]")
+    assert "inline-tag" not in html
+    assert "メモ &#35;重要" in html or "メモ #重要" in html
+
+
 def test_互いに埋め込むループは止まる(vault):
     html = render("![[ループA]]")
     assert "A本文" in html and "B本文" in html
@@ -430,3 +445,33 @@ def test_バックリンクも描画と同じ同名ノートを選ぶ(vault):
     _, forward = _build_link_maps(files, bodies, cache.NOTE_RESOLVER, dict(cache.PATH_TO_SLUG))
     assert forward["会議/定例.md"] == ["会議/同名.md"]
     assert forward["公開メモ.md"] == ["同名.md"]
+
+
+# ---------- X-2: frontmatter の別名（aliases）へのリンク ----------
+
+@pytest.fixture
+def alias_vault(vault, monkeypatch):
+    """公開メモ.md に別名「週報」、秘密.md に別名「機密」を持たせた表にする"""
+    paths = list(cache.PATH_TO_SLUG)
+    monkeypatch.setattr(cache, "NOTE_RESOLVER",
+                        NoteResolver([(p, None) for p in paths], [("週報", "公開メモ.md"), ("機密", "秘密.md")]))
+    return vault
+
+
+def test_別名のリンクもつながり表示は書いたまま(alias_vault):
+    html = render("[[週報]]")
+    assert 'href="/view/公開メモ"' in html and ">週報<" in html
+    assert "internal-link-broken" not in html
+
+
+def test_別名のリンクもリンク元とフォワードリンクに数える(alias_vault):
+    files = [{"path": "参照元.md", "title": "参照元"}]
+    backlinks, forward = _build_link_maps(files, {"参照元.md": "[[週報]]"}, cache.NOTE_RESOLVER,
+                                          dict(cache.PATH_TO_SLUG))
+    assert forward["参照元.md"] == ["公開メモ.md"] and "参照元.md" in str(backlinks["公開メモ.md"])
+
+
+def test_外部向けでは非公開ノートの別名はリンク切れの表示(alias_vault):
+    html = render("[[機密]]", published_only=True)
+    assert "internal-link-broken" in html and "/view/秘密" not in html
+    assert 'href="/view/秘密"' in render("[[機密]]")

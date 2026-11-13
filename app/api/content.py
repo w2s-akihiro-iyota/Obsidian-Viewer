@@ -23,6 +23,7 @@ from app.core.frontmatter import is_published, parse_frontmatter
 from app.core.properties import build_properties
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query
+from app.core.tags import body_tags, note_tags
 from app.services.content import render_markdown
 from app.services.media_access import first_image_href
 from app.services.publish_check import check_publish
@@ -251,6 +252,8 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
             'frontmatter': frontmatter,
             'deps': _mtimes(deps),
             'body': body,
+            # frontmatter と本文のタグ（タグ欄・関連記事に使う。表示のたびに作り直さない）
+            'tags': note_tags(frontmatter, body_tags(body)),
             'description': _og_description(frontmatter, body),
             # 許可リストと同じ抽出で選ぶ（外部の人に 404 になる画像を OGP にしない）
             'og_image': first_image_href(frontmatter, body, cache.MEDIA_INDEX),
@@ -300,9 +303,7 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         backlinks = [bl for bl in backlinks if bl["path"] in published_paths]
 
     # 関連記事取得
-    tags = frontmatter.get("tags") or []
-    if isinstance(tags, str):
-        tags = [tags]
+    tags = entry['tags']
     related_articles = _get_related_articles(file_path, tags, published_only)
 
     slug = cache.PATH_TO_SLUG.get(file_path, file_path)
@@ -323,6 +324,7 @@ async def read_item(request: Request, file_path: str, view_as: str = Query("", a
         "breadcrumbs": _breadcrumbs(file_path),
         "updated": datetime.fromtimestamp(mtime, JST),
         "frontmatter": frontmatter,
+        "tags": tags,
         "is_published": is_pub,
         # 外部表示中は、編集メニューなどを外部の人と同じく出さない（show_admin_ui が False）
         **viewer,

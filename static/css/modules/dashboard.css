@@ -192,14 +192,14 @@
     font-size: 0.9rem;
 }
 
-/* 手入れが必要なノート（F-6）: 3 枚のカード。押すとその下に表を開く */
+/* 手入れが必要なノート（F-6）: 4 枚のカード。押すとその下に表を開く */
 .dashboard-health {
     margin-bottom: 20px;
 }
 
 .health-cards {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
 }
 

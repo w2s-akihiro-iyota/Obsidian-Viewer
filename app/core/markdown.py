@@ -7,6 +7,8 @@ from urllib.parse import quote
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 
+from app.core.tag_syntax import TAG_RE, tag_href, tag_name_from_match
+
 # Markdown Setup
 def mark_plugin(md):
     def mark(state, silent):
@@ -21,7 +23,10 @@ def mark_plugin(md):
                 break
             pos += 1
         if not found: return False
-        if silent: return True
+        # 探すだけ（silent）のときも、読み終えた位置まで state.pos を進める（進めないとリンクの文字の読み飛ばしが止まらない。B-21）
+        if silent:
+            state.pos = pos + 2
+            return True
         state.pos = start + 2
         state.push('mark_open', 'mark', 1)
         token = state.push('text', '', 0)
@@ -31,12 +36,50 @@ def mark_plugin(md):
         return True
     md.inline.ruler.before('emphasis', 'mark', mark)
 
+
+def tag_plugin(md):
+    """
+    本文の #タグ を、ノート一覧の絞り込みへのリンクにする（X-1）
+
+    タグの形（TAG_RE）と数字だけを除く判定は app/core/tag_syntax.py にあり、索引側の body_tags も同じ描画の結果から拾う。
+    リンクの文字の中（[文字 #x](url) や process_wikilinks が作った <a>...</a> の中）ではリンクにしない。
+    コードの中は markdown-it が先に処理するので対象外になる。
+    """
+    def tag(state, silent):
+        if state.linkLevel > 0:
+            return False
+        match = TAG_RE.match(state.src, state.pos)
+        if not match:
+            return False
+        name = tag_name_from_match(match)
+        if name is None:
+            return False
+        # 探すだけ（silent）のときも、読み進めた位置を state.pos に入れる
+        end = state.pos + 1 + len(name)
+        if silent:
+            state.pos = end
+            return True
+        link = state.push('link_open', 'a', 1)
+        link.meta = {'tag': name}   # body_tags が、描画でタグの札になったものだけを拾う目印
+        link.attrs = {
+            'href': tag_href(name),
+            'class': 'inline-tag',
+            'title': f'「#{name}」のノート一覧へ',
+        }
+        state.push('text', '', 0).content = f'#{name}'
+        state.push('link_close', 'a', -1)
+        state.pos = end
+        return True
+    md.inline.ruler.before('emphasis', 'tag', tag)
+
+
 # MarkdownIt Instance
 md = (
     markdown_it.MarkdownIt("commonmark", {"breaks": True, "html": True})
     .enable("table")
     .enable("strikethrough")
     .use(mark_plugin)
+    .use(tag_plugin)
     .use(dollarmath_plugin)
     .use(tasklists_plugin)
 )

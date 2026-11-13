@@ -28,7 +28,7 @@
         <a href="/view/{{ edit_slug }}" class="secondary-btn editor-back-btn">記事に戻る</a>
         {% else %}
         <div class="editor-filename-group">
-            <input type="text" id="editor-filename" placeholder="ファイル名" autocomplete="off">
+            <input type="text" id="editor-filename" value="{{ initial_name }}" placeholder="ファイル名" autocomplete="off">
             <span class="editor-filename-ext">.md</span>
         </div>
         {% endif %}

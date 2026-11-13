@@ -77,6 +77,22 @@ def test_変わっていないノートは読み直さず前回の記録をそ�
     assert {n.rel_path: n for n in second}["a.md"] is previous["a.md"]
 
 
+def test_本文のタグは変わっていないノートでは再計算しない(tmp_path, monkeypatch):
+    from app.core import indexing
+
+    _write(tmp_path / "a.md", "#a の本文", 1_700_000_000)
+    _write(tmp_path / "b.md", "#b の本文", 1_700_000_000)
+    previous = {n.rel_path: n for n in scan_notes(tmp_path, tmp_path)}
+    assert previous["a.md"].body_tags == ("a",)
+    calls = []
+    real = indexing.body_tags
+    monkeypatch.setattr(indexing, "body_tags", lambda body: calls.append(body) or real(body))
+    _write(tmp_path / "b.md", "#c に変えた", 1_700_000_100)
+    notes = {n.rel_path: n for n in scan_notes(tmp_path, tmp_path, previous=previous)}
+    assert calls == ["#c に変えた"]
+    assert notes["a.md"].body_tags == ("a",) and notes["b.md"].body_tags == ("c",)
+
+
 def test_変わったノートだけ読み直す(tmp_path, monkeypatch):
     _write(tmp_path / "a.md", "古い", 1_700_000_000)
     _write(tmp_path / "b.md", "そのまま", 1_700_000_000)
@@ -219,3 +235,39 @@ def test_バックグラウンドの作り直しが失敗してもログに残�
     indexing.schedule_background_refresh()
     assert indexing.background_refresher.wait_idle(5)
     assert len(calls) == 2
+
+
+# ---------- 形の変な frontmatter（B-20）・読めない理由（F-14）・別名（X-2） ----------
+
+def test_辞書でないfrontmatterが混じっても索引は最後まで作れる(isolated_cache):
+    from app import cache
+    from app.core import indexing
+
+    _write(isolated_cache / "普通.md", "---\npublish: true\ntags: [a]\n---\n本文")
+    _write(isolated_cache / "文字列.md", "---\nただの文字列\n---\n本文")
+    _write(isolated_cache / "リスト.md", "---\n- a\n- b\n---\n本文")
+    _write(isolated_cache / "数値.md", "---\n42\n---\n本文")
+    _write(isolated_cache / "壊れ.md", "---\na: 1\nb: : :\n---\n本文")
+    _write(isolated_cache / "閉じ無し.md", "---\ntitle: x\n本文")
+    indexing.refresh_global_caches()
+    files = {f["path"]: f for f in cache.GLOBAL_FILE_CACHE}
+    assert set(files) == {"普通.md", "文字列.md", "リスト.md", "数値.md", "壊れ.md", "閉じ無し.md"}
+    assert files["普通.md"]["published"] and "a" in files["普通.md"]["tags"]
+    assert files["普通.md"]["frontmatter_error"] == ""
+    for name in ("文字列.md", "リスト.md", "数値.md"):
+        assert files[name]["frontmatter_error"] == "key: value の形になっていない"
+        assert files[name]["frontmatter"] == {} and not files[name]["published"]
+    assert files["壊れ.md"]["frontmatter_error"] == "YAML の書き方の誤り（3 行目）"
+    assert files["閉じ無し.md"]["frontmatter_error"] == "閉じの --- が無い"
+
+
+def test_別名のリンクは索引の作り直しでつながる(isolated_cache):
+    from app import cache
+    from app.core import indexing
+
+    _write(isolated_cache / "定例.md", "---\naliases: [週次, 'ミーティング']\n---\n本文")
+    _write(isolated_cache / "参照元.md", "[[週次]] と [[ミーティング]] と [[無い]]")
+    indexing.refresh_global_caches()
+    assert cache.NOTE_RESOLVER.resolve("週次") == "定例.md"
+    assert cache.FORWARD_LINK_CACHE["参照元.md"] == ["定例.md"]
+    assert {f["path"]: f["missing_links"] for f in cache.GLOBAL_FILE_CACHE}["参照元.md"] == ["無い"]

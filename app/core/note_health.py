@@ -1,7 +1,7 @@
-"""ダッシュボードの「手入れが必要なノート」（F-6）: リンク切れ・孤立ノート・タグなしを数える
+"""ダッシュボードの「手入れが必要なノート」（F-6）: リンク切れ・孤立ノート・タグなし・プロパティの誤りを数える
 
 ページを開くたびにファイルを読み直さないよう、索引の作り直しで作ったキャッシュ
-（各ノートの "missing_links"・BACKLINK_CACHE・"tags"）だけから作る。
+（各ノートの "missing_links"・BACKLINK_CACHE・"tags"・"frontmatter_error"）だけから作る。
 ダッシュボードは管理者専用なので、非公開ノートも含めて数える。
 """
 from dataclasses import dataclass
@@ -13,13 +13,13 @@ from app.config import DASHBOARD_CAUSE_NAME_COUNT
 class HealthRow:
     """表の 1 行"""
     file: dict      # GLOBAL_FILE_CACHE のノート
-    cause: str      # 原因（リンク切れなら切れているリンク先の名前。ほかは空）
+    cause: str      # 原因（リンク切れなら切れているリンク先の名前、プロパティの誤りなら理由。ほかは空）
 
 
 @dataclass(frozen=True)
 class HealthCheck:
     """カード 1 枚と、その下に開く表"""
-    id: str                     # 要素の id に使う（broken / orphan / untagged）
+    id: str                     # 要素の id に使う（broken / orphan / untagged / frontmatter）
     label: str                  # カードの名前
     description: str            # カードの小さい説明
     rows: tuple[HealthRow, ...] # 該当ノートの全件（最終更新の新しい順）
@@ -49,11 +49,12 @@ def _missing_cause(names: list[str]) -> str:
 
 def build_note_health(files: list[dict], backlinks: dict, limit: int) -> list[HealthCheck]:
     """
-    3 種の「手入れが必要なノート」を作る
+    4 種の「手入れが必要なノート」を作る
 
     - リンク切れ: 存在しないノートへのリンクを含むノート（判定は公開チェックと同じ。コードの中は数えない）
     - 孤立ノート: ほかのどのノートからもリンク・埋め込みされていないノート（自分へのリンクは数えない）
-    - タグなし: frontmatter の tags が空のノート
+    - タグなし: タグが 1 つも無いノート
+    - プロパティの誤り: frontmatter が読めず、公開・タグが効いていないノート（理由を原因に出す）
     """
     newest_first = sorted(files, key=lambda f: f["mtime"], reverse=True)
 
@@ -65,6 +66,8 @@ def build_note_health(files: list[dict], backlinks: dict, limit: int) -> list[He
               [HealthRow(f, _missing_cause(f.get("missing_links", []))) for f in newest_first if f.get("missing_links")]),
         check("orphan", "孤立ノート", "どこからもリンクされていない",
               [HealthRow(f, "") for f in newest_first if not backlinks.get(f["path"])]),
-        check("untagged", "タグなし", "tags が空のノート",
+        check("untagged", "タグなし", "タグが 1 つも無いノート",
               [HealthRow(f, "") for f in newest_first if not f.get("tags")]),
+        check("frontmatter", "プロパティの誤り", "公開・タグが効いていない",
+              [HealthRow(f, f["frontmatter_error"]) for f in newest_first if f.get("frontmatter_error")]),
     ]

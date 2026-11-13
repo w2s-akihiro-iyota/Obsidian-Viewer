@@ -39,8 +39,9 @@ class EmbedContext:
     # 埋め込みの通し番号。1 回の描画（入れ子の埋め込みも含む）で共有し、同じノートを 2 回埋め込んでも別の番号にする
     _embed_numbers: Iterator[int] = field(default_factory=lambda: itertools.count(1))
     _stash: list[str] = field(default_factory=list)
-    # 本文に偶然現れない目印にするため、描画ごとに乱数を混ぜる
-    _token: str = field(default_factory=lambda: f"OVEMBED{uuid.uuid4().hex[:12]}N")
+    # 本文に偶然現れない目印にするため、描画ごとに乱数を混ぜる。
+    # 頭の U+E000（私用の文字）はタグの文字ではないので、#tag![[ノート]] でタグの名前に目印がくっつかない（X-1）
+    _token: str = field(default_factory=lambda: f"OVEMBED{uuid.uuid4().hex[:12]}N")
 
     def child(self, path: str) -> "EmbedContext":
         """path を埋め込むときの、1段深い描画の情報"""
@@ -459,7 +460,8 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
         if target.kind is LinkKind.IMAGE:
             return image_html(target.image_url, link.name, link.alias)
         display = link_display(link, target)
-        title = escape(display.text)
+        # 表示名の中の # はタグにしない（[[無いノート|メモ #重要]] のリンク切れの span でも）。&#35; は画面では # のまま出る（X-1）
+        title = escape(display.text).replace('#', '&#35;')
         # 存在しないノートと、外部向けの非公開ノートは同じ表示にする（非公開ノートの存在を見せない）
         if display.href is None:
             return f'<span class="internal-link-broken">{title}</span>'

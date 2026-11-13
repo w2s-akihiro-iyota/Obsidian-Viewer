@@ -156,7 +156,7 @@ def test_管理者には開こうとしたパスと次の一手を出す(site):
     page = _page(res)
     assert res.status_code == 404
     assert "project-notes/old-memo" in page
-    assert 'href="/editor"' in page and "data-open-sync" in page
+    assert 'href="/editor?name=project-notes/old-memo"' in page and "data-open-sync" in page
 
 
 def test_外部の人にはパスも管理者向けの操作も出さない(site):

@@ -33,6 +33,7 @@ from app.config import JST
 from app.api import content as content_api
 from app.api import editor as editor_api
 from app.core import indexing
+from app.core.frontmatter import parse_frontmatter
 from app.main import app
 from app.models.sync import SyncConfig
 from app.services import sync, wikilinks
@@ -141,7 +142,7 @@ def check_site(site):
 
 
 def _body_of(path):
-    return indexing.parse_frontmatter((indexing.CONTENT_DIR / path).read_text(encoding="utf-8"))[1]
+    return parse_frontmatter((indexing.CONTENT_DIR / path).read_text(encoding="utf-8"))[1]
 
 
 def _article(html):
@@ -298,7 +299,8 @@ def test_埋め込みの中のリンク切れは描画と公開チェックで�
 
 def test_チェックパネルは埋め込んだノートの中で見つけたものに場所を添える(embed_check_site):
     html = _get(TestClient(app, base_url=ADMIN), "部品を埋め込むページ.md", **{"as": "public"}).text
-    via = f'埋め込んだ「<a href="/view/{cache.PATH_TO_SLUG["部品.md"]}">部品</a>」の中'
+    via = (f'埋め込んだ「<a href="/view/{cache.PATH_TO_SLUG["部品.md"]}">部品</a>」'
+           '<span class="publish-check-path">部品.md</span> の中')
     # 非公開リンク（本体には無し・部品の中は有り）・非公開の埋め込み・存在しないリンク・画像・Dataview に 1 つずつ
     assert html.count(via) == 5
     assert "要確認 6" in _get(TestClient(app, base_url=ADMIN), "部品を埋め込むページ.md").text
@@ -660,6 +662,33 @@ def test_エディタ画面の下の段に保存と字下げのキーがある(s
     assert "<kbd>Tab</kbd> 字下げ" in hints
 
 
+def _filename_value(html):
+    match = re.search(r'<input type="text" id="editor-filename" value="([^"]*)"', html)
+    return match.group(1) if match else None
+
+
+def test_エディタは名前を渡すと最後の部分を拡張子なしでファイル名の欄に入れる(site):
+    admin = TestClient(app, base_url=ADMIN)
+    assert _filename_value(admin.get("/editor", params={"name": "project-notes/old-memo.md"}).text) == "old-memo"
+    assert _filename_value(admin.get("/editor", params={"name": r"a\b\  メモ .md "}).text) == "メモ"
+    assert _filename_value(admin.get("/editor").text) == ""
+
+
+def test_エディタはpathとnameが両方あればpathを優先して入力欄を出さない(site):
+    html = TestClient(app, base_url=ADMIN).get("/editor", params={"path": "親.md", "name": "名前だけの指定"}).text
+    assert _filename_value(html) is None and "名前だけの指定" not in html
+
+
+def test_エディタに渡した名前はエスケープされる(site):
+    html = TestClient(app, base_url=ADMIN).get("/editor", params={"name": '"><b>x'}).text
+    assert "<b>x" not in html
+    assert _filename_value(html) == "&#34;&gt;&lt;b&gt;x"
+
+
+def test_エディタは管理者以外には名前を渡しても403(site):
+    assert TestClient(app, base_url=PUBLIC).get("/editor", params={"name": "メモ"}).status_code == 403
+
+
 def test_ボタンのツールチップにキーを添える(site):
     editor = TestClient(app, base_url=ADMIN).get("/editor").text
     assert re.search(r'<button id="editor-save-btn"[^>]*title="保存 \(Ctrl\+S\)"[^>]*aria-label="保存 \(Ctrl\+S\)"', editor)
@@ -934,11 +963,24 @@ def _health_rows(html, id_):
         r'<a href="/view/[^"]+">([^<]+)</a>.*?<td class="health-cause">([^<]*)</td>', m.group(1), re.S)]
 
 
-def test_ダッシュボードはリンク切れ孤立タグなしを数える(health_site):
+def test_ダッシュボードはリンク切れ孤立タグなしプロパティの誤りを数える(health_site):
     html = TestClient(app, base_url=ADMIN).get("/dashboard").text
     counts = {id_: re.search(r'class="health-card-value">([^<]+)<', _health_card(html, id_)).group(1)
-              for id_ in ("broken", "orphan", "untagged")}
-    assert counts == {"broken": "2", "orphan": "2", "untagged": "1"}
+              for id_ in ("broken", "orphan", "untagged", "frontmatter")}
+    assert counts == {"broken": "2", "orphan": "2", "untagged": "1", "frontmatter": "なし"}
+
+
+def test_プロパティの誤りのカードは原因に理由を出す(health_site):
+    now = time.time()
+    for name, text, ago in (("壊れ.md", "---\na: 1\nb: : :\n---\n[[ハブ]]\n", 50),
+                            ("文字列.md", "---\nただの文字列\n---\n[[ハブ]]\n", 40)):
+        (health_site / name).write_text(text, encoding="utf-8")
+        os.utime(health_site / name, (now - ago, now - ago))
+    indexing.refresh_global_caches()
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    assert re.search(r'class="health-card-value">2<', _health_card(html, "frontmatter"))
+    assert _health_rows(html, "frontmatter") == [
+        ("文字列", "key: value の形になっていない"), ("壊れ", "YAML の書き方の誤り（3 行目）")]
 
 
 def test_リンク切れの表は切れたリンク先を3件までと残りの件数を出す(health_site):
@@ -974,7 +1016,7 @@ def test_0件のカードは押せずなしと出し表を作らない(site):
     (site / "子.md").write_text("---\npublish: true\ntags: [a]\n---\n[[親]]\n", encoding="utf-8")
     indexing.refresh_global_caches()
     html = TestClient(app, base_url=ADMIN).get("/dashboard").text
-    for id_ in ("broken", "orphan", "untagged"):
+    for id_ in ("broken", "orphan", "untagged", "frontmatter"):
         card = _health_card(html, id_)
         assert "disabled" in card and "aria-controls" not in card
         assert 'class="health-card-value">なし<' in card
@@ -1590,3 +1632,97 @@ def test_先読みは同じサイトの記事だけを対象にする(site, base
     assert {"not": {"selector_matches": "[target=_blank], [download]"}} in conditions, (
         "新しいタブで開くリンクと download 付きは先読みしない")
     assert rule["eagerness"] == "moderate", "乗せたときだけ読む（immediate・eager でページを開いた瞬間に読まない）"
+
+
+# ---------- X-3: 前回の続きから読むボタン ----------
+
+def test_記事ページには前回の続きから読むボタンがhiddenで置かれエラー画面には無い(site):
+    html = _get(TestClient(app, base_url=ADMIN), "親.md").text
+    assert re.search(r'<div class="reading-resume" hidden>.*?reading-resume-go.*?aria-label="閉じる"', html, re.S)
+    assert "reading-position.js" in html
+    missing = TestClient(app, base_url=ADMIN).get("/view/無いノート", headers={"accept": "text/html"}).text
+    assert "reading-resume" not in missing.replace("reading-position.js", "")
+
+
+# ---------- X-1: 本文の #タグ ----------
+
+@pytest.fixture
+def tag_site(site):
+    """本文に #タグ を書いたノートがある Vault（親.md / 子.md は消す）"""
+    for name in ("親.md", "子.md"):
+        (site / name).unlink()
+    notes = {
+        "本文タグ.md": "---\npublish: true\ntags: [先頭, 共通]\n---\n今週は #共通 と #本文だけ の話。#2024 は数字だけ。\n",
+        "記号タグ.md": "---\npublish: true\ntags: ['a&b c', 'x#y']\n---\n本文\n",
+        "関連.md": "---\npublish: true\n---\n#本文だけ のメモ\n",
+        "数値タグ.md": "---\npublish: true\ntags: [2024]\n---\n本文\n",
+        "数値だけ.md": "---\npublish: true\ntags: 2025\n---\n本文\n",
+        "タグなし.md": "---\npublish: true\n---\n本文だけ\n",
+        "非公開.md": "---\npublish: false\n---\n#秘密のタグ\n",
+    }
+    for name, text in notes.items():
+        (site / name).write_text(text, encoding="utf-8")
+    indexing.refresh_global_caches()
+    return site
+
+
+def _tag_links(html):
+    """記事ページのタグ欄（href, 文字）"""
+    m = re.search(r'<div class="view-tags">(.*?)</div>', html, re.S)
+    return re.findall(r'<a href="([^"]*)" class="view-tag">([^<]*)</a>', m.group(1)) if m else []
+
+
+def test_記事ページのタグ欄にfrontmatterと本文のタグが重複なく出る(tag_site):
+    html = _view(TestClient(app, base_url=ADMIN), "本文タグ.md")
+    assert [t for _, t in _tag_links(html)] == ["#先頭", "#共通", "#本文だけ"]
+
+
+def test_タグ欄のリンクはURLエンコードされる(tag_site):
+    html = _view(TestClient(app, base_url=ADMIN), "記号タグ.md")
+    assert _tag_links(html) == [("/?tag=a%26b%20c", "#a&amp;b c"), ("/?tag=x%23y", "#x#y")]
+
+
+def test_タグ欄のないノートにはタグ欄を出さない(tag_site):
+    assert 'class="view-tags"' not in _view(TestClient(app, base_url=ADMIN), "タグなし.md")
+
+
+def test_本文のタグは記事の中でリンクになり一覧の絞り込みへ飛べる(tag_site):
+    client = TestClient(app, base_url=ADMIN)
+    article = _article(_view(client, "本文タグ.md"))
+    assert 'href="/?tag=%E6%9C%AC%E6%96%87%E3%81%A0%E3%81%91" class="inline-tag"' in article
+    assert "inline-tag" in article and article.count('class="inline-tag"') == 2   # #共通 と #本文だけ（#2024 は除く）
+
+
+def test_関連記事に本文のタグが効く(tag_site):
+    html = _view(TestClient(app, base_url=ADMIN), "関連.md")
+    assert "関連する記事" in html
+    assert re.search(r'class="related-item">本文タグ<', html)
+
+
+def test_数値のタグのノートがあっても索引を作れる(tag_site):
+    tags = {f["path"]: f["tags"] for f in cache.GLOBAL_FILE_CACHE}
+    assert tags["数値タグ.md"] == ["2024"] and tags["数値だけ.md"] == ["2025"]
+    assert _titles(TestClient(app, base_url=ADMIN).get("/", params={"tag": "2024"}).text) == ["数値タグ"]
+
+
+def test_一覧の絞り込みとtag検索に本文のタグが効く(tag_site):
+    client = TestClient(app, base_url=ADMIN)
+    assert set(_titles(client.get("/", params={"tag": "本文だけ"}).text)) == {"本文タグ", "関連"}
+    assert set(_titles(client.get("/", params={"q": "tag:本文だけ"}).text)) == {"本文タグ", "関連"}
+    assert {r["path"] for r in client.get("/api/search", params={"q": "tag:本文だけ"}).json()} == {"本文タグ.md", "関連.md"}
+
+
+def test_外部の人には非公開ノートの本文のタグを出さない(tag_site):
+    public = TestClient(app, base_url=PUBLIC)
+    assert _titles(public.get("/", params={"tag": "秘密のタグ"}).text) == []
+
+
+def test_DataviewのFROMタグに本文のタグが効く(tag_site):
+    out = render_markdown("```dataview\nLIST FROM #本文だけ\n```", published_only=False)
+    assert "本文タグ" in out and "関連" in out and "タグなし" not in out
+
+
+def test_ダッシュボードのタグなしから本文のタグのノートが外れる(tag_site):
+    html = TestClient(app, base_url=ADMIN).get("/dashboard").text
+    untagged = [t for t, _ in _health_rows(html, "untagged")]
+    assert "関連" not in untagged and "タグなし" in untagged
