@@ -9,7 +9,7 @@
                 {% if shortcut_page_now %}<span class="shortcut-sheet-page">いまの画面: {{ shortcut_page_now.label }}</span>{% endif %}
             </div>
             <div class="shortcut-sheet-body">
-                {% for group in shortcuts.groups_for_page(shortcut_page_now, viewer_is_admin) %}
+                {% for group in shortcuts.groups_for_page(shortcut_page_now, is_admin) %}
                 <section class="shortcut-sheet-group" data-group="{{ group.id }}" {{ sc.contexts_attr(group) }}>
                     <h4 class="shortcut-sheet-sec">{{ group.label }}</h4>
                     <table class="shortcut-sheet-table">

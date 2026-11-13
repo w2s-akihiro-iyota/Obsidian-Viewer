@@ -4,7 +4,8 @@ API を通した確認（公開ノートだけで探索する・上限で切る�
 """
 import pytest
 
-from app.core.graph import LinkGraph, distances_from, parse_depth
+from app import cache
+from app.core.graph import LinkGraph, cached_link_graph, distances_from, parse_depth
 
 
 # ---------- parse_depth ----------
@@ -61,3 +62,26 @@ def test_つながりが無ければ中心だけ():
 def test_自分へのリンクは距離を変えない():
     g = _graph([("中心", "中心"), ("中心", "A")])
     assert distances_from(g, "中心", 1) == {"中心": 0, "A": 1}
+
+
+def test_隣の点の表はリンクの向きを問わず初めて使うときに1回だけ作る():
+    g = _graph([("a", "b"), ("c", "a")])
+    assert g.neighbors == {"a": {"b", "c"}, "b": {"a"}, "c": {"a"}}
+    assert g.neighbors is g.neighbors
+
+
+# ---------- cached_link_graph（Q-15） ----------
+
+def test_外部向けは公開ノートだけのグラフを使う(monkeypatch):
+    admin, public = _graph([("a", "b")]), _graph([])
+    monkeypatch.setattr(cache, "LINK_GRAPH", admin)
+    monkeypatch.setattr(cache, "LINK_GRAPH_PUBLIC", public)
+    assert cached_link_graph(False) is admin and cached_link_graph(True) is public
+
+
+@pytest.mark.parametrize("published_only", [False, True])
+def test_索引を作る前のグラフは空(monkeypatch, published_only):
+    monkeypatch.setattr(cache, "LINK_GRAPH", None)
+    monkeypatch.setattr(cache, "LINK_GRAPH_PUBLIC", None)
+    graph = cached_link_graph(published_only)
+    assert graph.nodes == {} and graph.links == []

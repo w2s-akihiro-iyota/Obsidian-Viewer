@@ -16,7 +16,7 @@
                         </svg>
                         設定
                     </button>
-                    {% if is_localhost %}
+                    {% if show_admin_ui %}
                     <div class="settings-sidebar-header"
                         style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 10px;">
                         <h3>システム</h3>
@@ -135,7 +135,7 @@
                     </div>
                 </div>
 
-                {% if is_localhost %}
+                {% if show_admin_ui %}
                 <div id="settings-tab-files" class="settings-tab-pane">
                     <div class="settings-header line-bottom">
                         <h3>ファイル同期</h3>

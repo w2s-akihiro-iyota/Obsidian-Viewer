@@ -6,7 +6,8 @@ from collections import Counter
 
 import pytest
 
-from app.core.note_list import DEFAULT_SORT, DEFAULT_VISIBILITY, count_tags, filter_visibility, sort_files
+from app.core.note_list import (DEFAULT_SORT, DEFAULT_VISIBILITY, ListQuery, build_note_list, count_tags,
+                                filter_visibility, sort_files)
 
 FILES = [
     {"path": "b.md", "title": "beta", "mtime": 200, "char_count": 50, "published": True, "tags": ["仕事", "会議"]},
@@ -80,3 +81,36 @@ def test_タグごとのノート数を数えタグが無いノートは飛ば�
 
 def test_ノートが無ければ空():
     assert count_tags([]) == Counter()
+
+
+# ---------- build_note_list の検索語（B-8） ----------
+
+def _searched(q, is_admin=True):
+    return _paths(build_note_list(FILES, ListQuery(q=q), is_admin=is_admin, top_tag_count=10).files)
+
+
+def test_検索語のtagはタグで絞り込み大文字小文字を問わない():
+    assert _searched("tag:会議") == ["b.md"]
+    assert _searched("TAG:仕事") == ["b.md", "a.md"]
+    assert _searched("tag:#会議") == ["b.md"]
+
+
+def test_検索語のpathはパスの一部で絞り込む():
+    assert _searched("path:a") == ["a.md"]
+    assert _searched('path:"c.md"') == ["c.md"]
+
+
+def test_tagとpathと言葉を並べるとすべてに合うノートだけ():
+    assert _searched("tag:仕事 alpha") == ["a.md"]
+    assert _searched("tag:仕事 path:b") == ["b.md"]
+    assert _searched("tag:会議 alpha") == []
+
+
+def test_tagとpathが無ければ今までどおりタイトルかパスに含むノート():
+    assert _searched("ALP") == ["a.md"]
+    assert _searched("d.md") == ["d.md"]
+    assert _searched("2025") == ["c.md"]
+
+
+def test_外部の人には非公開ノートのタグで探しても出さない():
+    assert _searched("tag:仕事", is_admin=False) == ["b.md"]

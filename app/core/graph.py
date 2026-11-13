@@ -1,12 +1,15 @@
 """グラフビューのデータ（F-8）: 全体グラフと、1 つのノートを中心にしたローカルグラフ
 
-どちらも索引の作り直しで作ったキャッシュ（GLOBAL_FILE_CACHE・FORWARD_LINK_CACHE・PATH_TO_SLUG）だけから作る。
-外部の人（と管理者の外部表示）には、公開ノートだけを点にしたグラフを作り、その中だけで探索する。
+グラフ（LinkGraph）は索引の作り直しで、管理者用（全ノート）と外部向け（公開ノートだけ）の 2 つを作ってキャッシュに載せる（Q-15）。
+記事ページのつながりの数と /api/graph は、そのキャッシュ（cached_link_graph）を使い、表示のたびに作らない。
+外部の人（と管理者の外部表示）には、公開ノートだけを点にしたグラフの中だけで探索する。
 こうすると、非公開ノートを経由した先のノートは出ない。
 """
 from collections import deque
 from dataclasses import dataclass
+from functools import cached_property
 
+from app import cache
 from app.config import LOCAL_GRAPH_DEPTHS, LOCAL_GRAPH_MAX_NODES
 
 
@@ -16,14 +19,32 @@ class LinkGraph:
     nodes: dict[str, dict]          # {path: GLOBAL_FILE_CACHE のノート}（GLOBAL_FILE_CACHE の順）
     links: list[tuple[str, str]]    # [(source_path, target_path)]
 
+    @cached_property
+    def neighbors(self) -> dict[str, set[str]]:
+        """点ごとの、1 歩でつながっている点（リンクの向きは問わない）。初めて使うときに 1 回だけ作る"""
+        neighbors: dict[str, set[str]] = {}
+        for source, target in self.links:
+            neighbors.setdefault(source, set()).add(target)
+            neighbors.setdefault(target, set()).add(source)
+        return neighbors
+
+
+_EMPTY_GRAPH = LinkGraph({}, [])
+
 
 def build_link_graph(files: list[dict], forward_links: dict[str, list[str]], published_only: bool) -> LinkGraph:
-    """見せてよいノートだけを点にし、両端が点にあるリンクだけを線にする"""
+    """見せてよいノートだけを点にし、両端が点にあるリンクだけを線にする（索引の作り直しで呼ぶ）"""
     nodes = {f["path"]: f for f in files if not published_only or f.get("published")}
     links = [(source, target)
              for source, targets in forward_links.items() if source in nodes
              for target in targets if target in nodes]
     return LinkGraph(nodes, links)
+
+
+def cached_link_graph(published_only: bool) -> LinkGraph:
+    """索引の作り直しで作ったグラフ（published_only なら公開ノートだけのもの）。まだ作っていなければ空"""
+    graph = cache.LINK_GRAPH_PUBLIC if published_only else cache.LINK_GRAPH
+    return graph if graph is not None else _EMPTY_GRAPH
 
 
 def parse_depth(value: str | int | None) -> int:
@@ -43,11 +64,7 @@ def resolve_center(graph: LinkGraph, center: str, slug_to_path: dict[str, str]) 
 
 def distances_from(graph: LinkGraph, center: str, depth: int) -> dict[str, int]:
     """中心から depth 歩以内の点と、その距離（リンクの向きは問わない）"""
-    neighbors: dict[str, set[str]] = {}
-    for source, target in graph.links:
-        neighbors.setdefault(source, set()).add(target)
-        neighbors.setdefault(target, set()).add(source)
-
+    neighbors = graph.neighbors
     distance = {center: 0}
     queue = deque([center])
     while queue:

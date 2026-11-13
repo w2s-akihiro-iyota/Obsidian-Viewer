@@ -4,8 +4,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app import cache
 from app.api import templates
-from app.core.graph import build_link_graph, graph_payload, local_graph, parse_depth, resolve_center
-from app.utils.helpers import is_admin_request, is_public_view
+from app.core.graph import cached_link_graph, graph_payload, local_graph, parse_depth, resolve_center
+from app.utils.helpers import is_public_view, viewer_context
 
 router = APIRouter()
 
@@ -13,10 +13,9 @@ router = APIRouter()
 @router.get("/graph", response_class=HTMLResponse)
 async def graph_page(request: Request):
     """グラフビューページを表示（?focus=<slug> は JS がそのノートに寄せる）"""
-    is_localhost = is_admin_request(request)
     return templates.TemplateResponse(request=request, name="graph.html", context={
         "request": request,
-        "is_localhost": is_localhost
+        **viewer_context(request),
     })
 
 
@@ -31,7 +30,7 @@ async def api_graph(request: Request, center: str = "", depth: str = "",
     外部の人と、管理者の外部表示（?as=public）には、公開ノートだけで作る。
     """
     published_only = is_public_view(request, view_as)
-    graph = build_link_graph(cache.GLOBAL_FILE_CACHE, cache.FORWARD_LINK_CACHE, published_only)
+    graph = cached_link_graph(published_only)
 
     if not center:
         return JSONResponse(content=graph_payload(graph, cache.PATH_TO_SLUG))

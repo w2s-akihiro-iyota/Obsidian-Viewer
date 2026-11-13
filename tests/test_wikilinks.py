@@ -2,8 +2,10 @@
 
 B-1: [[ノート#見出し]]・[[#見出し]]・[[フォルダ/ノート]] がリンク切れにならない
 F-4: ![[ノート]]・![[ノート#見出し]] の埋め込み
+B-5: 埋め込んだノートの見出しの id が、親ページや別の埋め込みの見出しの id と重ならない
 """
 import os
+import re
 import time
 
 import pytest
@@ -191,6 +193,37 @@ def test_コードブロック内の見出し記号は節の区切りにしな�
     _add_note(vault, "コード", "## 手順\n```bash\n# コメント\n```\n手順の続き\n## 次\n次の本文\n")
     html = render("![[コード#手順]]")
     assert "手順の続き" in html and "次の本文" not in html
+
+
+def _heading_ids(html):
+    return re.findall(r'<h[1-6] id="([^"]+)"', html)
+
+
+def test_埋め込んだノートの見出しは親ページの見出しとidが重ならない(vault):
+    _add_note(vault, "見出しあり", "## 議題\n埋め込みの議題\n")
+    a = heading_anchor("議題")
+    ids = _heading_ids(render("## 議題\n親の議題\n\n![[見出しあり]]\n"))
+    # 親ページの見出しの id はそのまま（[[親#議題]] の飛び先は親ページの見出し）
+    assert ids == [a, f"embed1_{a}"]
+
+
+def test_埋め込みが親ページの見出しより前にあっても親ページの見出しのidは変わらない(vault):
+    _add_note(vault, "見出しあり", "## 議題\n埋め込みの議題\n")
+    a = heading_anchor("議題")
+    assert _heading_ids(render("![[見出しあり]]\n\n## 議題\n親の議題\n")) == [f"embed1_{a}", a]
+
+
+def test_同じノートを2回埋め込んでも見出しのidは重ならない(vault):
+    _add_note(vault, "見出しあり", "## 議題\n本文\n")
+    ids = _heading_ids(render("![[見出しあり]]\n\n![[見出しあり]]\n"))
+    assert len(ids) == len(set(ids)) == 2
+
+
+def test_入れ子の埋め込みの見出しもidが重ならない(vault):
+    _add_note(vault, "内", "## 議題\n内の本文\n")
+    _add_note(vault, "外", "## 議題\n外の本文\n\n![[内]]\n")
+    ids = _heading_ids(render("## 議題\n親の本文\n\n![[外]]\n"))
+    assert len(ids) == len(set(ids)) == 3 and ids[0] == heading_anchor("議題")
 
 
 def test_同じ見出しが複数あれば最初の節を埋め込む(vault):

@@ -56,7 +56,7 @@
     </div>
 
     {# 管理者にだけ、原因を追う手がかりと次の一手を出す #}
-    {% if is_localhost and page.admin_hint %}
+    {% if show_admin_ui and page.admin_hint %}
     <div class="error-page-admin">
         <span class="error-page-admin-badge">管理者だけに表示</span>
         {% if requested_note %}

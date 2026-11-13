@@ -1,5 +1,5 @@
     <!-- Help Modal -->
-    {# 管理者向けの説明を出すか（viewer_is_admin）とキー表記のマクロ（sc）は base.html で用意する。チートシートと同じ判定を使う #}
+    {# 管理者向けの説明は is_admin で出す（外部の人の表示のあいだも出す。チートシートと同じ判定）。キー表記のマクロ（sc）は base.html で用意する #}
     <div id="help-modal" class="settings-modal">
         <div class="settings-modal-container">
             <div class="settings-header line-bottom">
@@ -16,11 +16,11 @@
                 <div class="help-tabs line-bottom">
                     <button class="help-tab active" data-tab="about">アプリについて</button>
                     <button class="help-tab" data-tab="basic">基本操作</button>
-                    {% if viewer_is_admin %}
+                    {% if is_admin %}
                     <button class="help-tab" data-tab="syntax">書き方</button>
                     {% endif %}
                     <button class="help-tab" data-tab="keys">ショートカット</button>
-                    {% if viewer_is_admin %}
+                    {% if is_admin %}
                     <button class="help-tab" data-tab="admin">管理者向け</button>
                     {% endif %}
                     <button class="help-tab" data-tab="display">表示機能</button>
@@ -147,7 +147,7 @@
                                             </svg>
                                         </span>
                                         <div class="feature-text">
-                                            {% if viewer_is_admin %}
+                                            {% if is_admin %}
                                             <strong>グラフビューとダッシュボード</strong><br>
                                             ノート同士のつながりを図で見られます。ダッシュボードでは更新の推移やタグの集計を確認できます
                                             {% else %}
@@ -156,7 +156,7 @@
                                             {% endif %}
                                         </div>
                                     </li>
-                                    {% if viewer_is_admin %}
+                                    {% if is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -173,7 +173,7 @@
                                     </li>
                                     {% endif %}
                                     {# エディタは管理者だけが使える（外部の人は閲覧のみ） #}
-                                    {% if viewer_is_admin %}
+                                    {% if is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -234,7 +234,7 @@
                                         </div>
                                     </li>
                                     {# 同期と公開設定は管理者だけが使う機能なので、外部の人には出さない #}
-                                    {% if viewer_is_admin %}
+                                    {% if is_admin %}
                                     <li>
                                         <span class="feature-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -299,7 +299,7 @@
                                         </svg> ファイルツリー</h5>
                                     <p>サイドバーの<b>ファイル</b>タブに、Vault のフォルダ構成がそのまま表示されます。<br />
                                         開いているノートまで自動で展開し、閉じたフォルダには中のノート数が出ます。上の入力欄でファイル名を絞り込めます。
-                                        {% if viewer_is_admin %}<br />非公開ノートには、ツリーにも一覧にも錠前の印（非公開）が付きます。{% endif %}</p>
+                                        {% if is_admin %}<br />非公開ノートには、ツリーにも一覧にも錠前の印（非公開）が付きます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -322,7 +322,7 @@
                                             <path d="M18 20V4"></path>
                                         </svg> 記事のヘッダー</h5>
                                     <p>タイトルの上の<b>パンくず</b>でフォルダ名を押すと、そのフォルダのノート一覧に移ります。<br />
-                                        タイトルの下に、公開状態・更新日・読了時間・リンク元の数が並びます。<b>リンク元</b>を押すとページ下部へ移ります。{% if viewer_is_admin %}<br />
+                                        タイトルの下に、公開状態・更新日・読了時間・リンク元の数が並びます。<b>リンク元</b>を押すとページ下部へ移ります。{% if is_admin %}<br />
                                         タグの下に<b>プロパティ</b>（frontmatter の項目）が出ます。<code>[[...]]</code> はリンクになり、見出しを押すと閉じます。外部の人には表示されません。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
@@ -347,7 +347,7 @@
                                         </svg> ノート一覧</h5>
                                     <p>トップページの一覧は、右上のアイコンで<b>リスト表示</b>と<b>グリッド表示</b>を切り替えられます。<br />
                                         一覧の上で<b>並び順</b>（更新日・タイトル・文字数）と<b>タグ</b>を選べます。タグは件数の多い順に並び、「＋ほか」で全部のタグを開けます。<br />
-                                        {% if viewer_is_admin %}公開・非公開でも絞り込めます。<br />{% endif %}
+                                        {% if is_admin %}公開・非公開でも絞り込めます。<br />{% endif %}
                                         絞り込み中は件数の横に条件が出て、<b>×</b> で 1 つずつ外せます。</p>
                                 </div>
                                 <div class="help-card">
@@ -369,8 +369,8 @@
                                             <line x1="12" y1="18" x2="12.01" y2="18"></line>
                                         </svg> スマホでの画面の移り方</h5>
                                     <p>スマホでは左端のアイコンの列が隠れます。左上のボタンでサイドバーを開くと、一番上に<b>ノート</b>・<b>グラフ</b>の切り替えがあります。
-                                        {% if viewer_is_admin %}<br />管理者には<b>ダッシュボード</b>・<b>エディタ</b>も並びます。{% endif %}<br />
-                                        記事ページでは、右上の<b>「＋」</b>を押すと<b>「つながり」</b>と<b>「メニュー」</b>（{% if viewer_is_admin %}編集・{% endif %}URL をコピー・PDF で出力）が出ます。{% if viewer_is_admin %}<br />外部の人の表示は、タイトルの下のボタンから切り替えます。{% endif %}</p>
+                                        {% if is_admin %}<br />管理者には<b>ダッシュボード</b>・<b>エディタ</b>も並びます。{% endif %}<br />
+                                        記事ページでは、右上の<b>「＋」</b>を押すと<b>「つながり」</b>と<b>「メニュー」</b>（{% if is_admin %}編集・{% endif %}URL をコピー・PDF で出力）が出ます。{% if is_admin %}<br />外部の人の表示は、タイトルの下のボタンから切り替えます。{% endif %}</p>
                                 </div>
                                 <div class="help-card">
                                     <h5><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -401,7 +401,7 @@
                     </div>
 
                     {# 書き方は Vault に書く人（管理者）向け。外部の人は閲覧だけなので出さない #}
-                    {% if viewer_is_admin %}
+                    {% if is_admin %}
                     <!-- Syntax Panel -->
                     <div id="help-panel-syntax" class="help-panel">
                         <section class="settings-section">
@@ -489,7 +489,7 @@
                                         <tr><th scope="col">キー</th><th scope="col">動作</th></tr>
                                     </thead>
                                     {# 行は app/shortcuts.py の定義から描く（管理者だけのグループは外部の人には出さない） #}
-                                    {% for group in shortcuts.visible_groups(viewer_is_admin) %}
+                                    {% for group in shortcuts.visible_groups(is_admin) %}
                                     <tbody>
                                         <tr class="help-table-group"><th colspan="2" scope="colgroup">{{ group.label }}</th></tr>
                                         {% for shortcut in group.shortcuts %}
@@ -502,7 +502,7 @@
                         </section>
                     </div>
 
-                    {% if viewer_is_admin %}
+                    {% if is_admin %}
                     <!-- Admin Panel（同期・公開・公開チェック・編集・ダッシュボード） -->
                     <div id="help-panel-admin" class="help-panel">
                         <section class="settings-section">

@@ -38,7 +38,7 @@ def _render(body: str, ctx: EmbedContext) -> str:
     """描画の本体。埋め込み先の本文も、深さを 1 段増やした ctx でここを通る"""
     body = process_admonition_blocks(body)
     body = process_wikilinks(body, ctx)
-    html = md.render(body, {"published_only": ctx.published_only})
+    html = md.render(body, {"published_only": ctx.published_only, "heading_id_prefix": ctx.heading_id_prefix})
     html = _inject_note_icons(html)
     # 埋め込みは描画済みの HTML なので、アイコン付与の後に差し戻す（二重に付けない）
     return ctx.restore(html)

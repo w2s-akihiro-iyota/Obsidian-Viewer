@@ -212,7 +212,7 @@
                     </svg>
                 </button>
                 <div class="page-menu-dropdown" id="page-menu-dropdown">
-                    {% if is_localhost %}
+                    {% if show_admin_ui %}
                     <a class="menu-option" href="/editor?path={{ slug }}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 20h9"></path>
@@ -277,7 +277,7 @@
         {% endif %}
     </div>
 
-    {% if is_admin and not public_view %}
+    {% if show_admin_ui %}
     {# 768px 以下だけ: 外部の人の表示へのチップ（PC は記事ヘッダーの右のボタン）。外部表示中は出さない（帯の「戻る」で戻る） #}
     <div class="view-public-chip-row">
         {{ public_view_link("public-view-chip", chevron=true) }}

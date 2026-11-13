@@ -3,6 +3,7 @@
 - _host_name: Host ヘッダからポートを外す。管理者判定（ADMIN_ALLOWED_HOSTS との照合）に使う
 - is_admin_request: 管理用ポートに届き、かつ Host が localhost 系のときだけ管理者（DNS リバインディング対策）
 - is_same_origin_request: 書き込み系リクエストの送り元が自サイトか（CSRF 対策のミドルウェアが使う）
+- viewer_context: テンプレートに渡す閲覧者の種類（is_admin・public_view・show_admin_ui。Q-14）
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +11,7 @@ from starlette.requests import Request
 
 from app.config import ADMIN_ALLOWED_HOSTS, ADMIN_PORT
 from app.main import app
-from app.utils.helpers import _host_name, is_admin_request, is_same_origin_request
+from app.utils.helpers import _host_name, is_admin_request, is_same_origin_request, viewer_context
 from app.utils.messages import get_error
 
 
@@ -132,3 +133,21 @@ def test_OriginがあればRefererより優先する():
 
 def test_Hostが無ければOriginがあっても拒否する():
     assert is_same_origin_request(_request(origin="http://localhost:8001")) is False
+
+
+# ---------- viewer_context（Q-14） ----------
+
+def test_管理者の通常の表示では管理者向けの操作を出す():
+    assert viewer_context(_admin_request("localhost:8001", ADMIN_PORT)) == {
+        "is_admin": True, "public_view": False, "show_admin_ui": True}
+
+
+def test_管理者の外部の人の表示では管理者向けの操作を出さないが管理者のまま():
+    assert viewer_context(_admin_request("localhost:8001", ADMIN_PORT), "public") == {
+        "is_admin": True, "public_view": True, "show_admin_ui": False}
+
+
+@pytest.mark.parametrize("view_as", ["", "public"])
+def test_外部の人はas_publicを付けても管理者向けの物が何も立たない(view_as):
+    assert viewer_context(_admin_request("localhost:8000", 8000), view_as) == {
+        "is_admin": False, "public_view": False, "show_admin_ui": False}

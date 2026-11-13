@@ -4,6 +4,8 @@ from dataclasses import dataclass, replace
 from typing import Callable
 from urllib.parse import urlencode
 
+from app.core.search import parse_search_query
+
 # 並び替え（クエリの sort の値 → 表示名と並べ方）。先頭が既定
 LIST_SORTS: dict[str, tuple[str, Callable[[list[dict]], list[dict]]]] = {
     "updated": ("更新日（新しい順）", lambda files: sorted(files, key=lambda f: f["mtime"], reverse=True)),
@@ -109,13 +111,19 @@ def build_note_list(all_files: list[dict], query: ListQuery, is_admin: bool, top
     条件で一覧を作る。
 
     外部の人には公開ノートだけを見せ、タグの一覧と件数も公開ノートだけで数える（非公開ノートのタグを漏らさない）。
+    検索語の tag:・path: は、クイックスイッチャーと同じ parse_search_query で読んで絞り込む（B-8）。
+    残りの言葉は、タイトルかパスに含まれるノートに絞る。
     """
     visible = all_files if is_admin else filter_visibility(all_files, "public")
 
     matched = visible
     if query.q:
-        q_lower = query.q.lower()
-        matched = [f for f in matched if q_lower in str(f["title"]).lower() or q_lower in f["path"].lower()]
+        search = parse_search_query(query.q)
+        if search.has_filters:
+            matched = [f for f in matched if search.matches(f)]
+        if search.text:
+            text = search.text.lower()
+            matched = [f for f in matched if text in str(f["title"]).lower() or text in f["path"].lower()]
     if query.tag:
         matched = [f for f in matched if query.tag in (f.get("tags") or [])]
     visibility_counts = {v: len(filter_visibility(matched, v)) for v in LIST_VISIBILITIES}

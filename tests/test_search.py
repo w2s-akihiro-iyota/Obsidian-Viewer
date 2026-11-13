@@ -145,10 +145,10 @@ def _pad(n=3):
     return [_entry(f"pad{i}.md", f"p{i}", "他") for i in range(n)]
 
 
-def _search(files, query, is_localhost=True):
+def _search(files, query, include_private=True):
     idx = SearchIndex()
     idx.build(files)
-    return idx.search(query, is_localhost, files)
+    return idx.search(query, include_private, files)
 
 
 def test_メタ情報の重みはタイトルより下で本文より上():
@@ -210,8 +210,8 @@ def test_外部の人には公開ノートだけを返す_メタ情報でも():
     pub = _entry("pub.md", "公", "本文", keywords=["秘密語"])
     priv = _entry("priv.md", "非", "本文", keywords=["秘密語"])
     priv["published"] = False
-    assert [r["path"] for r in _search([pub, priv] + _pad(), "秘密語", is_localhost=False)] == ["pub.md"]
-    assert {r["path"] for r in _search([pub, priv] + _pad(), "秘密語", is_localhost=True)} == {"pub.md", "priv.md"}
+    assert [r["path"] for r in _search([pub, priv] + _pad(), "秘密語", include_private=False)] == ["pub.md"]
+    assert {r["path"] for r in _search([pub, priv] + _pad(), "秘密語", include_private=True)} == {"pub.md", "priv.md"}
 
 
 def test_変わっていないノートのトークンは前回のものを使い回す(monkeypatch):

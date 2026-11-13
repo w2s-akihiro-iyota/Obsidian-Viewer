@@ -14,6 +14,7 @@ from app.config import CONTENT_DIR, JST, MEDIA_DIR, READING_SPEED_JP, SCAN_WORKE
 from app import cache
 from app.core.background_refresh import BackgroundRefresher
 from app.core.frontmatter import is_published, parse_frontmatter
+from app.core.graph import build_link_graph
 from app.core.note_resolver import NoteEntry, NoteResolver
 from app.services.wikilinks import classify_link, is_missing_note, iter_frontmatter_wikilinks, iter_wikilinks
 from app.utils.slug import slugify_path
@@ -396,6 +397,9 @@ def _refresh_global_caches() -> None:
 
     # バックリンクキャッシュの構築
     backlinks, forward = _build_link_maps(files, bodies, resolver, path_to_slug, media_index)
+    # リンクのグラフ（記事ページのつながりの数と /api/graph が使う。表示のたびに作らない。Q-15）
+    link_graph = build_link_graph(files, forward, published_only=False)
+    link_graph_public = build_link_graph(files, forward, published_only=True)
 
     # 外部の人に見せてよい添付（公開ノートが参照するもの）
     public_media = collect_public_media(
@@ -419,6 +423,8 @@ def _refresh_global_caches() -> None:
     cache.PATH_TO_SLUG = path_to_slug
     cache.BACKLINK_CACHE = backlinks
     cache.FORWARD_LINK_CACHE = forward
+    cache.LINK_GRAPH = link_graph
+    cache.LINK_GRAPH_PUBLIC = link_graph_public
     cache.SEARCH_INDEX = idx
     cache.NOTE_RECORDS = {n.rel_path: n for n in notes}
 
