@@ -397,7 +397,10 @@ def test_外部ポートではasを付けても何も変わらない(check_site)
     with_as = _get(client, "公開ページ.md", **{"as": "public"}).text
     assert _article(plain) == _article(with_as)
     for html in (plain, with_as):
-        assert "publish-check" not in html and "public-view" not in html and "要確認" not in html
+        # 外部の人の表示の帯・切り替え（class="public-view-…"）と公開チェックを出さない。
+        # public-view-links.js（F-16）の script タグは全ページで読むが、外部の人のページでは何もしない
+        assert "publish-check" not in html and "要確認" not in html
+        assert not re.search(r'class="[^"]*public-view', html)
 
 
 def test_管理者の外部表示で非公開ノートを開くと404にせず案内を出す(check_site):
@@ -436,6 +439,14 @@ def test_外部表示のページだけbodyに印を付ける(check_site):
     assert marked.search(_get(admin, "秘密.md", **{"as": "public"}).text)
     assert "data-view-as" not in _get(admin, "公開ページ.md").text
     assert "data-view-as" not in _get(TestClient(app, base_url=PUBLIC), "公開ページ.md", **{"as": "public"}).text
+
+
+def test_外部表示の通常の表示への導線とチェックのパネルにはdata_view_normalが付く(check_site):
+    """F-16: これらのリンクは as=public を付けない対象。帯の戻る・ヘッダーの切り替え・公開チェックのパネル"""
+    html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md", **{"as": "public"}).text
+    assert re.search(r'<a href="[^"]*" data-view-normal class="public-view-banner-back"', html)
+    assert re.search(r'<a href="[^"]*" data-view-normal class="public-view-toggle is-active"', html)
+    assert '<section class="publish-check-panel" data-view-normal' in html
 
 
 def test_管理者の外部表示のツリーは公開ノートだけ(check_site):
@@ -1332,7 +1343,7 @@ def test_外部表示中の帯に通常の表示へ戻るリンクを出す(chec
     html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md", **{"as": "public"}).text
     banner = html[html.index('class="public-view-banner"'):]
     banner = banner[:banner.index("</div>")]
-    assert f'<a href="/view/{slug}" class="public-view-banner-back">戻る</a>' in banner
+    assert f'<a href="/view/{slug}" data-view-normal class="public-view-banner-back">戻る</a>' in banner
     assert "public-view-banner-back" not in _get(TestClient(app, base_url=ADMIN), "公開ページ.md").text
 
 

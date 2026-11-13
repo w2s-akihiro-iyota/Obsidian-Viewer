@@ -59,12 +59,16 @@ function isPublicView() {
 }
 
 /**
- * API の URL に、外部の人の表示なら as=public を付ける（X-7）。
- * ツリー・検索・プレビュー・つながりを、外部の人と同じ中身（公開ノートだけ）にする
+ * URL に、外部の人の表示なら as=public を付ける（X-7・F-16）。
+ * API（ツリー・検索・プレビュー・つながり）は外部の人と同じ中身（公開ノートだけ）に、
+ * 記事ページへの移動は外部の人の表示のまま移れるようにする。
+ * as=public はクエリに足し、?hl= と #見出し は残す（# の前に入る）
  */
 function withViewAs(url) {
     if (!isPublicView()) return url;
-    return url + (url.includes('?') ? '&' : '?') + 'as=public';
+    const parsed = new URL(url, window.location.origin);
+    parsed.searchParams.set('as', 'public');
+    return parsed.pathname + parsed.search + parsed.hash;
 }
 
 // --- Toast Notification System ---
