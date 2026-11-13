@@ -192,7 +192,7 @@
             {% if is_admin %}
             {# 管理者だけ: 外部の人に見える内容（?as=public）と通常の表示を切り替える #}
             {% if public_view %}
-            <a href="/view/{{ slug }}" class="public-view-toggle is-active" title="管理者の通常の表示に戻る" aria-label="管理者の通常の表示に戻る">
+            <a href="/view/{{ slug }}" data-view-normal class="public-view-toggle is-active" title="管理者の通常の表示に戻る" aria-label="管理者の通常の表示に戻る">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
@@ -345,13 +345,13 @@
         <circle cx="12" cy="12" r="3"></circle>
     </svg>
     <span>{{ system_message("S203") }}</span>
-    <a href="/view/{{ slug }}" class="public-view-banner-back">戻る</a>
+    <a href="/view/{{ slug }}" data-view-normal class="public-view-banner-back">戻る</a>
 </div>
 {% if not is_published %}
 <div class="public-view-private-notice" role="alert">{{ system_message("S204") }}</div>
 {% endif %}
 
-<section class="publish-check-panel" aria-label="公開チェック">
+<section class="publish-check-panel" data-view-normal aria-label="公開チェック">
     <h2 class="publish-check-title">公開チェック {{ check_count_badge(publish_check) }}</h2>
     {% if not publish_check.issue_count %}
     <p class="publish-check-all-ok">{{ system_message("S205") }}</p>
