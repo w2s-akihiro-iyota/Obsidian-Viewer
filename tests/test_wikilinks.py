@@ -367,7 +367,7 @@ def test_境界のリンクも描画と公開チェックで同じに振り分�
     assert rendered in render(src, published_only=True)
     result = check_publish("x.md", src, True)
     if field:
-        assert getattr(result, field) == (listed,) and result.issue_count == 1
+        assert [i.name for i in getattr(result, field)] == [listed] and result.issue_count == 1
     else:
         assert result.issue_count == 0
 

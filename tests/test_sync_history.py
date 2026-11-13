@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 
 from app.core import sync_history
 from app.main import app
-from app.services import sync
+from app.services import sync, sync_pending
 
 ADMIN = "http://localhost:8001"
 PUBLIC = "http://localhost:8000"
@@ -38,7 +38,7 @@ def env(tmp_path, monkeypatch):
         d.mkdir()
     monkeypatch.setattr(sync, "CONTENT_DIR", content)
     monkeypatch.setattr(sync, "MEDIA_DIR", images)
-    monkeypatch.setattr(sync, "_pending", {})
+    monkeypatch.setattr(sync_pending, "_pending", {})
     monkeypatch.setattr(sync, "refresh_global_caches", lambda: None)
     monkeypatch.setattr(sync, "save_config", lambda config: None)
     return src, content

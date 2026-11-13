@@ -121,6 +121,11 @@
     </div>
 </div>
 
+{# 公開チェックで、埋め込んだ公開ノートの中で見つけたものに、書いてあるノートを添える（直す場所を示す。X-5） #}
+{% macro check_via(via) -%}
+{% if via %} <span class="publish-check-via">埋め込んだ「<a href="/view/{{ via.slug }}">{{ via.title }}</a>」の中</span>{% endif %}
+{%- endmacro %}
+
 {% macro check_row(label, count) %}
 <li class="publish-check-item{% if count %} has-issue{% endif %}">
     <div class="publish-check-row">
@@ -357,29 +362,29 @@
         {% call check_row("ノート自身が非公開（外部からは 404）", 1 if publish_check.is_private else 0) %}{% endcall %}
         {% call check_row("非公開ノートへのリンク（外部ではリンク切れ）", publish_check.private_links|length) %}
         <ul class="publish-check-list">
-            {% for note in publish_check.private_links %}
-            <li><a href="/view/{{ note.slug }}">{{ note.title }}</a> <span class="publish-check-path">{{ note.path }}</span></li>
+            {% for item in publish_check.private_links %}
+            <li><a href="/view/{{ item.note.slug }}">{{ item.note.title }}</a> <span class="publish-check-path">{{ item.note.path }}</span>{{ check_via(item.via) }}</li>
             {% endfor %}
         </ul>
         {% endcall %}
         {% call check_row("非公開ノートの埋め込み（外部では表示されない）", publish_check.private_embeds|length) %}
         <ul class="publish-check-list">
-            {% for note in publish_check.private_embeds %}
-            <li><a href="/view/{{ note.slug }}">{{ note.title }}</a> <span class="publish-check-path">{{ note.path }}</span></li>
+            {% for item in publish_check.private_embeds %}
+            <li><a href="/view/{{ item.note.slug }}">{{ item.note.title }}</a> <span class="publish-check-path">{{ item.note.path }}</span>{{ check_via(item.via) }}</li>
             {% endfor %}
         </ul>
         {% endcall %}
         {% call check_row("存在しないノートへのリンク", publish_check.missing_links|length) %}
         <ul class="publish-check-list">
-            {% for name in publish_check.missing_links %}
-            <li>{{ name }}</li>
+            {% for item in publish_check.missing_links %}
+            <li>{{ item.name }}{{ check_via(item.via) }}</li>
             {% endfor %}
         </ul>
         {% endcall %}
         {% call check_row("見つからない画像", publish_check.missing_images|length) %}
         <ul class="publish-check-list">
-            {% for name in publish_check.missing_images %}
-            <li>{{ name }}</li>
+            {% for item in publish_check.missing_images %}
+            <li>{{ item.name }}{{ check_via(item.via) }}</li>
             {% endfor %}
         </ul>
         {% endcall %}
@@ -387,7 +392,7 @@
         <ul class="publish-check-list">
             {% for gap in publish_check.dataview_gaps %}
             <li>
-                <code>{{ gap.query }}</code> … 外部では {{ gap.hidden_count }} 件が出ません
+                <code>{{ gap.query }}</code>{{ check_via(gap.via) }} … 外部では {{ gap.hidden_count }} 件が出ません
                 <ul class="publish-check-sublist">
                     {% for note in gap.hidden %}
                     <li><a href="/view/{{ note.slug }}">{{ note.title }}</a></li>

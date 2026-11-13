@@ -4,6 +4,7 @@
 - 保留した削除の API は管理者だけ。同期中は 409（B-2 / B-4）
 - 新規ノートの保存は、Vault に書けなければビューア側にも書かない（B-2 の削除で消えないように）
 - 公開チェック（F-5）: 管理者は「外部の人の表示」（?as=public）で外部向けと同じ本文と、チェック結果を見られる
+  - 埋め込んだ公開ノートの中も、描画と同じ条件でたどって同じ項目を調べ、書いてあるノートを添える（X-5）
 - 外部の人の表示のサイドバー（X-7）: ツリー・検索・プレビューも外部の人と同じ（公開ノートだけ）
 - 記事ページのヘッダー（D-1）: パンくず・タイトル・メタ情報
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
@@ -45,11 +46,7 @@ PUBLIC = "http://localhost:8000"
 
 
 @pytest.fixture
-def site(tmp_path, monkeypatch):
-    for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
-                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE", "SEARCH_INDEX",
-                 "SLUG_TO_PATH", "PATH_TO_SLUG", "LINK_GRAPH", "LINK_GRAPH_PUBLIC"):
-        monkeypatch.setattr(cache, name, getattr(cache, name))
+def site(tmp_path, monkeypatch, isolated_caches):
     for module in (content_api, editor_api, indexing, wikilinks):
         monkeypatch.setattr(module, "CONTENT_DIR", tmp_path)
     # 添付の置き場はノートと別のフォルダ（本物の media/ を索引に入れない）
@@ -158,28 +155,33 @@ def _get(client, path, **params):
     return client.get(f"/view/{cache.PATH_TO_SLUG[path]}", params=params)
 
 
+def _names(issues):
+    """存在しないノート・見つからない画像の名前（書いてある場所は見ない）"""
+    return [i.name for i in issues]
+
+
 def test_公開チェックは非公開ノートへのリンクを重複なく挙げる(check_site):
     result = check_publish("公開ページ.md", _body_of("公開ページ.md"), True)
-    assert [(n.title, n.path) for n in result.private_links] == [("秘密", "秘密.md")]
-    assert result.private_links[0].slug == cache.PATH_TO_SLUG["秘密.md"]
+    assert [(i.note.title, i.note.path, i.via) for i in result.private_links] == [("秘密", "秘密.md", None)]
+    assert result.private_links[0].note.slug == cache.PATH_TO_SLUG["秘密.md"]
 
 
 def test_公開チェックは非公開ノートの埋め込みを挙げる(check_site):
     result = check_publish("公開ページ.md", _body_of("公開ページ.md"), True)
-    assert [n.path for n in result.private_embeds] == ["秘密埋め込み.md"]
+    assert [i.note.path for i in result.private_embeds] == ["秘密埋め込み.md"]
 
 
 def test_公開チェックは存在しないノートへのリンクを挙げる(check_site):
     # [[a.png]]（埋め込みでない画像名）は描画でリンク切れになるので、存在しないリンクとして数える
     result = check_publish("公開ページ.md", _body_of("公開ページ.md"), True)
-    assert result.missing_links == ("無いノート", "a.png")
+    assert _names(result.missing_links) == ["無いノート", "a.png"]
 
 
 def test_公開チェックは見つからない画像を挙げる(check_site, monkeypatch):
     monkeypatch.setattr(cache, "MEDIA_INDEX", MediaIndex(paths=frozenset({"ある画像.png"}),
                                                         by_name={"ある画像.png": "ある画像.png"}))
     result = check_publish("x.md", "![[無い画像.png]] ![[ある画像.png]] ![[無い画像.png|300]]", True)
-    assert result.missing_images == ("無い画像.png",)
+    assert _names(result.missing_images) == ["無い画像.png"]
     assert result.missing_links == ()
 
 
@@ -200,7 +202,7 @@ def test_公開チェックはコードの中のリンクとDataviewを数えな
     body = "```\n[[秘密]] [[無いノート]]\n```\n`![[秘密埋め込み]]`\n````markdown\n```dataview\nLIST\n```\n````\n"
     assert check_publish("x.md", body, True).issue_count == 0
     page = check_publish("公開ページ.md", _body_of("公開ページ.md"), True)
-    assert "コード内秘密.md" not in [n.path for n in page.private_links]
+    assert "コード内秘密.md" not in [i.note.path for i in page.private_links]
 
 
 def test_公開チェックはノート自身が非公開なことと合計件数を返す(check_site):
@@ -209,6 +211,97 @@ def test_公開チェックはノート自身が非公開なことと合計件�
     # 非公開ノート自身 1 + 非公開リンク 1 + 非公開埋め込み 1 + 存在しないリンク 2 + 見つからない画像 1 + Dataview 1
     assert result.issue_count == 7
     assert check_publish("公開ページ.md", _body_of("公開ページ.md"), True).issue_count == 6
+
+
+# ---------- X-5: 埋め込んだ公開ノートの中も調べる ----------
+
+_EMBED_NOTES = {
+    # 公開チェックの項目を全部含む、公開の部品
+    "部品.md": "---\npublish: true\n---\n部品の本文 [[秘密]] ![[秘密埋め込み]] [[無い部品リンク]] ![[無い部品画像.png]]\n"
+               "```dataview\nLIST FROM \"資料\"\n```\n",
+    "外枠.md": "---\npublish: true\n---\n外枠の本文\n\n![[部品]]\n",
+    "節つき.md": "---\npublish: true\n---\n## 出す節\n[[秘密]]\n## 出さない節\n[[無い節外リンク]]\n",
+    "深い1.md": "---\npublish: true\n---\n![[深い2]]\n",
+    "深い2.md": "---\npublish: true\n---\n![[深い3]]\n",
+    "深い3.md": "---\npublish: true\n---\n深い3の本文 [[秘密]]\n",
+    "ループ.md": "---\npublish: true\n---\nループの本文 ![[ループ元]]\n",
+    "ループ元.md": "---\npublish: true\n---\n![[ループ]] [[秘密]]\n",
+    "秘密の部品.md": "---\npublish: false\n---\n秘密の部品の本文 [[秘密]]\n",
+    "部品を埋め込むページ.md": "---\npublish: true\n---\n[[秘密]]\n\n![[部品]]\n",
+}
+
+
+@pytest.fixture
+def embed_check_site(check_site):
+    """check_site に、公開チェックの項目を含む公開ノートと、それを埋め込むノートを足す"""
+    for rel, text in _EMBED_NOTES.items():
+        (check_site / rel).write_text(text, encoding="utf-8")
+    indexing.refresh_global_caches()
+    return check_site
+
+
+def _via(issues):
+    return [i.via.path if i.via else None for i in issues]
+
+
+def test_公開チェックは埋め込んだ公開ノートの中もページ本体と同じ項目を調べる(embed_check_site):
+    result = check_publish("x.md", "[[秘密]]\n\n![[部品]]\n", True)
+    # 同じ非公開ノートでも、書いてある場所が違えば別に挙げる。ページ本体のものが先
+    assert [(i.note.path, v) for i, v in zip(result.private_links, _via(result.private_links))] == [
+        ("秘密.md", None), ("秘密.md", "部品.md")]
+    assert [i.note.path for i in result.private_embeds] == ["秘密埋め込み.md"]
+    assert _names(result.missing_links) == ["無い部品リンク"] and _names(result.missing_images) == ["無い部品画像.png"]
+    assert len(result.dataview_gaps) == 1 and result.dataview_gaps[0].hidden_count == 1
+    for issues in (result.private_embeds, result.missing_links, result.missing_images, result.dataview_gaps):
+        assert _via(issues) == ["部品.md"]
+    assert result.private_links[1].via.title == "部品"
+    assert result.issue_count == 6
+
+
+def test_入れ子の埋め込みではリンクを書いてあるノートを場所として挙げる(embed_check_site):
+    result = check_publish("x.md", "![[外枠]]\n", True)
+    assert _via(result.private_links) == ["部品.md"] and _via(result.private_embeds) == ["部品.md"]
+
+
+def test_見出しの埋め込みはその節の中だけ調べる(embed_check_site):
+    result = check_publish("x.md", "![[節つき#出す節]]\n", True)
+    assert _via(result.private_links) == ["節つき.md"]
+    assert result.missing_links == ()
+
+
+def test_描画で中身が出ない埋め込みの先は調べない(embed_check_site):
+    # 深すぎる入れ子（深い3 は埋め込まずリンクにとどめる）
+    assert check_publish("x.md", "![[深い1]]\n", True).issue_count == 0
+    assert "深い3の本文" not in render_markdown("![[深い1]]\n", published_only=True)
+    # ループ（ループ → ループ元 は埋め込まない）。ページ本体の [[秘密]] だけ
+    loop = check_publish("ループ元.md", _body_of("ループ元.md"), True)
+    assert _via(loop.private_links) == [None]
+    # 非公開ノートの埋め込みは、外部では中身が出ないので、その中は調べない
+    private = check_publish("x.md", "![[秘密の部品]]\n", True)
+    assert [i.note.path for i in private.private_embeds] == ["秘密の部品.md"] and private.private_links == ()
+
+
+def test_同じノートを2回埋め込んでも中で見つけたものは1回だけ挙げる(embed_check_site):
+    result = check_publish("x.md", "![[部品]]\n\n![[外枠]]\n\n![[部品]]\n", True)
+    assert _via(result.private_links) == ["部品.md"] and len(result.dataview_gaps) == 1
+    assert result.issue_count == 5
+
+
+@pytest.mark.parametrize("body", ["![[部品]]\n", "![[外枠]]\n", "![[節つき#出す節]]\n", "![[深い1]]\n"])
+def test_埋め込みの中のリンク切れは描画と公開チェックで同じ数(embed_check_site, body):
+    html = render_markdown(body, published_only=True)
+    result = check_publish("x.md", body, True)
+    found = (len(result.private_links) + len(result.private_embeds)
+             + len(result.missing_links) + len(result.missing_images))
+    assert html.count('class="internal-link-broken"') == found
+
+
+def test_チェックパネルは埋め込んだノートの中で見つけたものに場所を添える(embed_check_site):
+    html = _get(TestClient(app, base_url=ADMIN), "部品を埋め込むページ.md", **{"as": "public"}).text
+    via = f'埋め込んだ「<a href="/view/{cache.PATH_TO_SLUG["部品.md"]}">部品</a>」の中'
+    # 非公開リンク（本体には無し・部品の中は有り）・非公開の埋め込み・存在しないリンク・画像・Dataview に 1 つずつ
+    assert html.count(via) == 5
+    assert "要確認 6" in _get(TestClient(app, base_url=ADMIN), "部品を埋め込むページ.md").text
 
 
 @pytest.mark.parametrize("src, broken, field", [
@@ -863,7 +956,7 @@ def test_コードの中のリンクはリンク切れに数えない(health_sit
     assert files["孤立.md"]["missing_links"] == []      # [[#見出し]] と [[#]] も数えない
     # 公開チェックと同じ判定（同じ本文なら同じ名前を挙げる）
     for path in ("ハブ.md", "葉.md", "コードだけ.md"):
-        assert tuple(files[path]["missing_links"]) == check_publish(path, _body_of(path), True).missing_links
+        assert files[path]["missing_links"] == _names(check_publish(path, _body_of(path), True).missing_links)
 
 
 def test_カードは表を開閉でき非公開ノートには印を付ける(health_site):
@@ -929,7 +1022,8 @@ def test_ヒートマップは53列で月のラベルは月初の週の列に置
     assert len(cells) == 53 * 7                       # 今週の土曜で終わるので 53 列ちょうど
     assert cells[0]["date"] == "2025-10-05"           # 日曜始まり
     by_date = {c["date"]: c for c in cells}
-    assert by_date["2026-10-08"]["count"] == 6010 and by_date["2026-10-08"]["level"] == 3
+    # その日が最終更新日のノートの文字数を足す（件数ではない）
+    assert by_date["2026-10-08"]["chars"] == 6010 and by_date["2026-10-08"]["level"] == 3
     assert by_date["2026-10-01"]["level"] == 1 and by_date["2026-10-02"]["level"] == 0
     # 2025-11-01（土）は 4 列目。最初の月とは 3 列空いているので両方出す
     assert [(label["label"], label["column"]) for label in labels[:2]] == [("10月", 1), ("11月", 4)]

@@ -378,29 +378,50 @@ def _extract_section(body: str, heading: str) -> str | None:
     return '\n'.join(lines[start:]) if start is not None else None
 
 
-def _render_embed(path: str, heading: str, href: str, title: str, ctx: EmbedContext) -> str:
-    """ノート（またはその見出しの節）を描画して、埋め込み用の枠で包む"""
-    broken = f'<span class="internal-link-broken">{title}</span>'
+def embeds_note(link: WikiLink, target: LinkTarget, stack: tuple[str, ...], depth: int) -> bool:
+    """
+    このリンクを、ノートの中身の埋め込みとして描くか（描画と公開チェックで共通）
+
+    stack は描画中のノートと、いま埋め込み中のノート。depth は埋め込みの入れ子の深さ（ページ本体は 0）。
+    ループ（stack にあるノート）と、深すぎる入れ子はリンクにとどめる。
+    """
+    return (link.is_embed and target.kind is LinkKind.NOTE and target.path not in stack
+            and depth < MAX_EMBED_DEPTH)
+
+
+@dataclass(frozen=True)
+class EmbedText:
+    """埋め込むノート（またはその見出しの節）を読んだ結果（描画と公開チェックで共通）"""
+    shown: bool              # 中身を埋め込むか。False ならリンク切れの表示（読めない・外部向けで非公開）
+    text: str | None = None  # 埋め込む本文（frontmatter を除く）。見出しの節が見つからなければ None
+
+
+def read_embed(path: str, heading: str, published_only: bool) -> EmbedText:
+    """埋め込むノートを読み、埋め込む本文（heading があればその節）を返す"""
     try:
         text = (CONTENT_DIR / path).read_text(encoding='utf-8', errors='replace')
     except OSError:
-        return broken
+        return EmbedText(shown=False)
 
     frontmatter, body = parse_frontmatter(text)
     # 公開状態は索引ではなく、いま読んだファイルで判定する（再インデックス前に非公開へ変えた場合も漏らさない）
-    if ctx.published_only and not is_published(frontmatter):
-        return broken
+    if published_only and not is_published(frontmatter):
+        return EmbedText(shown=False)
+    return EmbedText(shown=True, text=_extract_section(body, heading) if heading else body)
+
+
+def _render_embed(path: str, heading: str, href: str, title: str, ctx: EmbedContext) -> str:
+    """ノート（またはその見出しの節）を描画して、埋め込み用の枠で包む"""
+    embed = read_embed(path, heading, ctx.published_only)
+    if not embed.shown:
+        return f'<span class="internal-link-broken">{title}</span>'
     if ctx.deps is not None:
         ctx.deps.add(path)
 
-    if heading:
-        section = _extract_section(body, heading)
-        if section is None:
-            inner = f'<p class="markdown-embed-missing">見出しが見つかりません: {escape(heading)}</p>'
-        else:
-            inner = ctx.render(section, ctx.child(path))
+    if embed.text is None:
+        inner = f'<p class="markdown-embed-missing">見出しが見つかりません: {escape(heading)}</p>'
     else:
-        inner = ctx.render(body, ctx.child(path))
+        inner = ctx.render(embed.text, ctx.child(path))
 
     return (
         '<div class="markdown-embed">'
@@ -444,8 +465,7 @@ def process_wikilinks(content: str, ctx: EmbedContext) -> str:
             return f'<span class="internal-link-broken">{title}</span>'
 
         # 埋め込み。ループ・深すぎる入れ子はリンクにとどめる
-        can_embed = link.is_embed and target.kind is LinkKind.NOTE and target.path not in ctx.stack
-        if can_embed and ctx.depth < MAX_EMBED_DEPTH:
+        if embeds_note(link, target, ctx.stack, ctx.depth):
             return ctx.stash(_render_embed(target.path, link.heading, display.href, title, ctx))
 
         # アイコンはポストプロセス（_inject_note_icons）で付与

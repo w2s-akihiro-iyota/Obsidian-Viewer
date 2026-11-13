@@ -64,14 +64,10 @@ _OTHER_FILES = ("page.html", "evil.svg", "doc.pdf")
 
 
 @pytest.fixture
-def media_site(tmp_path, monkeypatch):
+def media_site(tmp_path, monkeypatch, isolated_caches):
     """公開ノート・非公開ノートと、それぞれが参照する添付を置いた Vault"""
     vault, media = tmp_path / "vault", tmp_path / "media"
     vault.mkdir()
-    for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
-                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE",
-                 "SEARCH_INDEX", "SLUG_TO_PATH", "PATH_TO_SLUG", "LINK_GRAPH", "LINK_GRAPH_PUBLIC"):
-        monkeypatch.setattr(cache, name, getattr(cache, name))
     for module in (content_api, editor_api, indexing, wikilinks):
         monkeypatch.setattr(module, "CONTENT_DIR", vault)
     monkeypatch.setattr(indexing, "MEDIA_DIR", media)

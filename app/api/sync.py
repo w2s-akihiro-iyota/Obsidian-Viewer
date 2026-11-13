@@ -15,10 +15,9 @@ from app.core.sync_history import get_history
 from app.events import config_updated_event
 from app.core.content_sources import extra_source_problems, normalize_exclude
 from app.models.sync import ExtraSource, SyncConfig
-from app.services.sync import (
-    SyncInProgressError, confirm_pending_deletions, get_pending_deletions, pending_deletion_count, perform_sync,
-)
+from app.services.sync import SyncInProgressError, confirm_pending_deletions, perform_sync
 from app.services.sync_config import load_config, save_config
+from app.services.sync_pending import get_pending_deletions, pending_deletion_count
 from app.utils.helpers import admin_guard
 from app.utils.messages import get_error, get_system, get_warning
 
