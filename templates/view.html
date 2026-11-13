@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/_public_view.html" as pv %}
 
 {% block title %}{{ title }} - Obsidian Viewer{% endblock %}
 
@@ -141,11 +142,12 @@
 {% endmacro %}
 
 {# 管理者の通常表示から「外部の人の表示」（?as=public）へ移るリンク。
-   PC は記事ヘッダーの右のボタン（.public-view-toggle）、768px 以下はメタ情報の下のチップ（.public-view-chip）。
+   PC のボタン（.public-view-toggle）は partials/_public_view.html の toggle マクロ（件数バッジは call で差し込む）。
+   このマクロは、768px 以下のメタ情報の下のチップ（.public-view-chip、chevron 付き）だけに使う。
    CSS で片方だけを出す（隠す方は display: none にして、同じリンクが 2 つ読み上げられないようにする）。
    ラベルは「class_name-label」（600px 以下でボタンのラベルだけを隠す .public-view-toggle-label など） #}
 {% macro public_view_link(class_name, chevron=false) %}
-<a href="/view/{{ slug }}?as=public" class="{{ class_name }}" title="外部の人に見える内容を確認する" aria-label="外部の人に見える内容を確認する">
+<a href="{{ public_view_url }}" class="{{ class_name }}" title="外部の人に見える内容を確認する" aria-label="外部の人に見える内容を確認する">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
@@ -191,21 +193,7 @@
         <div class="view-header-actions">
             {% if is_admin %}
             {# 管理者だけ: 外部の人に見える内容（?as=public）と通常の表示を切り替える #}
-            {% if public_view %}
-            <a href="/view/{{ slug }}" data-view-normal class="public-view-toggle is-active" title="管理者の通常の表示に戻る" aria-label="管理者の通常の表示に戻る">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
-                    <line x1="2" y1="2" x2="22" y2="22"></line>
-                </svg>
-                <span class="public-view-toggle-label">通常の表示に戻る</span>
-                {{ check_count_badge(publish_check) }}
-            </a>
-            {% else %}
-            {{ public_view_link("public-view-toggle") }}
-            {% endif %}
+            {% call pv.toggle(public_view, public_view_url, normal_view_url) %}{{ check_count_badge(publish_check) }}{% endcall %}
             {% endif %}
             <div class="page-menu-container">
                 <button class="page-menu-btn" id="page-menu-btn" title="メニュー" aria-label="このノートのメニュー"
@@ -338,15 +326,7 @@
 
 {% if public_view %}
 {# 管理者の「外部の人の表示」: 本文は外部向けと同じ。上に確認用のバナーとチェック結果を出す #}
-<div class="public-view-banner" role="status">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-    <span>{{ system_message("S203") }}</span>
-    <a href="/view/{{ slug }}" data-view-normal class="public-view-banner-back">戻る</a>
-</div>
+{{ pv.banner(normal_view_url) }}
 {% if not is_published %}
 <div class="public-view-private-notice" role="alert">{{ system_message("S204") }}</div>
 {% endif %}

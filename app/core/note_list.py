@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from typing import Callable
 from urllib.parse import urlencode
 
+from app.config import VIEW_AS_PARAM, VIEW_AS_PUBLIC
 from app.core.search import parse_search_query
 
 # 並び替え（クエリの sort の値 → 表示名と並べ方）。先頭が既定
@@ -50,15 +51,20 @@ class ListQuery:
     visibility: str = DEFAULT_VISIBILITY
     sort: str = DEFAULT_SORT
     page: int = 1
+    public_view: bool = False           # 管理者の「外部の人の表示」。URL に as=public を引き継ぐ（F-17）
 
     @classmethod
-    def from_params(cls, q: str, tag: str, visibility: str, sort: str, page: int, is_admin: bool) -> "ListQuery":
-        """クエリの値を検証して作る。不正な値は既定に倒す。外部の人は公開状態を選べない"""
+    def from_params(cls, q: str, tag: str, visibility: str, sort: str, page: int, include_private: bool,
+                    public_view: bool = False) -> "ListQuery":
+        """
+        クエリの値を検証して作る。不正な値は既定に倒す。
+        include_private は「すべてのノートが見えるか」（外部の人と外部の人の表示では False）。公開状態は選べない
+        """
         if sort not in LIST_SORTS:
             sort = DEFAULT_SORT
-        if not is_admin or visibility not in LIST_VISIBILITIES:
+        if not include_private or visibility not in LIST_VISIBILITIES:
             visibility = DEFAULT_VISIBILITY
-        return cls(q=q, tag=tag, visibility=visibility, sort=sort, page=max(page, 1))
+        return cls(q=q, tag=tag, visibility=visibility, sort=sort, page=max(page, 1), public_view=public_view)
 
     def url(self, **changes) -> str:
         """一部の条件を変えた一覧の URL。ページは指定しなければ 1 に戻す"""
@@ -67,6 +73,8 @@ class ListQuery:
         default = ListQuery()
         params = {k: getattr(changed, k) for k in ("q", "tag", "visibility", "sort", "page")
                   if getattr(changed, k) != getattr(default, k)}
+        if changed.public_view:
+            params[VIEW_AS_PARAM] = VIEW_AS_PUBLIC
         query = urlencode(params)
         return "/?" + query if query else "/"
 
@@ -106,7 +114,7 @@ class NoteList:
         return len(set(self.all_tags) - set(self.top_tags))
 
 
-def build_note_list(all_files: list[dict], query: ListQuery, is_admin: bool, top_tag_count: int) -> NoteList:
+def build_note_list(all_files: list[dict], query: ListQuery, include_private: bool, top_tag_count: int) -> NoteList:
     """
     条件で一覧を作る。
 
@@ -114,7 +122,7 @@ def build_note_list(all_files: list[dict], query: ListQuery, is_admin: bool, top
     検索語の tag:・path: は、クイックスイッチャーと同じ parse_search_query で読んで絞り込む（B-8）。
     残りの言葉は、タイトルかパスに含まれるノートに絞る。
     """
-    visible = all_files if is_admin else filter_visibility(all_files, "public")
+    visible = all_files if include_private else filter_visibility(all_files, "public")
 
     matched = visible
     if query.q:

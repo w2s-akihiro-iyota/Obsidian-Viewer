@@ -85,8 +85,8 @@ def test_ノートが無ければ空():
 
 # ---------- build_note_list の検索語（B-8） ----------
 
-def _searched(q, is_admin=True):
-    return _paths(build_note_list(FILES, ListQuery(q=q), is_admin=is_admin, top_tag_count=10).files)
+def _searched(q, include_private=True):
+    return _paths(build_note_list(FILES, ListQuery(q=q), include_private=include_private, top_tag_count=10).files)
 
 
 def test_検索語のtagはタグで絞り込み大文字小文字を問わない():
@@ -113,4 +113,26 @@ def test_tagとpathが無ければ今までどおりタイトルかパスに含�
 
 
 def test_外部の人には非公開ノートのタグで探しても出さない():
-    assert _searched("tag:仕事", is_admin=False) == ["b.md"]
+    assert _searched("tag:仕事", include_private=False) == ["b.md"]
+
+
+# ---------- 外部の人の表示（F-17） ----------
+
+def test_外部の人の表示のURLはas_publicを引き継ぐ():
+    query = ListQuery.from_params(q="", tag="仕事", visibility="private", sort="title", page=2, include_private=False,
+                                  public_view=True)
+    assert query.visibility == DEFAULT_VISIBILITY   # 公開状態は効かない
+    assert query.url() == "/?tag=%E4%BB%95%E4%BA%8B&sort=title&as=public"
+    assert query.url(page=3) == "/?tag=%E4%BB%95%E4%BA%8B&sort=title&page=3&as=public"
+    assert ListQuery(public_view=True).url() == "/?as=public"
+
+
+def test_通常の表示のURLにはasを付けない():
+    assert "as=" not in ListQuery(tag="仕事", sort="title").url()
+
+
+def test_外部の人の表示のチップと条件を外すURLもas_publicを残す():
+    query = ListQuery(q="メモ", tag="仕事", public_view=True)
+    assert [f["url"] for f in query.active_filters()] == [
+        "/?q=%E3%83%A1%E3%83%A2&as=public", "/?tag=%E4%BB%95%E4%BA%8B&as=public"]
+    assert query.clear_url() == "/?as=public"

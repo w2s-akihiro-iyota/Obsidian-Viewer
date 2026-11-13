@@ -22,7 +22,7 @@
 
     const focusSlug = new URLSearchParams(window.location.search).get('focus');
 
-    fetch('/api/graph')
+    fetch(withViewAs('/api/graph'))
         .then(r => r.json())
         .then(data => {
             if (!data.nodes.length) {

@@ -1,0 +1,45 @@
+{# 管理者の「外部の人の表示」（?as=public）の部品。記事ページ・一覧・全体グラフ・エラー画面で共通（F-17）。
+   URL は app/utils/helpers.py の viewer_context が渡す public_view_url / normal_view_url をそのまま渡す。
+   id は、一覧が HTMX で条件を変えたとき（index.html の hx-select-oob）に URL を差し替えるための目印 #}
+
+{# 確認用の帯。「戻る」は今のページから as だけを外した所へ #}
+{% macro banner(normal_url) %}
+<div id="public-view-banner" class="public-view-banner" role="status">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+    <span>{{ system_message("S203") }}</span>
+    <a href="{{ normal_url }}" data-view-normal class="public-view-banner-back">戻る</a>
+</div>
+{% endmacro %}
+
+{# 見出しの右の切り替えボタン（一覧・全体グラフ。管理者だけに出す）。
+   通常の表示では「外部の人の表示」、外部の人の表示では is-active の「通常の表示に戻る」。
+   {% call pv.toggle(...) %}…{% endcall %} で呼ぶと、ラベルの後ろに中身（記事ページの公開チェックの件数バッジ）を差し込める #}
+{% macro toggle(is_public, public_url, normal_url) %}
+{% if is_public %}
+<a id="public-view-toggle" href="{{ normal_url }}" data-view-normal class="public-view-toggle is-active" title="管理者の通常の表示に戻る" aria-label="管理者の通常の表示に戻る">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+        <line x1="2" y1="2" x2="22" y2="22"></line>
+    </svg>
+    <span class="public-view-toggle-label">通常の表示に戻る</span>
+    {% if caller %}{{ caller() }}{% endif %}
+</a>
+{% else %}
+<a id="public-view-toggle" href="{{ public_url }}" class="public-view-toggle" title="外部の人に見える内容を確認する" aria-label="外部の人に見える内容を確認する">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+    <span class="public-view-toggle-label">外部の人の表示</span>
+    {% if caller %}{{ caller() }}{% endif %}
+</a>
+{% endif %}
+{% endmacro %}

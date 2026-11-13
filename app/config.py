@@ -25,6 +25,11 @@ SYNC_HISTORY_FILE = CONFIG_FILE.parent / "sync_history.json"
 PUBLIC_PORT = int(os.environ.get("PUBLIC_PORT", "8000"))
 ADMIN_PORT = int(os.environ.get("ADMIN_PORT", "8001"))
 
+# 管理者の「外部の人の表示」を指すクエリ（?as=public）。Python 側の付け外しはすべてこの定数を使う。
+# テンプレート（index.html の hidden・_public_view.html）と JS（core.js・public-view-links.js）は文字で書いているので、変えるときは合わせる（F-17）
+VIEW_AS_PARAM = "as"
+VIEW_AS_PUBLIC = "public"
+
 # 管理用ポートで受け付ける Host 名（DNS リバインディング対策）
 ADMIN_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
 

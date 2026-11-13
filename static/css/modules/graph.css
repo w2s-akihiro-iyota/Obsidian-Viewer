@@ -6,10 +6,23 @@
 .graph-page .container-wide {
     max-width: none;
     padding: 10px 12px;
+    /* 縦に積んで、グラフの枠が残りの高さを埋める。帯（外部の人の表示）が何行になっても画面からはみ出さない（F-17）。
+       .container-wide は .app-wrapper（上にヘッダーぶんの余白）の中の flex 項目で、border-box なので padding も含めた高さ */
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height));
 }
 
+.graph-page .container-wide > * {
+    flex-shrink: 0;
+}
+
+/* タイトルの右に外部の人の表示の切り替えボタン（F-17） */
 .graph-header {
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .graph-title {
@@ -23,7 +36,8 @@
 
 #graph-canvas {
     width: 100%;
-    height: calc(100vh - 120px);
+    flex: 1 1 0;
+    min-height: 0;
     background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;

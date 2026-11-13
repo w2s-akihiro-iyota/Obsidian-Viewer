@@ -11,7 +11,8 @@ from starlette.requests import Request
 
 from app.config import ADMIN_ALLOWED_HOSTS, ADMIN_PORT
 from app.main import app
-from app.utils.helpers import _host_name, is_admin_request, is_same_origin_request, viewer_context
+from app.utils.helpers import (_host_name, is_admin_request, is_same_origin_request, requested_view_as,
+                               viewer_context)
 from app.utils.messages import get_error
 
 
@@ -137,17 +138,54 @@ def test_Hostが無ければOriginがあっても拒否する():
 
 # ---------- viewer_context（Q-14） ----------
 
+def _kinds(viewer):
+    """閲覧者の種類の 3 つだけ（切り替えの URL は別のテストで見る）"""
+    return {k: viewer[k] for k in ("is_admin", "public_view", "show_admin_ui")}
+
+
 def test_管理者の通常の表示では管理者向けの操作を出す():
-    assert viewer_context(_admin_request("localhost:8001", ADMIN_PORT)) == {
+    assert _kinds(viewer_context(_admin_request("localhost:8001", ADMIN_PORT))) == {
         "is_admin": True, "public_view": False, "show_admin_ui": True}
 
 
 def test_管理者の外部の人の表示では管理者向けの操作を出さないが管理者のまま():
-    assert viewer_context(_admin_request("localhost:8001", ADMIN_PORT), "public") == {
+    assert _kinds(viewer_context(_admin_request("localhost:8001", ADMIN_PORT), "public")) == {
         "is_admin": True, "public_view": True, "show_admin_ui": False}
 
 
 @pytest.mark.parametrize("view_as", ["", "public"])
 def test_外部の人はas_publicを付けても管理者向けの物が何も立たない(view_as):
-    assert viewer_context(_admin_request("localhost:8000", 8000), view_as) == {
+    assert _kinds(viewer_context(_admin_request("localhost:8000", 8000), view_as)) == {
         "is_admin": False, "public_view": False, "show_admin_ui": False}
+
+
+# ---------- 切り替えの URL（F-17） ----------
+
+def _request_at(path: str, query: str) -> Request:
+    return Request({"type": "http", "method": "GET", "path": path, "query_string": query.encode(),
+                    "server": ("0.0.0.0", ADMIN_PORT), "headers": [(b"host", b"localhost:8001")]})
+
+
+@pytest.mark.parametrize("path, query, public_url, normal_url", [
+    ("/", "", "/?as=public", "/"),
+    ("/", "tag=x&sort=title", "/?tag=x&sort=title&as=public", "/?tag=x&sort=title"),
+    ("/", "tag=x&as=public&page=2", "/?tag=x&page=2&as=public", "/?tag=x&page=2"),
+    ("/graph", "focus=abc&as=public", "/graph?focus=abc&as=public", "/graph?focus=abc"),
+    ("//evil.example/x", "as=public", "/evil.example/x?as=public", "/evil.example/x"),   # 先頭の // は別サイトになるので 1 つに畳む
+    ("/view/日本語", "as=public", "/view/%E6%97%A5%E6%9C%AC%E8%AA%9E?as=public", "/view/%E6%97%A5%E6%9C%AC%E8%AA%9E"),
+])
+def test_切り替えのURLは今の条件を残してasだけを足す外す(path, query, public_url, normal_url):
+    viewer = viewer_context(_request_at(path, query))
+    assert viewer["public_view_url"] == public_url
+    assert viewer["normal_view_url"] == normal_url
+
+
+@pytest.mark.parametrize("path", ["//evil.example/x", "///evil.example/x"])
+def test_切り替えのURLは先頭がスラッシュ重ねでもプロトコル相対にならない(path):
+    viewer = viewer_context(_request_at(path, "as=public"))
+    assert not viewer["normal_view_url"].startswith("//") and not viewer["public_view_url"].startswith("//")
+
+
+@pytest.mark.parametrize("query, expected", [("", ""), ("as=public", "public"), ("as=public&as=x", "x"), ("as=x&as=public", "public")])
+def test_asは最後の値を読む(query, expected):
+    assert requested_view_as(_request_at("/", query)) == expected

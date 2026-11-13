@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "partials/_note_macros.html" as nm %}
+{% import "partials/_public_view.html" as pv %}
 
 {% block title %}ノート一覧 - Obsidian Viewer{% endblock %}
 
@@ -22,6 +23,9 @@
     <div class="index-header">
         <div class="index-header-top">
             <h1>ノート</h1>
+            <div class="index-header-actions">
+            {# 管理者だけ。外部の人の表示と通常の表示を切り替える（F-17） #}
+            {% if is_admin %}{{ pv.toggle(public_view, public_view_url, normal_view_url) }}{% endif %}
             <div class="view-toggle">
                 <button id="list-view-btn" class="view-toggle-btn active" title="リスト表示" aria-label="リスト表示">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -44,11 +48,15 @@
                     </svg>
                 </button>
             </div>
+            </div>
         </div>
+        {# 外部の人の表示の帯は、記事ページと同じく見出しの下（F-17） #}
+        {% if public_view %}{{ pv.banner(normal_view_url) }}{% endif %}
 
         {# 中の操作はすべてこの領域を差し替える（hx-target などは子孫に引き継がれる） #}
         <div id="search-interactive-area" hx-target="#search-interactive-area" hx-select="#search-interactive-area"
-            hx-swap="outerHTML" hx-push-url="true">
+            hx-swap="outerHTML" hx-push-url="true"
+            hx-select-oob="#public-view-toggle,#public-view-banner">
 
             <div class="search-container">
                 <!-- 検索欄と、その下のツールバー（公開状態・並び替え）。切り替えると form ごと送る -->
@@ -58,6 +66,8 @@
                         <input type="text" name="q" value="{{ query.q }}" placeholder="ノートを検索…" class="search-input"
                             aria-label="ノートを検索">
                         {% if query.tag %}<input type="hidden" name="tag" value="{{ query.tag }}">{% endif %}
+                        {# name="as" / value="public" は app/config.py の VIEW_AS_PARAM / VIEW_AS_PUBLIC と対応（F-17） #}
+                        {% if query.public_view %}<input type="hidden" name="as" value="public">{% endif %}
                         <button type="submit" class="search-button" aria-label="検索">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"

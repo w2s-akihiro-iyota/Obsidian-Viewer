@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app import cache
 from app.api import templates
+from app.config import VIEW_AS_PARAM
 from app.core.graph import cached_link_graph, graph_payload, local_graph, parse_depth, resolve_center
 from app.utils.helpers import is_public_view, viewer_context
 
@@ -11,17 +12,17 @@ router = APIRouter()
 
 
 @router.get("/graph", response_class=HTMLResponse)
-async def graph_page(request: Request):
-    """グラフビューページを表示（?focus=<slug> は JS がそのノートに寄せる）"""
+async def graph_page(request: Request, view_as: str = Query("", alias=VIEW_AS_PARAM)):
+    """グラフビューページを表示（?focus=<slug> は JS がそのノートに寄せる。?as=public は外部の人の表示。F-17）"""
     return templates.TemplateResponse(request=request, name="graph.html", context={
         "request": request,
-        **viewer_context(request),
+        **viewer_context(request, view_as),
     })
 
 
 @router.get("/api/graph")
 async def api_graph(request: Request, center: str = "", depth: str = "",
-                    view_as: str = Query("", alias="as")):
+                    view_as: str = Query("", alias=VIEW_AS_PARAM)):
     """
     グラフデータ（ノードとリンク）をJSONで返す
 

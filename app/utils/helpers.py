@@ -1,9 +1,9 @@
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from app.config import ADMIN_PORT, ADMIN_ALLOWED_HOSTS
+from app.config import ADMIN_PORT, ADMIN_ALLOWED_HOSTS, VIEW_AS_PARAM, VIEW_AS_PUBLIC
 from app.utils.messages import get_error
 
 
@@ -38,20 +38,47 @@ def is_public_view(request: Request, view_as: str = "") -> bool:
     外部の人と、管理者の「外部の人の表示」（?as=public）が対象です。
     外部の人が ?as=public を付けても変わりません。
     """
-    return (not is_admin_request(request)) or view_as == "public"
+    return (not is_admin_request(request)) or view_as == VIEW_AS_PUBLIC
 
 
-def viewer_context(request: Request, view_as: str = "") -> dict[str, bool]:
+def requested_view_as(request: Request) -> str:
+    """クエリの as の値。各ルートの Query（同じ名前が複数あれば最後）と同じく、最後の値を読む（F-17）"""
+    values = request.query_params.getlist(VIEW_AS_PARAM)
+    return values[-1] if values else ""
+
+
+def _view_switch_url(request: Request, public: bool) -> str:
+    """
+    今のページの URL（パス＋クエリ）に、外部の人の表示（as=public）を足した・外した URL。
+    q・tag・sort・page・focus などほかの条件はそのまま残す。切り替え URL の組み立てはここだけ（F-17）
+    """
+    params = [(k, v) for k, v in parse_qsl(request.url.query, keep_blank_values=True) if k != VIEW_AS_PARAM]
+    if public:
+        params.append((VIEW_AS_PARAM, VIEW_AS_PUBLIC))
+    # 先頭の連続する / は 1 つに畳む（//host/x はプロトコル相対 URL＝別サイトになるため）
+    path = "/" + quote(request.url.path, safe="/").lstrip("/")
+    return path + "?" + urlencode(params) if params else path
+
+
+def viewer_context(request: Request, view_as: str = "") -> dict[str, object]:
     """
     テンプレートに渡す、閲覧者の種類（base.html とその部品が見る。画面を返すルートはすべてこれで渡す）
 
     - is_admin: 管理者か。「外部の人の表示」のあいだも True（ヘルプの管理者向けの説明などに使う）
-    - public_view: 管理者が「外部の人の表示」（?as=public）を見ているか。view_as を渡すのは記事ページだけ
+    - public_view: 管理者が「外部の人の表示」（?as=public）を見ているか。view_as を渡すのは、
+      記事ページ・一覧・全体グラフ・エラー画面（ダッシュボードなど管理者だけのページには渡さない）
     - show_admin_ui: 管理者向けの操作（編集・同期・ダッシュボードへの入口など）を出すか。外部の人の表示のあいだは False
+    - public_view_url / normal_view_url: 今のページを外部の人の表示にした・通常の表示に戻した URL（切り替えボタンと帯の「戻る」）
     """
     is_admin = is_admin_request(request)
-    public_view = is_admin and view_as == "public"
-    return {"is_admin": is_admin, "public_view": public_view, "show_admin_ui": is_admin and not public_view}
+    public_view = is_admin and view_as == VIEW_AS_PUBLIC
+    return {
+        "is_admin": is_admin,
+        "public_view": public_view,
+        "show_admin_ui": is_admin and not public_view,
+        "public_view_url": _view_switch_url(request, True),
+        "normal_view_url": _view_switch_url(request, False),
+    }
 
 
 def admin_guard(request: Request) -> JSONResponse | None:

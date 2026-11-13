@@ -222,3 +222,31 @@ def test_エラー画面の描画に失敗しても素のHTMLで返す(site, mon
     assert res.headers["content-type"].startswith("text/html")
     assert get_error("E309") in res.text
     assert "secret-stack-detail" not in res.text
+
+
+# --- 管理者の「外部の人の表示」（F-17） ---
+
+def test_管理者の外部の人の表示のエラー画面は帯が出て管理者向けの物が出ない(site):
+    res = TestClient(app, base_url=ADMIN).get("/view/project-notes/old-memo?as=public", headers=BROWSER)
+    assert res.status_code == 404
+    assert 'data-view-as="public"' in res.text and 'class="public-view-banner"' in res.text   # 帯は .error-page の外
+    assert 'href="/view/project-notes/old-memo" data-view-normal class="public-view-banner-back"' in res.text
+    page = _page(res)
+    assert "error-page-admin" not in page and "project-notes/old-memo</code>" not in page
+    assert 'href="/editor' not in page and "data-open-sync" not in page
+
+
+def test_asが複数あれば最後の値で決まる(site):
+    client = TestClient(app, base_url=ADMIN)
+    assert "public-view-banner" not in client.get("/view/project-notes/old-memo?as=public&as=x", headers=BROWSER).text
+    assert 'data-view-as="public"' in client.get("/view/project-notes/old-memo?as=x&as=public", headers=BROWSER).text
+
+
+def test_管理者のasなしのエラー画面は今までどおり管理者向けのヒントが出る(site):
+    res = TestClient(app, base_url=ADMIN).get("/view/project-notes/old-memo", headers=BROWSER)
+    assert "error-page-admin" in _page(res) and "public-view-banner" not in res.text and "data-view-as" not in res.text
+
+
+def test_外部の人がasを付けてもエラー画面は変わらない(site):
+    text = TestClient(app, base_url=PUBLIC).get("/view/project-notes/old-memo?as=public", headers=BROWSER).text
+    assert "public-view-banner" not in text and "data-view-as" not in text
