@@ -19,7 +19,7 @@ from app import cache
 from app.api import templates
 from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT
 from app.core.graph import build_link_graph, neighbor_count
-from app.core.indexing import parse_frontmatter, is_published
+from app.core.frontmatter import is_published, parse_frontmatter
 from app.core.properties import build_properties
 from app.core.note_list import DEFAULT_SORT, LIST_SORTS, LIST_VISIBILITIES, ListQuery, build_note_list
 from app.core.search import parse_search_query

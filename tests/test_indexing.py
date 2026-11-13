@@ -1,6 +1,5 @@
 """索引作り（app/core/indexing.py）の小さな関数の契約テスト
 
-- is_published: 外部に見せてよいノートかの判定。公開ノートの範囲を決めるので、True 以外を公開にしない
 - scan_notes: 更新日時は JST（コンテナは UTC。B-9）
 """
 import os
@@ -10,24 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from app.core.indexing import is_published, scan_notes
-
-
-# ---------- is_published ----------
-
-@pytest.mark.parametrize("value", [True, "true", "True", "TRUE"])
-def test_publishがtrueなら公開(value):
-    assert is_published({"publish": value}) is True
-
-
-@pytest.mark.parametrize("value", [False, "false", "yes", 1, "1", None, ""])
-def test_publishがtrue以外なら非公開(value):
-    assert is_published({"publish": value}) is False
-
-
-def test_publishが無ければ非公開():
-    assert is_published({}) is False
-    assert is_published({"title": "x"}) is False
+from app.core.indexing import scan_notes
 
 
 # ---------- scan_notes ----------

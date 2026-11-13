@@ -16,7 +16,7 @@ from app.main import app
 async def serve() -> None:
     """両ポートで待ち受け、どちらかが止まったらもう片方も止める"""
     public_server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=PUBLIC_PORT))
-    # startup イベント（キャッシュ構築・同期ループ）を 2 回走らせないよう、片方は lifespan を切る
+    # 起動時の処理（app/main.py の lifespan。キャッシュ構築・同期ループ）を 2 回走らせないよう、片方は lifespan を切る
     admin_server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=ADMIN_PORT, lifespan="off"))
     servers = [public_server, admin_server]
 

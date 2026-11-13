@@ -166,8 +166,9 @@ function updateMermaidConfig() {
             }
         });
 
+        // 描き終わりを待てるよう Promise を返す（テーマの切り替えの動きが待つ。B-14）
         if (mermaidDivs.length > 0) {
-            mermaidLib.run().catch(err => console.error('Mermaid render error:', err));
+            return mermaidLib.run().catch(err => console.error('Mermaid render error:', err));
         }
     } catch (e) {
         console.error('Mermaid update error:', e);

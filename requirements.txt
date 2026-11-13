@@ -1,8 +1,11 @@
-fastapi
-uvicorn
-jinja2
-markdown-it-py[plugins]
-mdit-py-plugins
-python-multipart
-PyYAML
-pykakasi
+# 版を固定する（Q-7）。ビルドのたびに中身が変わらないようにする。上げるときはテストを通してからここを書き換える
+fastapi==0.143.0
+uvicorn==0.54.0
+jinja2==3.1.6
+markdown-it-py[plugins]==4.2.0
+mdit-py-plugins==0.6.1
+python-multipart==0.0.32
+PyYAML==6.0.3
+pykakasi==2.3.0
+# fastapi が使う。テストの TestClient（httpx2）の動きもこの版に合わせている（requirements-dev.txt）
+starlette==1.7.0
