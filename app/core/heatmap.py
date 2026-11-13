@@ -1,4 +1,7 @@
-"""ダッシュボードのヒートマップ（D-8）: 最終更新日ごとの文字数を、週ごとの列のマスと月のラベルにする"""
+"""ダッシュボードのヒートマップ（D-8）: 最終更新日ごとの文字数を、週ごとの列のマスと月のラベルにする
+
+各日の値は「その日が最終更新日のノートの文字数の合計」。その日に書いた量ではない（あとで更新されたノートは、その日から消える）。
+"""
 from datetime import datetime, timedelta
 
 from app.config import DASHBOARD_HEATMAP_WEEKS, HEATMAP_LEVEL_LIMITS, HEATMAP_MONTH_LABEL_MIN_GAP
@@ -8,7 +11,7 @@ HEATMAP_LEVEL_COUNT = len(HEATMAP_LEVEL_LIMITS) + 2   # 0 文字の段 + 区切�
 
 
 def heatmap_level(chars: int) -> int:
-    """その日に更新したノートの文字数の合計から、マスの濃さ（0〜HEATMAP_LEVEL_COUNT-1）を決める"""
+    """その日が最終更新日のノートの文字数の合計から、マスの濃さ（0〜HEATMAP_LEVEL_COUNT-1）を決める"""
     if chars == 0:
         return 0
     for level, limit in enumerate(HEATMAP_LEVEL_LIMITS, start=1):
@@ -20,6 +23,8 @@ def heatmap_level(chars: int) -> int:
 def build_heatmap(files: list[dict], now: datetime) -> tuple[list[dict], list[dict]]:
     """
     ヒートマップのマス（日曜始まりで 1 列 1 週、DASHBOARD_HEATMAP_WEEKS 列）と月のラベルを作る
+
+    マスは {"date", "chars"（その日が最終更新日のノートの文字数の合計）, "level"}。
 
     月のラベルは、その月の 1 日を含む週の列（1 始まり）に置く。
     """
@@ -46,7 +51,7 @@ def build_heatmap(files: list[dict], now: datetime) -> tuple[list[dict], list[di
             month_labels.append({"label": f"{day.month}月", "title": f"{day.year}年{day.month}月", "column": column})
         d_str = day.strftime("%Y-%m-%d")
         chars = daily_chars.get(d_str, 0)
-        heatmap_data.append({"date": d_str, "count": chars, "level": heatmap_level(chars)})
+        heatmap_data.append({"date": d_str, "chars": chars, "level": heatmap_level(chars)})
 
     # 右端に近いラベルは、枠からはみ出さないよう列の右端にそろえる
     for label in month_labels:

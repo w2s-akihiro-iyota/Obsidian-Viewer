@@ -4,10 +4,10 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
-from app.config import CONTENT_DIR, MEDIA_DIR, PROTECTED_MEDIA_ITEMS, SYNC_DELETE_HOLD_RATIO
+from app.config import CONTENT_DIR, JST, MEDIA_DIR, PROTECTED_MEDIA_ITEMS, SYNC_DELETE_HOLD_RATIO
 from app.models.sync import SyncConfig
 from app.core.content_sources import ContentSource, ContentSources
 from app.core.indexing import refresh_global_caches
@@ -15,12 +15,14 @@ from app.core.sync_history import KindChanges, SyncTrigger, add_record, build_re
 from app.events import config_updated_event
 # 設定ファイルの読み書き（同期の完了時刻の保存と、自動同期のループで使う）
 from app.services.sync_config import load_config, save_config
+# 保留した削除の置き場（一覧・件数は設定画面の API が直接読む）
+from app.services.sync_pending import (
+    PendingDeletion, SyncKind, drop_extra_pendings, pending_key, set_pending, split_pending_key, take_all,
+)
 
 from app.utils.messages import get_system, get_error, get_warning
 
 logger = logging.getLogger("app.sync")
-
-JST = timezone(timedelta(hours=9))
 
 # 同期（と保留した削除の実行）は同時に 1 本だけ。重なったら SyncInProgressError
 _sync_lock = threading.Lock()
@@ -28,13 +30,6 @@ _sync_lock = threading.Lock()
 
 class SyncInProgressError(Exception):
     """ほかの同期が実行中"""
-
-
-class SyncKind:
-    """同期の対象。保留した削除の区別と、画面に出す名前に使う"""
-    CONTENT = "content"
-    IMAGES = "images"
-    LABELS = {CONTENT: "ノート", IMAGES: "画像"}
 
 
 @dataclass
@@ -74,33 +69,6 @@ def _record(run: SyncRun, error: str = "") -> None:
     """1 回分を同期の記録に残す。error が空なら成功"""
     add_record(build_record(run.started, time.monotonic() - run.clock, run.trigger, error,
                             {kind: r.to_changes() for kind, r in run.results.items()}))
-
-
-@dataclass
-class PendingDeletion:
-    """確認待ちの削除（設定画面の「ファイル同期」から実行する）"""
-    src_dir: Path
-    dest_dir: Path
-    protected: list[str]
-    result: DirSyncResult
-    detected_at: str
-    excluded: Callable[[str], bool] | None = None   # 運ばないもの（同期のときと同じ判定で消す）
-    prefix: str = ""   # 画面に出すときに前に付けるビューアの置き場所（"llm-wiki/" など）
-
-
-# {キー: PendingDeletion}。キーは元フォルダが SyncKind の値、追加の同期元は "content:" + 置き場所。
-# 同期のたびに作り直す（メモリだけに持つ）
-# 同期スレッドと API のスレッドから触るため、必ず _pending_lock の中で読み書きする
-_pending: dict[str, PendingDeletion] = {}
-_pending_lock = threading.Lock()
-
-
-def _set_pending(kind: str, pending: PendingDeletion | None) -> None:
-    with _pending_lock:
-        if pending is None:
-            _pending.pop(kind, None)
-        else:
-            _pending[kind] = pending
 
 
 # ---------- ディレクトリ単位の同期 ----------
@@ -218,8 +186,8 @@ def _sync_kind(kind: str, src_dir: Path, dest_dir: Path, protected: list[str],
     key は保留を区別する名前（省略すると kind）。prefix は、保留の画面表示で前に付けるビューアの置き場所。
     """
     result = sync_directory(src_dir, dest_dir, protected, excluded)
-    _set_pending(key or kind, PendingDeletion(
-        src_dir=src_dir, dest_dir=dest_dir, protected=protected, result=result,
+    set_pending(key or kind, PendingDeletion(
+        src_dir=src_dir, dest_dir=dest_dir, protected=protected, held=result.held, reason=result.hold_reason,
         detected_at=datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
         excluded=excluded, prefix=prefix,
     ) if result.held else None)
@@ -236,46 +204,31 @@ def _absorb(total: DirSyncResult, result: DirSyncResult, prefix: str = "") -> No
         total.hold_reason = f"{total.hold_reason} / {result.hold_reason}" if total.hold_reason else result.hold_reason
 
 
-def _pending_key(kind: str, dest: str = "") -> str:
-    """保留のキーを作る。元フォルダ・画像は kind のまま、追加の同期元は "content:置き場所" """
-    return f"{kind}:{dest}" if dest else kind
-
-
-def _split_pending_key(key: str) -> tuple[str, str]:
-    """保留のキーを (kind, 置き場所) に分ける。置き場所は元フォルダ・画像なら空"""
-    kind, _, dest = key.partition(":")
-    return kind, dest
-
-
 def _sync_extras(sources: ContentSources, total: DirSyncResult) -> list[str]:
     """
     追加の同期元を同期して total に足し、飛ばした理由のメッセージを返す
 
     飛ばすのは、元フォルダの直下に同じ名前がある・同期元のフォルダが無い・設定に誤りがあるもの。
-    飛ばしたものはコピー先の中身も消さない。
+    飛ばしたものはコピー先の中身も消さない（保留も残さない）。
     """
     skipped = []
     conflicting = {c.dest for c in sources.conflicts()}
     synced_keys = set()
     for extra in sources.extras:
-        key = _pending_key(SyncKind.CONTENT, extra.dest)
         if extra.dest in conflicting:
             skipped.append(get_error("E009").format(dest=extra.dest))
         elif not extra.src.is_dir():
             skipped.append(get_error("E008").format(dest=extra.dest))
         else:
+            key = pending_key(SyncKind.CONTENT, extra.dest)
             synced_keys.add(key)
             result = _sync_kind(SyncKind.CONTENT, extra.src, CONTENT_DIR / extra.dest, [],
                                 excluded=extra.is_excluded, key=key, prefix=f"{extra.dest}/")
             _absorb(total, result, f"{extra.dest}/")
-            continue
-        _set_pending(key, None)
     for extra, reason in sources.invalid:
         skipped.append(get_error("E010").format(dest=extra.dest, reason=reason))
-    # 設定から外された追加の同期元の保留は消す
-    with _pending_lock:
-        for key in [k for k in _pending if _split_pending_key(k)[1] and k not in synced_keys]:
-            del _pending[key]
+    # 今回は飛ばした・設定から外された追加の同期元の保留は消す
+    drop_extra_pendings(keep=synced_keys)
     return skipped
 
 
@@ -354,7 +307,7 @@ def _perform_sync(config: SyncConfig, run: SyncRun) -> tuple[bool, str]:
                                                       PROTECTED_MEDIA_ITEMS))
     else:
         logger.info("Skipping image sync (not configured or path not found)")
-        _set_pending(SyncKind.IMAGES, None)
+        set_pending(SyncKind.IMAGES, None)
 
     # 3. 完了処理（記録するのは開始時刻。表示用で、差分の判定には使わない）
     config.last_sync = run.started.strftime("%Y-%m-%d %H:%M:%S")
@@ -376,25 +329,7 @@ def _perform_sync(config: SyncConfig, run: SyncRun) -> tuple[bool, str]:
     return True, msg
 
 
-# ---------- 保留した削除 ----------
-
-def get_pending_deletions() -> list[dict]:
-    """確認待ちの削除を画面表示用に返す"""
-    with _pending_lock:
-        items = list(_pending.items())
-    # 追加の同期元は "content:置き場所" のキー。kind と label は種類（content）で出し、ファイルはビューアのパスにする
-    return [
-        {"kind": _split_pending_key(kind)[0], "label": SyncKind.LABELS.get(_split_pending_key(kind)[0], kind),
-         "count": len(p.result.held), "files": [p.prefix + f for f in p.result.held],
-         "reason": p.result.hold_reason, "detected_at": p.detected_at}
-        for kind, p in items
-    ]
-
-
-def pending_deletion_count() -> int:
-    with _pending_lock:
-        return sum(len(p.result.held) for p in _pending.values())
-
+# ---------- 保留した削除の実行 ----------
 
 def confirm_pending_deletions() -> int:
     """
@@ -405,18 +340,16 @@ def confirm_pending_deletions() -> int:
     if not _sync_lock.acquire(blocking=False):
         raise SyncInProgressError()
     try:
-        with _pending_lock:
-            items = list(_pending.items())
-            _pending.clear()
+        items = take_all()
         if not items:
             # 消すものが無い。ファイルは変わっていないので、キャッシュの作り直しも記録もしない
             return 0
         run = SyncRun(SyncTrigger.CONFIRM)
         for kind, p in items:
-            targets = [rel for rel in p.result.held if not _is_protected(rel, p.protected)]
+            targets = [rel for rel in p.held if not _is_protected(rel, p.protected)]
             # 追加の同期元の分も、種類ごとの 1 つにまとめる（ファイルはビューアのパス）
             deleted = _delete_files(p.src_dir, p.dest_dir, targets, p.excluded)
-            run.results.setdefault(_split_pending_key(kind)[0], DirSyncResult()).deleted += [p.prefix + f for f in deleted]
+            run.results.setdefault(split_pending_key(kind)[0], DirSyncResult()).deleted += [p.prefix + f for f in deleted]
         total = sum(len(r.deleted) for r in run.results.values())
         logger.info("Confirmed pending deletions: %d files", total)
         # 同期とは別の 1 回として記録する（直近の同期の記録は書き換えない）。

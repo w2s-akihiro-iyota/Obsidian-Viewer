@@ -1,4 +1,4 @@
-"""ファイル同期（app/services/sync.py）の契約テスト
+"""ファイル同期（app/services/sync.py）と保留した削除の置き場（app/services/sync_pending.py）の契約テスト
 
 B-2: Vault で消したファイルを消す（保護対象は残す・空や大量削除は保留して確認後に実行）
 B-3: 前回の同期時刻ではなく、コピー先と比べてコピーする
@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from app.config import MEDIA_SAMPLES_DIR_NAME, PROTECTED_MEDIA_ITEMS
-from app.services import sync
+from app.services import sync, sync_pending
 
 
 def _write(path: Path, text: str, mtime: float | None = None) -> None:
@@ -27,7 +27,7 @@ def dirs(tmp_path, monkeypatch):
     src, dst = tmp_path / "src", tmp_path / "dst"
     src.mkdir()
     dst.mkdir()
-    monkeypatch.setattr(sync, "_pending", {})
+    monkeypatch.setattr(sync_pending, "_pending", {})
     monkeypatch.setattr(sync, "refresh_global_caches", lambda: None)
     return src, dst
 
@@ -208,7 +208,7 @@ def test_同期の関数は保留を登録しない(dirs):
     src, dst = dirs
     _write(dst / "a.md", "x")
     sync.sync_directory(src, dst, PROTECTED)
-    assert sync.get_pending_deletions() == []
+    assert sync_pending.get_pending_deletions() == []
 
 
 # ---------- B-2: 保留した削除を確認して実行する ----------
@@ -224,11 +224,11 @@ def _hold(dirs):
 
 def test_保留の一覧と件数(dirs):
     _hold(dirs)
-    pending = sync.get_pending_deletions()
+    pending = sync_pending.get_pending_deletions()
     assert pending[0]["kind"] == "content" and pending[0]["label"] == "ノート"
     assert pending[0]["count"] == 3 and pending[0]["files"] == ["n0.md", "n1.md", "n2.md"]
     assert pending[0]["reason"] and pending[0]["detected_at"]
-    assert sync.pending_deletion_count() == 3
+    assert sync_pending.pending_deletion_count() == 3
 
 
 def test_次の同期で保留が解消されたら一覧から消える(dirs):
@@ -236,14 +236,14 @@ def test_次の同期で保留が解消されたら一覧から消える(dirs):
     for i in range(3):
         _write(src / f"n{i}.md", "x")
     sync._sync_kind(sync.SyncKind.CONTENT, src, dst, PROTECTED)
-    assert sync.pending_deletion_count() == 0
+    assert sync_pending.pending_deletion_count() == 0
 
 
 def test_確認すると保留していたファイルを消す(dirs):
     src, dst = _hold(dirs)
     assert sync.confirm_pending_deletions() == 3
     assert sorted(p.name for p in dst.iterdir()) == ["n3.md"]
-    assert sync.get_pending_deletions() == []
+    assert sync_pending.get_pending_deletions() == []
 
 
 def test_確認までに同期元へ戻ったファイルは消さない(dirs):
@@ -397,7 +397,7 @@ def vault(tmp_path, monkeypatch):
         d.mkdir(parents=True)
     monkeypatch.setattr(sync, "CONTENT_DIR", content)
     monkeypatch.setattr(sync, "MEDIA_DIR", tmp_path / "media")
-    monkeypatch.setattr(sync, "_pending", {})
+    monkeypatch.setattr(sync_pending, "_pending", {})
     monkeypatch.setattr(sync, "refresh_global_caches", lambda: None)
     monkeypatch.setattr(sync, "save_config", lambda config: None)
     return root, content
@@ -518,13 +518,13 @@ def test_追加の同期元の保留はビューアのパスで一覧に出て�
         (root / "llm-wiki" / f"w{i}.md").unlink()
     sync.perform_sync(_cfg(root, _wiki(root)))
 
-    pending = sync.get_pending_deletions()
+    pending = sync_pending.get_pending_deletions()
     assert len(pending) == 1 and pending[0]["label"] == "ノート"
     assert pending[0]["files"] == ["llm-wiki/w0.md", "llm-wiki/w1.md", "llm-wiki/w2.md"]
-    assert sync.pending_deletion_count() == 3
+    assert sync_pending.pending_deletion_count() == 3
     assert sync.confirm_pending_deletions() == 3
     assert sorted(p.name for p in (content / "llm-wiki").iterdir()) == ["w3.md"]
-    assert sync.get_pending_deletions() == []
+    assert sync_pending.get_pending_deletions() == []
 
 
 def test_保留は同期元ごとに持つ(vault):
@@ -537,9 +537,9 @@ def test_保留は同期元ごとに持つ(vault):
         (root / "notes" / f"n{i}.md").unlink()
         (root / "llm-wiki" / f"w{i}.md").unlink()
     sync.perform_sync(_cfg(root, _wiki(root)))
-    files = sorted(f for p in sync.get_pending_deletions() for f in p["files"])
+    files = sorted(f for p in sync_pending.get_pending_deletions() for f in p["files"])
     assert files == ["llm-wiki/w0.md", "llm-wiki/w1.md", "llm-wiki/w2.md", "n0.md", "n1.md", "n2.md"]
-    assert {"content", "content:llm-wiki"} == set(sync._pending)
+    assert {"content", "content:llm-wiki"} == set(sync_pending._pending)
 
 
 def test_設定から外された追加の同期元の保留は消える(vault):
@@ -551,9 +551,32 @@ def test_設定から外された追加の同期元の保留は消える(vault):
     for i in range(3):
         (root / "llm-wiki" / f"w{i}.md").unlink()
     sync.perform_sync(_cfg(root, _wiki(root)))
-    assert sync.pending_deletion_count() == 3
+    assert sync_pending.pending_deletion_count() == 3
     sync.perform_sync(_cfg(root))
-    assert "content:llm-wiki" not in sync._pending   # 置き場所の中身は、元フォルダ側の保留（content）に変わる
+    assert "content:llm-wiki" not in sync_pending._pending   # 置き場所の中身は、元フォルダ側の保留（content）に変わる
+
+
+def test_同期元のフォルダが無くなって飛ばした追加の同期元の保留も消える(vault):
+    root, _ = vault
+    for i in range(4):
+        _write(root / "llm-wiki" / f"w{i}.md", "x")
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    for i in range(3):
+        (root / "llm-wiki" / f"w{i}.md").unlink()
+    sync.perform_sync(_cfg(root, _wiki(root)))
+    assert "content:llm-wiki" in sync_pending._pending
+    for p in (root / "llm-wiki").iterdir():
+        p.unlink()
+    (root / "llm-wiki").rmdir()
+    assert sync.perform_sync(_cfg(root, _wiki(root)))[0] is False   # 飛ばして失敗にする
+    assert "content:llm-wiki" not in sync_pending._pending
+
+
+def test_保留を取り出すと空になる(dirs):
+    _hold(dirs)
+    items = sync_pending.take_all()
+    assert [key for key, _ in items] == ["content"] and items[0][1].held == ["n0.md", "n1.md", "n2.md"]
+    assert sync_pending.take_all() == [] and sync_pending.pending_deletion_count() == 0
 
 
 def test_追加の同期元が無ければ今までどおり(vault):

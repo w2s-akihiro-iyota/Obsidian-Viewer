@@ -126,14 +126,9 @@ def test_statは1件につき1回まで(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def isolated_cache(tmp_path, monkeypatch):
-    from app import cache
+def isolated_cache(tmp_path, monkeypatch, isolated_caches):
     from app.core import indexing
 
-    for name in ("GLOBAL_FILE_CACHE", "GLOBAL_FILE_TREE_CACHE", "GLOBAL_FILE_TREE_CACHE_PUBLIC", "MEDIA_INDEX",
-                 "PUBLIC_MEDIA_PATHS", "MARKDOWN_CACHE", "NOTE_RESOLVER", "BACKLINK_CACHE", "FORWARD_LINK_CACHE",
-                 "SEARCH_INDEX", "SLUG_TO_PATH", "PATH_TO_SLUG", "NOTE_RECORDS", "LINK_GRAPH", "LINK_GRAPH_PUBLIC"):
-        monkeypatch.setattr(cache, name, getattr(cache, name))
     monkeypatch.setattr(indexing, "CONTENT_DIR", tmp_path)
     monkeypatch.setattr(indexing, "MEDIA_DIR", tmp_path.parent / f"{tmp_path.name}-media")
     return tmp_path

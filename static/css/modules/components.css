@@ -335,7 +335,8 @@ a.menu-option {
     color: var(--accent-text);
 }
 
-.publish-check-path {
+.publish-check-path,
+.publish-check-via {
     color: var(--text-muted);
     font-size: 0.8rem;
 }

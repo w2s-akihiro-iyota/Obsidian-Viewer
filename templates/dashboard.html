@@ -92,9 +92,9 @@
                     <span class="{% if m.at_end %}is-end{% endif %}" style="grid-column: {{ m.column }} / span {{ m.span }}" title="{{ m.title }}">{{ m.label }}</span>
                     {% endfor %}
                 </div>
-                <div class="heatmap-grid" role="img" aria-label="過去 {{ heatmap_weeks }} 週の、日ごとに更新したノートの文字数">
+                <div class="heatmap-grid" role="img" aria-label="過去 {{ heatmap_weeks }} 週の、最終更新日ごとのノートの文字数">
                     {% for item in heatmap_data %}
-                    <div class="heatmap-cell level-{{ item.level }}" title="{{ item.date }}: {{ item.count }} 文字"></div>
+                    <div class="heatmap-cell level-{{ item.level }}" title="{{ item.date }}: {{ item.chars }} 文字"></div>
                     {% endfor %}
                 </div>
             </div>

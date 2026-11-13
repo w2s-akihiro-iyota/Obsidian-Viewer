@@ -37,6 +37,8 @@ app/
 ├── models/sync.py         # Request/Response用Pydanticモデル
 ├── services/
 │   ├── sync.py            # 物理ファイル同期・バックグラウンドタスク処理
+│   ├── sync_config.py     # 同期の設定ファイル（server_config.yaml）の読み書き
+│   ├── sync_pending.py    # 同期で保留した削除（確認待ち）の置き場。設定画面の一覧・件数はここから読む
 │   ├── note_editing.py    # 既存ノートの編集（Vault を正とした読み書き・衝突検知）
 │   ├── images.py          # 画像・メディアファイルの解決（添付の索引 MediaIndex・/media の URL）
 │   ├── media_access.py    # 添付を外部に見せてよいかの判定（公開ノートの参照から許可リストを作る）
@@ -153,7 +155,8 @@ docker-compose logs -f           # ログ確認
   - コンテナに pytest・httpx2 が無ければ先に `docker exec obsidian-viewer-app pip install pytest==9.1.1 httpx2==2.13.1`（`requirements-dev.txt` はコンテナにマウントされていないので、版は `requirements-dev.txt` と同じものを直接指定する）
 - `/app/app` と `templates/` は compose でマウント済み。`tests/` と `pytest.ini` はイメージに入れない（`.dockerignore`）ので、実行前にコピーする。消したテストはコンテナ側からも消す
 - テストは対象モジュールごとのファイルに分ける（例 `tests/test_slug.py`）。`tests/test_api.py` は API・画面の契約テスト、`tests/test_note_editing.py` は既存ノート編集の契約テスト
-- `tests/` には `test_*.py` 以外を置かない（手動の検証スクリプトは残さない）
+- `tests/` には `test_*.py` 以外を置かない（手動の検証スクリプトは残さない）。共通の fixture は `tests/conftest.py`
+- 索引を作り直すテスト（`refresh_global_caches()`）は、`conftest.py` の `isolated_caches` を使う（`app/cache.py` のキャッシュを全部、終わったら元に戻す。キャッシュを足しても直す所は無い）
 
 ## Common Pitfalls
 - Uvicornのワーカー数は1に固定すること (ログ重複防止)。起動は `python -m app.server`（2ポートを1プロセスで待ち受け）
