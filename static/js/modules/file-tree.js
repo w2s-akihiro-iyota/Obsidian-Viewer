@@ -444,7 +444,7 @@ function saveOpenFolders(openFolders) {
  */
 function createPrivateMark() {
     const template = document.getElementById('private-mark-template');
-    // 外部の人の画面には template を置かない（非公開ノートがツリーに来ないので使わない）
+    // 外部の人と、管理者の外部の人の表示には template を置かない（非公開ノートがツリーに来ないので使わない）
     if (!template) return document.createDocumentFragment();
     return template.content.firstElementChild.cloneNode(true);
 }
