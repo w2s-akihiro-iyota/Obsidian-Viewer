@@ -1756,7 +1756,7 @@ def test_管理者の外部の人の表示の一覧は公開ノートだけで�
     html = TestClient(app, base_url=ADMIN).get("/", params={"as": "public"}).text
     assert sorted(_titles(html)) == ["Alpha", "Charlie"]
     assert "秘密タグ" not in html and "（全" not in html
-    assert 'class="segmented-control"' not in html and 'class="private-mark"' not in html   # ツリー用の template は別
+    assert 'class="segmented-control"' not in html and 'class="private-mark"' not in html
     assert re.search(r'<body class="[^"]*" data-view-as="public">', html)
     assert 'class="public-view-banner"' in html and _banner_back(html) == "/"
     assert 'data-view-normal class="public-view-toggle is-active"' in _view_switch(html)
@@ -1828,3 +1828,21 @@ def test_外部の人の全体グラフはasを付けても何も出ない(graph
 def test_全体グラフのJSは外部の人の表示でも公開ノートだけのAPIを呼ぶ():
     js = (pathlib.Path(__file__).parent.parent / "static/js/modules/graph.js").read_text(encoding="utf-8")
     assert "fetch(withViewAs('/api/graph'))" in js
+
+
+# --- ファイルツリーの非公開の印のテンプレート（Q-27） ---
+
+# base.html の部品なので、記事・一覧・全体グラフ・エラー画面のどれでも同じ。管理者の通常の表示だけに置く
+# （外部の人と外部の人の表示のツリーは公開ノートだけで、印を使わない）
+@pytest.mark.parametrize("path", ["/", "/graph", "/view/{slug}", "/view/無いノート"])
+@pytest.mark.parametrize("base, params, expected", [
+    (ADMIN, {}, True),
+    (ADMIN, {"as": "public"}, False),
+    (PUBLIC, {}, False),
+    (PUBLIC, {"as": "public"}, False),
+])
+def test_ツリーの非公開の印のテンプレートは管理者の通常の表示にだけ置く(site, path, base, params, expected):
+    html = TestClient(app, base_url=base).get(path.format(slug=cache.PATH_TO_SLUG["親.md"]), params=params,
+                                              headers={"Accept": "text/html"}).text
+    assert "<body" in html, "アプリの枠で描いた画面であること（エラー画面も）"
+    assert ('<template id="private-mark-template">' in html) is expected

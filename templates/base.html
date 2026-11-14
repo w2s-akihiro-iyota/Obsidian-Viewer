@@ -251,8 +251,9 @@
     {% include 'partials/_modal_help.html' %}
     {% include 'partials/_modal_settings.html' %}
     {% include 'partials/_modal_shortcuts.html' %}
-    {# ファイルツリーの非公開の印（file-tree.js が複製する）。一覧と同じマクロから描く。外部の人のツリーに非公開ノートは無いので管理者だけ #}
-    {% if is_admin %}
+    {# ファイルツリーの非公開の印（file-tree.js が複製する）。一覧と同じマクロから描く。
+       外部の人と、管理者の外部の人の表示のツリーには非公開ノートが無いので、管理者の通常の表示だけ（Q-27） #}
+    {% if show_admin_ui %}
     <template id="private-mark-template">{{ nm.private_mark('tree-private-badge') }}</template>
     {% endif %}
 </body>
