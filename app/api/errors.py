@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import templates
-from app.utils.helpers import viewer_context
+from app.utils.helpers import requested_view_as, viewer_context
 from app.utils.messages import get_error
 
 logger = logging.getLogger("app.errors")
@@ -94,16 +94,15 @@ def _fallback_html(page: ErrorPage) -> HTMLResponse:
 
 
 def render_error_page(request: Request, page: ErrorPage, headers: dict | None = None) -> Response:
-    """アプリの枠の中にエラー画面を描く。描けなければ素の HTML で返す"""
-    viewer = viewer_context(request)
-    is_admin = viewer["is_admin"]
+    """アプリの枠の中にエラー画面を描く。描けなければ素の HTML で返す（管理者の ?as=public は外部の人の表示。F-17）"""
+    viewer = viewer_context(request, requested_view_as(request))
     try:
         return templates.TemplateResponse(request=request, name="error.html", status_code=page.status,
                                           headers=headers, context={
             "request": request,
             **viewer,
             "page": page,
-            "requested_note": _requested_note(request) if is_admin and page.for_note else "",
+            "requested_note": _requested_note(request) if viewer["show_admin_ui"] and page.for_note else "",
         })
     except Exception:
         logger.exception("Failed to render the error page")

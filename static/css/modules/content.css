@@ -16,6 +16,13 @@
     margin-bottom: 16px;
 }
 
+/* 一覧の見出しの右（外部の人の表示の切り替えボタンと、リスト／グリッドの切り替え）（F-17） */
+.index-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .view-toggle {
     display: flex;
     gap: 4px;

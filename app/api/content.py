@@ -17,7 +17,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 # Local
 from app import cache
 from app.api import templates
-from app.config import CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT
+from app.config import (CONTENT_DIR, JST, LIST_TOP_TAG_COUNT, LOCAL_GRAPH_DEPTHS, PER_PAGE, SEARCH_LIMIT,
+                        VIEW_AS_PARAM)
 from app.core.graph import cached_link_graph, neighbor_count
 from app.core.frontmatter import is_published, parse_frontmatter
 from app.core.properties import build_properties
@@ -124,7 +125,7 @@ def _is_inside_content_dir(path: str) -> bool:
 
 
 @router.get("/api/preview")
-async def preview_file(request: Request, path: str, view_as: str = Query("", alias="as")):
+async def preview_file(request: Request, path: str, view_as: str = Query("", alias=VIEW_AS_PARAM)):
     """リンクのプレビュー（管理者の外部表示 ?as=public では、外部の人と同じ中身にする）"""
     if not _is_inside_content_dir(path):
         raise HTTPException(status_code=400, detail="Invalid path")
@@ -156,16 +157,18 @@ async def preview_file(request: Request, path: str, view_as: str = Query("", ali
 
 @router.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, page: int = 1, q: str = "", tag: str = "", visibility: str = "all",
-                    sort: str = DEFAULT_SORT):
+                    sort: str = DEFAULT_SORT, view_as: str = Query("", alias=VIEW_AS_PARAM)):
     """
     トップのノート一覧
 
     検索語 q・タグ・公開状態（管理者だけ）で絞り込み、sort で並べ替える（app/core/note_list.py）。
+    管理者の外部の人の表示（?as=public）は、外部の人と同じ公開ノートだけの一覧にする（F-17）。
     """
-    viewer = viewer_context(request)
-    is_admin = viewer["is_admin"]
-    query = ListQuery.from_params(q=q, tag=tag, visibility=visibility, sort=sort, page=page, is_admin=is_admin)
-    note_list = build_note_list(cache.GLOBAL_FILE_CACHE, query, is_admin=is_admin,
+    viewer = viewer_context(request, view_as)
+    include_private = viewer["show_admin_ui"]
+    query = ListQuery.from_params(q=q, tag=tag, visibility=visibility, sort=sort, page=page,
+                                  include_private=include_private, public_view=viewer["public_view"])
+    note_list = build_note_list(cache.GLOBAL_FILE_CACHE, query, include_private=include_private,
                                 top_tag_count=LIST_TOP_TAG_COUNT)
 
     # ページ送り。総ページ数を超えたら最後のページに丸める（0件なら1）
@@ -195,7 +198,7 @@ def _is_published_path(path: str) -> bool:
 
 
 @router.get("/view/{file_path:path}", response_class=HTMLResponse)
-async def read_item(request: Request, file_path: str, view_as: str = Query("", alias="as")):
+async def read_item(request: Request, file_path: str, view_as: str = Query("", alias=VIEW_AS_PARAM)):
     """
     記事ページ
 
@@ -386,7 +389,7 @@ def _legacy_search(q: str, include_private: bool, accept: Callable[[dict], bool]
 
 
 @router.get("/api/search")
-async def api_search(request: Request, q: str = "", view_as: str = Query("", alias="as")):
+async def api_search(request: Request, q: str = "", view_as: str = Query("", alias=VIEW_AS_PARAM)):
     """検索（クイックスイッチャーと上の検索欄）。外部の人と管理者の外部表示（?as=public）には公開ノートだけを返す"""
     query = parse_search_query(q)
     if not query.text and not query.has_filters:
@@ -419,7 +422,7 @@ async def api_search(request: Request, q: str = "", view_as: str = Query("", ali
 
 
 @router.get("/api/tree")
-async def api_tree(request: Request, view_as: str = Query("", alias="as")):
+async def api_tree(request: Request, view_as: str = Query("", alias=VIEW_AS_PARAM)):
     """サイドバーのファイルツリー（外部の人と管理者の外部表示 ?as=public には、公開ノートだけの木）"""
     if is_public_view(request, view_as):
         return cache.GLOBAL_FILE_TREE_CACHE_PUBLIC

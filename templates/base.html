@@ -106,7 +106,8 @@
 {# 閲覧者の種類（どのルートも app/utils/helpers.py の viewer_context で渡す。Q-14）
    - is_admin: 管理者か。「外部の人の表示」（?as=public）のあいだも True（ヘルプ・ショートカット一覧の管理者向けの説明）
    - show_admin_ui: 管理者向けの操作（編集・同期・ダッシュボードへの入口など）を出すか。外部の人の表示のあいだは False
-   - public_view: 管理者が外部の人の表示を見ているか（記事ページだけ） #}
+   - public_view: 管理者が外部の人の表示（?as=public）を見ているか（記事ページ・一覧・全体グラフ・エラー画面）
+   - public_view_url / normal_view_url: 今のページを外部の人の表示にした・通常の表示に戻した URL（partials/_public_view.html） #}
 {# いまの画面（ショートカット一覧で、この画面で使えるグループを上に出すのに使う） #}
 {% set shortcut_page_now = shortcuts.find_page(self.body_class()) %}
 {# キー表記のマクロ。include した部品（ヘルプ・チートシート・検索）からも見える #}

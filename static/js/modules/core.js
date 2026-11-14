@@ -63,6 +63,7 @@ function isPublicView() {
  * API（ツリー・検索・プレビュー・つながり）は外部の人と同じ中身（公開ノートだけ）に、
  * 記事ページへの移動は外部の人の表示のまま移れるようにする。
  * as=public はクエリに足し、?hl= と #見出し は残す（# の前に入る）
+ * 'as' と 'public' は app/config.py の VIEW_AS_PARAM / VIEW_AS_PUBLIC と対応（F-17）
  */
 function withViewAs(url) {
     if (!isPublicView()) return url;

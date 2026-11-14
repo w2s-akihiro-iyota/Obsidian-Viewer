@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/_public_view.html" as pv %}
 
 {% block title %}グラフ - Obsidian Viewer{% endblock %}
 
@@ -22,7 +23,10 @@
         </svg>
         グラフ
     </h1>
+    {% if is_admin %}{{ pv.toggle(public_view, public_view_url, normal_view_url) }}{% endif %}
 </div>
+{# 外部の人の表示の帯は、記事ページと同じく見出しの下（F-17） #}
+{% if public_view %}{{ pv.banner(normal_view_url) }}{% endif %}
 <div id="graph-canvas"></div>
 <script src="{{ static_url('js/modules/graph.js') }}" defer></script>
 {% endblock %}

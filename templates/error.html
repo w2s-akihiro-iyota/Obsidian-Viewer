@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "partials/_public_view.html" as pv %}
 
 {# エラー画面（F-10）。app/api/errors.py が、ブラウザでページを開いたときだけ返す。URL とステータスはそのまま #}
 
@@ -13,6 +14,7 @@
 {% block body_class %}error-page-body{% if page.for_note %} is-note-missing{% endif %}{% endblock %}
 
 {% block content %}
+{% if public_view %}{{ pv.banner(normal_view_url) }}{% endif %}
 <div class="error-page">
     <div class="error-page-icon" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"

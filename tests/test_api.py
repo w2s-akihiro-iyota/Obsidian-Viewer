@@ -445,7 +445,7 @@ def test_外部表示の通常の表示への導線とチェックのパネル�
     """F-16: これらのリンクは as=public を付けない対象。帯の戻る・ヘッダーの切り替え・公開チェックのパネル"""
     html = _get(TestClient(app, base_url=ADMIN), "公開ページ.md", **{"as": "public"}).text
     assert re.search(r'<a href="[^"]*" data-view-normal class="public-view-banner-back"', html)
-    assert re.search(r'<a href="[^"]*" data-view-normal class="public-view-toggle is-active"', html)
+    assert re.search(r'<a (?:id="public-view-toggle" )?href="[^"]*" data-view-normal class="public-view-toggle is-active"', html)
     assert '<section class="publish-check-panel" data-view-normal' in html
 
 
@@ -1737,3 +1737,94 @@ def test_ダッシュボードのタグなしから本文のタグのノート�
     html = TestClient(app, base_url=ADMIN).get("/dashboard").text
     untagged = [t for t, _ in _health_rows(html, "untagged")]
     assert "関連" not in untagged and "タグなし" in untagged
+
+
+# --- 一覧・全体グラフ・エラー画面の「外部の人の表示」（F-17） ---
+
+def _view_switch(html):
+    """見出しの右の切り替えボタン（<a id="public-view-toggle" …>）の開きタグ（& は戻した形）。無ければ空"""
+    m = re.search(r'<a id="public-view-toggle"[^>]*>', html)
+    return m.group(0).replace("&amp;", "&") if m else ""
+
+
+def _banner_back(html):
+    m = re.search(r'<a href="([^"]*)" data-view-normal class="public-view-banner-back">戻る</a>', html)
+    return m.group(1).replace("&amp;", "&") if m else None
+
+
+def test_管理者の外部の人の表示の一覧は公開ノートだけで管理者向けの物が出ない(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"as": "public"}).text
+    assert sorted(_titles(html)) == ["Alpha", "Charlie"]
+    assert "秘密タグ" not in html and "（全" not in html
+    assert 'class="segmented-control"' not in html and 'class="private-mark"' not in html   # ツリー用の template は別
+    assert re.search(r'<body class="[^"]*" data-view-as="public">', html)
+    assert 'class="public-view-banner"' in html and _banner_back(html) == "/"
+    assert 'data-view-normal class="public-view-toggle is-active"' in _view_switch(html)
+
+
+def test_外部の人の表示の一覧はvisibilityを付けても公開ノートだけ(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"as": "public", "visibility": "private"}).text
+    assert sorted(_titles(html)) == ["Alpha", "Charlie"]
+
+
+def test_外部の人の表示の一覧の中のURLはas_publicを引き継ぐ(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"as": "public", "tag": "共通", "q": "a"}).text
+    assert '<input type="hidden" name="as" value="public">' in html
+    tag_row = _tag_row(html)
+    assert re.findall(r'href="([^"]+)"', tag_row) and all("as=public" in h for h in re.findall(r'href="([^"]+)"', tag_row))
+    chips = re.findall(r'<a href="([^"]+)"[^>]*class="filter-chip"', html)
+    assert len(chips) == 2 and all("as=public" in c for c in chips)
+    assert re.search(r'href="([^"]*as=public[^"]*)"[^>]*class="filter-clear"', html)
+
+
+def test_外部の人の表示の一覧のページ送りはas_publicを引き継ぐ(list_site):
+    for i in range(14):
+        (list_site / f"追加{i:02}.md").write_text("---\npublish: true\n---\n本文\n", encoding="utf-8")
+    indexing.refresh_global_caches()
+    html = TestClient(app, base_url=ADMIN).get("/", params={"as": "public"}).text
+    assert re.search(r'<a href="/\?page=2&amp;as=public" class="page-link"', html)
+
+
+def test_一覧の切り替えのURLと戻るのURLは今の条件を保つ(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/", params={"tag": "共通", "sort": "title", "as": "public"}).text
+    assert _banner_back(html) == "/?tag=%E5%85%B1%E9%80%9A&sort=title"
+    assert 'href="/?tag=%E5%85%B1%E9%80%9A&sort=title"' in _view_switch(html)
+    normal = TestClient(app, base_url=ADMIN).get("/", params={"tag": "共通", "sort": "title"}).text
+    assert 'href="/?tag=%E5%85%B1%E9%80%9A&sort=title&as=public"' in _view_switch(normal)
+
+
+def test_管理者の通常の一覧には外部の人の表示のボタンだけがあり帯は無い(list_site):
+    html = TestClient(app, base_url=ADMIN).get("/").text
+    assert 'href="/?as=public" class="public-view-toggle"' in _view_switch(html)
+    assert "外部の人の表示</span>" in html
+    assert 'class="public-view-banner"' not in html and "data-view-as" not in html
+    assert sorted(_titles(html)) == ["Alpha", "Bravo", "Charlie"]
+
+
+@pytest.mark.parametrize("params", [{}, {"as": "public"}])
+def test_外部の人の一覧はasを付けても同じで切り替えも帯も無い(list_site, params):
+    html = TestClient(app, base_url=PUBLIC).get("/", params=params).text
+    assert sorted(_titles(html)) == ["Alpha", "Charlie"]
+    assert "data-view-as" not in html and not re.search(r'class="[^"]*public-view', html)
+    assert 'name="as"' not in html and "as=public" not in _tag_row(html)
+
+
+def test_管理者の全体グラフの外部の人の表示と通常の表示(graph_site):
+    admin = TestClient(app, base_url=ADMIN)
+    html = admin.get("/graph", params={"as": "public", "focus": "x"}).text
+    assert re.search(r'<body class="[^"]*" data-view-as="public">', html)
+    assert 'class="public-view-banner"' in html and _banner_back(html) == "/graph?focus=x"
+    assert 'data-view-normal class="public-view-toggle is-active"' in _view_switch(html)
+    normal = admin.get("/graph", params={"focus": "x"}).text
+    assert 'href="/graph?focus=x&as=public" class="public-view-toggle"' in _view_switch(normal)
+    assert "data-view-as" not in normal and 'class="public-view-banner"' not in normal
+
+
+def test_外部の人の全体グラフはasを付けても何も出ない(graph_site):
+    html = TestClient(app, base_url=PUBLIC).get("/graph", params={"as": "public"}).text
+    assert "data-view-as" not in html and not re.search(r'class="[^"]*public-view', html)
+
+
+def test_全体グラフのJSは外部の人の表示でも公開ノートだけのAPIを呼ぶ():
+    js = (pathlib.Path(__file__).parent.parent / "static/js/modules/graph.js").read_text(encoding="utf-8")
+    assert "fetch(withViewAs('/api/graph'))" in js
