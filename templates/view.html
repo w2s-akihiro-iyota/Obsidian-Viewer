@@ -71,7 +71,8 @@
             </svg>
             {% if local_graph_count %}<span class="article-dial-dot" aria-hidden="true"></span>{% endif %}
         </button>
-        <div class="article-dial-items" id="article-dial-items">
+        {# data-focus-fallback: 「＋」がしまって中の項目へフォーカスを戻せないときの戻し先（? の一覧を閉じたとき。shortcuts.js。B-26） #}
+        <div class="article-dial-items" id="article-dial-items" data-focus-fallback="article-dial-toggle">
             <div class="local-graph-anchor article-dial-item">
                 <span class="article-dial-label" aria-hidden="true">つながり</span>
                 <button type="button" class="local-graph-toggle{% if not local_graph_count %} is-empty{% endif %}" id="local-graph-toggle"

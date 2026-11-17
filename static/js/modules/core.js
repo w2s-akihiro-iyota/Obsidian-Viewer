@@ -72,6 +72,22 @@ function withViewAs(url) {
     return parsed.pathname + parsed.search + parsed.hash;
 }
 
+// --- モーダルの裏の本文のスクロールの固定 ---
+// 開いているあいだ、裏の本文のスクロールを止めるモーダル（開いているときは .active が付く）。
+// 画像の拡大（#lightbox-overlay）は止めていないので入れない
+const SCROLL_LOCKING_MODALS_OPEN = '#help-modal.active, #settings-modal.active, #welcome-modal.active, #shortcut-sheet.active, #search-modal.active';
+
+/**
+ * 本文のスクロールの固定（body.no-scroll）を、いま開いているモーダルに合わせる。
+ * 1 つでも開いていれば固定し、全部閉じたら外す。モーダルの .active を付けた・外したあとに必ず呼ぶ。
+ * 付け外しをここ 1 か所で決めるのは、モーダルが重なることがあるため。
+ * 閉じるモーダルが自分で外すと、まだ開いているモーダルの裏で本文が動いてしまう
+ * （? の一覧の上で Ctrl+K を押すと、一覧が閉じて検索が残る。設定の上で開いた検索を閉じても、設定は残る。B-24）
+ */
+function syncBackgroundScrollLock() {
+    document.body.classList.toggle('no-scroll', Boolean(document.querySelector(SCROLL_LOCKING_MODALS_OPEN)));
+}
+
 // --- Toast Notification System ---
 /**
  * トーストを出す
