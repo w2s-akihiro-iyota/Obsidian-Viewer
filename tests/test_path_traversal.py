@@ -11,8 +11,6 @@ from fastapi.testclient import TestClient
 
 from app import cache
 from app.core.note_resolver import NoteResolver
-from app.api import content as content_api
-from app.api import editor as editor_api
 from app.main import app
 from app.utils.messages import get_error
 
@@ -20,13 +18,12 @@ ADMIN = "http://localhost:8001"
 
 
 @pytest.fixture
-def content_dir(tmp_path, monkeypatch):
+def content_dir(tmp_path, monkeypatch, use_test_vault):
     content = tmp_path / "content"
     content.mkdir()
     (content / "公開.md").write_text("---\npublish: true\n---\n本文\n", encoding="utf-8")
     (tmp_path / "外.md").write_text("---\npublish: true\n---\nCONTENT_DIR の外\n", encoding="utf-8")
-    monkeypatch.setattr(content_api, "CONTENT_DIR", content)
-    monkeypatch.setattr(editor_api, "CONTENT_DIR", content)
+    use_test_vault(content, tmp_path / "media")
     monkeypatch.setattr(cache, "SLUG_TO_PATH", {})
     monkeypatch.setattr(cache, "PATH_TO_SLUG", {})
     monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [])

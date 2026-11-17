@@ -19,7 +19,7 @@ def _hash(text: str) -> str:
 
 
 @pytest.fixture
-def dirs(tmp_path, monkeypatch):
+def dirs(tmp_path, monkeypatch, use_test_vault):
     """ビューア側（content）と Vault 側（notes）に同じノートを置いた状態を作る"""
     app_dir = tmp_path / "content"
     vault_dir = tmp_path / "vault" / "notes"
@@ -32,7 +32,7 @@ def dirs(tmp_path, monkeypatch):
     # 索引に載っていないファイル
     (app_dir / "secret.md").write_text("secret", encoding="utf-8")
 
-    monkeypatch.setattr(note_editing, "CONTENT_DIR", app_dir)
+    use_test_vault(app_dir, tmp_path / "media")
     monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig(content_src=str(vault_dir)))
     monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [{"path": "会議/定例.md"}, {"path": "only_app.md"}])
     return app_dir, vault_dir

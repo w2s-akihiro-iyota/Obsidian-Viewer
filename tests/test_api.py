@@ -47,11 +47,9 @@ PUBLIC = "http://localhost:8000"
 
 
 @pytest.fixture
-def site(tmp_path, monkeypatch, isolated_caches):
-    for module in (content_api, editor_api, indexing, wikilinks):
-        monkeypatch.setattr(module, "CONTENT_DIR", tmp_path)
+def site(tmp_path, use_test_vault, isolated_caches):
     # 添付の置き場はノートと別のフォルダ（本物の media/ を索引に入れない）
-    monkeypatch.setattr(indexing, "MEDIA_DIR", tmp_path.parent / f"{tmp_path.name}-media")
+    use_test_vault(tmp_path, tmp_path.parent / f"{tmp_path.name}-media")
     (tmp_path / "親.md").write_text("---\npublish: true\n---\n本文 ![[子]]\n", encoding="utf-8")
     (tmp_path / "子.md").write_text("---\npublish: true\n---\n子の本文v1\n", encoding="utf-8")
     indexing.refresh_global_caches()
@@ -1454,7 +1452,6 @@ def test_既存ノートの保存は索引の作り直しを待たずに返し�
     import threading
     from app.services import note_editing
 
-    monkeypatch.setattr(note_editing, "CONTENT_DIR", site)
     monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig())
     client = TestClient(app, base_url=ADMIN)
     assert "子の本文v1" in _view(client, "子.md")
@@ -1504,7 +1501,6 @@ def _external_search(word):
 @pytest.fixture
 def editable_site(site, monkeypatch):
     from app.services import note_editing
-    monkeypatch.setattr(note_editing, "CONTENT_DIR", site)
     monkeypatch.setattr(note_editing, "load_config", lambda: SyncConfig())
     (site / "別.md").write_text("---\npublish: true\n---\n他の本文\n", encoding="utf-8")
     indexing.refresh_global_caches()
