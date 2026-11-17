@@ -209,8 +209,6 @@ def _expect_wheel_scrolls(e2e, page):
                    "ホイールで本文がスクロールしない", arg=before)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="B-22: スマホで目次の項目を押したあと、body の style に overflow:hidden が残り、ホイールで本文が動かない")
 def test_スマホで目次の項目を押したあとも本文をスクロールできる(e2e):
     page = e2e.open(width=E2E_PHONE)
     _open_drawer(e2e, page)
@@ -230,8 +228,6 @@ def test_スマホで目次の項目を押したあとも本文をスクロー�
     _expect_wheel_scrolls(e2e, page)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="B-23: スマホのドロワーを開いたまま 1280px に広げると、#sidebar の .active と body の overflow:hidden が残る")
 def test_スマホのドロワーを開いたままPCの幅に広げてもドロワーとスクロールの固定が残らない(e2e):
     page = e2e.open(width=E2E_PHONE)
     _open_drawer(e2e, page)

@@ -7,14 +7,24 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggleBtns = document.querySelectorAll('.sidebar-toggle-btn');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
+    // スマホ（768px 以下）かどうか。CSS のメディアクエリと同じ境目で、ここで作った 1 つを使い回す
+    const mobileQuery = window.matchMedia('(max-width: 768px)');
+
+    // スマホのドロワーを開け閉めする。サイドバーと暗幕の .active と、本文のスクロールを止める body の overflow は
+    // 必ずここで一緒に切り替える（別々に触ると、ドロワーは閉じたのに本文がスクロールできないまま残る。B-22・B-23）
+    function setDrawerOpen(open) {
+        if (!sidebar) return;
+        sidebar.classList.toggle('active', open);
+        if (sidebarOverlay) sidebarOverlay.classList.toggle('active', open);
+        document.body.style.overflow = open ? 'hidden' : '';
+    }
 
     if (sidebar) {
         function toggleSidebar() {
             // Use matchMedia to ensure consistency with CSS media queries
-            if (window.matchMedia('(max-width: 768px)').matches) {
+            if (mobileQuery.matches) {
                 // Mobile: Toggle Overlay/Active
-                sidebar.classList.toggle('active');
-                if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
+                setDrawerOpen(!sidebar.classList.contains('active'));
             } else {
                 // Desktop: Toggle Collapsed on HTML element
                 document.documentElement.classList.toggle('sidebar-collapsed');
@@ -32,16 +42,7 @@ function initSidebar() {
             const handleMobileClick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Force toggle
-                sidebar.classList.toggle('active');
-                if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
-
-                // Body scroll toggle
-                if (sidebar.classList.contains('active')) {
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = '';
-                }
+                setDrawerOpen(!sidebar.classList.contains('active'));
             };
 
             mobileToggleBtn.addEventListener('click', handleMobileClick);
@@ -58,12 +59,14 @@ function initSidebar() {
         }
 
         if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', () => {
-                sidebar.classList.remove('active');
-                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
-                document.body.style.overflow = '';
-            });
+            sidebarOverlay.addEventListener('click', () => setDrawerOpen(false));
         }
+
+        // 開いたまま PC の幅（769px 以上）に広げたら閉じる。PC では暗幕もスクロールの固定も要らず、
+        // 残ると読み込み直すまで本文がスクロールできない（B-23）
+        mobileQuery.addEventListener('change', (e) => {
+            if (!e.matches) setDrawerOpen(false);
+        });
     }
 
     // --- TOC Generator (Nested Tree for Outline) ---
@@ -113,10 +116,7 @@ function initSidebar() {
             contentDiv.onclick = (e) => {
                 e.stopPropagation();
                 // Close sidebar on TOC selection (Mobile Only)
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('active');
-                    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
-                }
+                if (mobileQuery.matches) setDrawerOpen(false);
 
                 // 本文側の隠した h1（記事ヘッダーのタイトルと同じもの）は高さ 0 なので、
                 // そこへ飛ぶとタイトルが画面の上に切れる。記事ヘッダーが見える位置へ飛ばす
