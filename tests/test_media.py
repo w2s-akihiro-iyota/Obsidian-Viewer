@@ -21,13 +21,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import cache
-from app.api import content as content_api
-from app.api import editor as editor_api
-from app.api import media as media_api
 from app.config import MEDIA_SAMPLES_DIR_NAME
 from app.core import indexing
 from app.main import app
-from app.services import media_migration, wikilinks
+from app.services import media_migration
 from app.services.images import MediaIndex
 from app.services.media_access import (first_image_href, frontmatter_media_rel, is_public_media, note_media_refs,
                                        resolve_media_file)
@@ -64,14 +61,11 @@ _OTHER_FILES = ("page.html", "evil.svg", "doc.pdf")
 
 
 @pytest.fixture
-def media_site(tmp_path, monkeypatch, isolated_caches):
+def media_site(tmp_path, use_test_vault, isolated_caches):
     """公開ノート・非公開ノートと、それぞれが参照する添付を置いた Vault"""
     vault, media = tmp_path / "vault", tmp_path / "media"
     vault.mkdir()
-    for module in (content_api, editor_api, indexing, wikilinks):
-        monkeypatch.setattr(module, "CONTENT_DIR", vault)
-    monkeypatch.setattr(indexing, "MEDIA_DIR", media)
-    monkeypatch.setattr(media_api, "MEDIA_DIR", media)
+    use_test_vault(vault, media)
 
     for rel, text in _NOTES.items():
         (vault / rel).write_text(text, encoding="utf-8")

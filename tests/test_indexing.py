@@ -142,11 +142,8 @@ def test_statは1件につき1回まで(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def isolated_cache(tmp_path, monkeypatch, isolated_caches):
-    from app.core import indexing
-
-    monkeypatch.setattr(indexing, "CONTENT_DIR", tmp_path)
-    monkeypatch.setattr(indexing, "MEDIA_DIR", tmp_path.parent / f"{tmp_path.name}-media")
+def isolated_cache(tmp_path, use_test_vault, isolated_caches):
+    use_test_vault(tmp_path, tmp_path.parent / f"{tmp_path.name}-media")
     return tmp_path
 
 

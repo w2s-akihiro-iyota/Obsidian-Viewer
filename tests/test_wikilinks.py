@@ -26,7 +26,7 @@ def media_index_of(*names: str) -> images.MediaIndex:
 
 
 @pytest.fixture
-def vault(tmp_path, monkeypatch):
+def vault(tmp_path, monkeypatch, use_test_vault):
     notes = {
         "会議/定例.md": "---\npublish: true\n---\n# 定例\n冒頭\n## 議題\n議題の本文\n### 詳細\n詳細の本文\n## 決定事項\n決定の本文\n",
         "公開メモ.md": "---\npublish: true\n---\n公開メモの本文\n",
@@ -43,7 +43,7 @@ def vault(tmp_path, monkeypatch):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8")
 
-    monkeypatch.setattr(wikilinks, "CONTENT_DIR", tmp_path)
+    use_test_vault(tmp_path, tmp_path.parent / f"{tmp_path.name}-media")
     monkeypatch.setattr(cache, "GLOBAL_FILE_CACHE", [{"path": r, "published": r in published} for r in notes])
     monkeypatch.setattr(cache, "NOTE_RESOLVER", NoteResolver([(r, None) for r in notes]))
     monkeypatch.setattr(cache, "PATH_TO_SLUG", {r: r[:-3].replace("/", "/") for r in notes})

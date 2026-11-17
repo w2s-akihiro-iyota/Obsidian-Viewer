@@ -15,10 +15,8 @@ from fastapi.testclient import TestClient
 from app import cache
 from app.api import content as content_api
 from app.api import errors as errors_api
-from app.api import editor as editor_api
 from app.core import indexing
 from app.main import app
-from app.services import wikilinks
 from app.utils.messages import get_error
 
 ADMIN = "http://localhost:8001"
@@ -27,10 +25,8 @@ BROWSER = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;
 
 
 @pytest.fixture
-def site(tmp_path, monkeypatch, isolated_caches):
-    for module in (content_api, editor_api, indexing, wikilinks):
-        monkeypatch.setattr(module, "CONTENT_DIR", tmp_path)
-    monkeypatch.setattr(indexing, "MEDIA_DIR", tmp_path.parent / f"{tmp_path.name}-media")
+def site(tmp_path, use_test_vault, isolated_caches):
+    use_test_vault(tmp_path, tmp_path.parent / f"{tmp_path.name}-media")
     (tmp_path / "公開.md").write_text("---\npublish: true\n---\n公開の本文\n", encoding="utf-8")
     (tmp_path / "秘密.md").write_text("---\npublish: false\n---\n秘密の本文\n", encoding="utf-8")
     indexing.refresh_global_caches()

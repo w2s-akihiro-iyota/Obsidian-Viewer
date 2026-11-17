@@ -157,6 +157,17 @@ docker-compose logs -f           # ログ確認
 - テストは対象モジュールごとのファイルに分ける（例 `tests/test_slug.py`）。`tests/test_api.py` は API・画面の契約テスト、`tests/test_note_editing.py` は既存ノート編集の契約テスト
 - `tests/` には `test_*.py` 以外を置かない（手動の検証スクリプトは残さない）。共通の fixture は `tests/conftest.py`
 - 索引を作り直すテスト（`refresh_global_caches()`）は、`conftest.py` の `isolated_caches` を使う（`app/cache.py` のキャッシュを全部、終わったら元に戻す。キャッシュを足しても直す所は無い）
+- テスト用のノートを置くときは、`conftest.py` の `use_test_vault` を使う。読む側（表示・索引・リンク・編集・添付の配信）の `CONTENT_DIR`・`MEDIA_DIR` の差し替えはここだけに書く（同期と添付の引っ越しのテストは、書き込み先なので自分で差し替える）
+- E2E（`tests/test_e2e_*.py`。JS のキー操作・フォーカスの移動・768px をまたいだときの動き）は Playwright の Python 版。pytest-playwright は使わず、fixture は `conftest.py` の `e2e`。2 ファイル以上で使う定数（セレクタ・幅・閲覧者）は `conftest.py` の `E2E_*` を `from conftest import` で使う
+  - 入れ方（コンテナを作り直したら入れ直す）: `docker exec obsidian-viewer-app sh -c "apt-get update && apt-get install -y libatomic1"`（Playwright 同梱の Node が使う）→ `pip install playwright==1.65.2`（版は `requirements-dev.txt` と同じ）→ `python -m playwright install --with-deps --only-shell chromium`
+  - いつもの全件に入る。skip するのは、入っていないことが確かなとき（playwright のモジュールが無い・Chromium の実行ファイルが無い）だけ。入っているのに読み込めない・起動できない壊れた環境は、理由と入れ方を付けて失敗にする
+  - テストの中で、テスト用のノート（`conftest.py` の `E2E_NOTES`）だけを読むサーバーを、127.0.0.1 の空きポートに管理用・公開用の 2 つ立てる（lifespan なし）。本物の 8000・8002 番と content には触らない
+  - 設定は本物の `app/server_config.yaml` を読むので、ブラウザからの GET・HEAD 以外（プレビューを除く）は既定で止め、止めたら失敗にする。保存などを確かめるテストは `page.route` で受けて偽の応答を返す（サーバーに届かせない）
+  - 直っていない不具合は、直したら通るテストを `xfail(strict=True, raises=AssertionError, reason=...)` で置く
+    - reason には、ロードマップの ID と、証拠にする状態（どこで何をすると、何がどうなっているか）を書く
+    - 不具合の判定は AssertionError で落ちる書き方にする（`expect`・`assert`・`e2e.wait_until`）。click・wait_for_url などの操作の失敗（Playwright の TimeoutError）は raises に当たらず、xfail に吸われないで失敗になる
+    - 不具合の手前の準備は `e2e.precondition()` で囲む（崩れたら xfail で隠さず失敗にする）。判定は囲まない（囲むと今の落ち方まで失敗になり、直ったときの XPASS も出ない）。直し方しだいで変わる状態は、準備ではなく判定の側で見る
+    - xfail の印が付いたテストは、`expect` と `wait_until` の上限が 2 秒になる（`e2e` が印を見て自動で切り替える）。直したら印を外して、そのテストを流して通ることを確かめる（待ちが短いままだと、直ったのに xfail のままになることがある）
 
 ## Common Pitfalls
 - Uvicornのワーカー数は1に固定すること (ログ重複防止)。起動は `python -m app.server`（2ポートを1プロセスで待ち受け）
