@@ -23,7 +23,7 @@ function initShortcutSheet() {
         returnFocus = document.activeElement;
         arrangeGroups(returnFocus);
         modal.classList.add('active');
-        document.body.classList.add('no-scroll');
+        syncBackgroundScrollLock();
         body.scrollTop = 0;
         // Esc を受けられるように、開いたシートへフォーカスを移す
         sheet.focus({ preventScroll: true });
@@ -31,11 +31,9 @@ function initShortcutSheet() {
 
     const close = ({ restoreFocus = true } = {}) => {
         modal.classList.remove('active');
-        document.body.classList.remove('no-scroll');
-        // ツリーなどから開いたなら、閉じたらその場所に戻って続けて操作できるように
-        if (restoreFocus && returnFocus && document.contains(returnFocus)) {
-            returnFocus.focus({ preventScroll: true });
-        }
+        // Ctrl+K で検索に譲ったときは、検索が開いているので固定のまま（B-24）
+        syncBackgroundScrollLock();
+        if (restoreFocus) restoreFocusAfterSheet(returnFocus);
         returnFocus = null;
     };
 
@@ -86,6 +84,21 @@ function initShortcutSheet() {
 }
 
 /**
+ * 一覧を閉じたら、開く前にフォーカスのあった場所へ戻す（ツリーなどから開いたなら、続けて操作できるように）。
+ * その場所が隠れていて戻せない（768px 以下の「＋」の中から開くと、フォーカスが一覧へ移った時点で「＋」がしまう。B-26）なら、
+ * 隠した入れ物が data-focus-fallback に書いた要素（id。「＋」の開閉ボタン）へ戻す。body に落とさない
+ * 戻せたかは、見えているかを調べる代わりに、実際にフォーカスが移ったかで見る（隠れた・押せない・inert のどれでも外れる）
+ */
+function restoreFocusAfterSheet(el) {
+    if (!el || !document.contains(el)) return;
+    el.focus({ preventScroll: true });
+    if (document.activeElement === el) return;
+    const holder = el.closest('[data-focus-fallback]');
+    const fallback = holder && document.getElementById(holder.dataset.focusFallback);
+    if (fallback) fallback.focus({ preventScroll: true });
+}
+
+/**
  * 要素のある「フォーカスの場所」の id（data-shortcut-place。無ければ null）
  * 場所の id は app/shortcuts.py の FOCUS_* で、テンプレートが目印として付ける
  */
@@ -102,9 +115,13 @@ function groupUsableAt(groupEl, place) {
     return Boolean(place) && (groupEl.dataset.contexts || '').split(' ').includes(place);
 }
 
+// 文字を打たない input（押す・選ぶだけ）の type。これにフォーカスがあっても 1 文字のショートカットは効かせる
+// （つながりの歩数のラジオを押したあとも ? と G が効くように。B-25）
+const NON_TYPING_INPUT_TYPES = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image']);
+
 /**
  * 1 文字のキー（? や記事ページの G）をショートカットとして扱ってよいか
- * 文字を打っている場所（入力欄・textarea・contenteditable・select）、日本語の変換中、
+ * 文字を打っている場所（文字を打つ input・textarea・contenteditable・select）、日本語の変換中、
  * Ctrl / ⌘ / Alt との組み合わせでは、文字入力やほかの操作に譲る
  */
 function isShortcutKey(e) {
@@ -113,7 +130,8 @@ function isShortcutKey(e) {
     const target = e.target;
     if (!(target instanceof Element)) return true;
     if (target.isContentEditable) return false;
-    return !target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+    if (target instanceof HTMLInputElement) return NON_TYPING_INPUT_TYPES.has(target.type);
+    return !target.closest('textarea, select, [contenteditable]:not([contenteditable="false"])');
 }
 
 /**

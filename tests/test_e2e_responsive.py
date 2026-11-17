@@ -8,12 +8,10 @@
 - スマホのドロワー: 目次の項目を押したあと・開いたまま PC の幅に広げたあとも、本文はスクロールできる（sidebar.js）
 - エディタ: 境目をドラッグしてから 768px 以下にしても、縦に並んだ入力欄とプレビューは同じ高さ（editor.js）
 
-直っていない不具合（ロードマップの ID）は、直したら通るテストを xfail(strict=True) で置いている（書き方の約束は
+直っていない不具合（ロードマップの ID）は、直したら通るテストを xfail(strict=True) で置く（書き方の約束は
 CLAUDE.md の Testing と conftest.py の E2ESite.precondition）。直して通るようになると XPASS で落ちるので、そのときは印を外す
 """
 import re
-
-import pytest
 
 from conftest import (E2E_ACTIVE, E2E_GRAPH_BUTTON, E2E_GRAPH_PANEL, E2E_PC, E2E_PHONE, E2E_SHORTCUT_SHEET,
                       import_playwright)
@@ -164,8 +162,6 @@ def test_縦三点は768px以下でプラスの中へPCで元の場所へ戻り�
 
 # ---------- 768px 以下の「＋」の中から ?（B-26） ----------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="B-26: 768px 以下で＋の中から ? → Esc のあと、フォーカスが＋にも項目にも戻らず body に落ちる")
 def test_スマホのプラスの中からクエスチョンで開いた一覧をEscで閉じるとフォーカスが見える場所へ戻る(e2e):
     page = e2e.open(width=E2E_PHONE)
     dial = page.locator(DIAL)
@@ -240,8 +236,6 @@ def test_スマホのドロワーを開いたままPCの幅に広げてもドロ
 
 # ---------- エディタの境目（X-10） ----------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="X-10: エディタの境目を左端までドラッグしてから 390px にすると、縦に並んだ入力欄とプレビューの高さが 10px を超えてずれる")
 def test_エディタの境目をドラッグしてからスマホの幅にしても入力欄とプレビューは同じ高さ(e2e):
     page = e2e.open_path("/editor")
     input_pane, preview_pane = page.locator(".editor-input-pane"), page.locator(".editor-preview-pane")

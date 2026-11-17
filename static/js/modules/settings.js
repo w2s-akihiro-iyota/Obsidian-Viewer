@@ -20,7 +20,7 @@ function initSettingsModule() {
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
             settingsModal.classList.add('active');
-            document.body.classList.add('no-scroll');
+            syncBackgroundScrollLock();
         }
         sessionStorage.removeItem('settingsModalOpen');
     }
@@ -43,7 +43,7 @@ function initHelpModal() {
 
         const closeHelp = () => {
             helpModal.classList.remove('active');
-            document.body.classList.remove('no-scroll');
+            syncBackgroundScrollLock();
         };
 
         closeHelpModalBtn.addEventListener('click', closeHelp);
@@ -78,7 +78,7 @@ function openHelpModal(tabName) {
     if (!helpModal) return;
     if (tabName) selectHelpTab(tabName);
     helpModal.classList.add('active');
-    document.body.classList.add('no-scroll');
+    syncBackgroundScrollLock();
 }
 
 /**
@@ -105,7 +105,7 @@ function initWelcomeModal() {
         if (localStorage.getItem('welcomeShown')) return;
         setTimeout(() => {
             welcomeModal.classList.add('active');
-            document.body.classList.add('no-scroll');
+            syncBackgroundScrollLock();
         }, 1000);
     });
 
@@ -113,7 +113,7 @@ function initWelcomeModal() {
         welcomeModal.classList.add('closing');
         setTimeout(() => {
             welcomeModal.classList.remove('active', 'closing');
-            document.body.classList.remove('no-scroll');
+            syncBackgroundScrollLock();
         }, 300);
         localStorage.setItem('welcomeShown', 'true');
     };
@@ -129,7 +129,7 @@ function initWelcomeModal() {
                 const settingsModal = document.getElementById('settings-modal');
                 if (!settingsModal) return;
                 settingsModal.classList.add('active');
-                document.body.classList.add('no-scroll');
+                syncBackgroundScrollLock();
                 // ファイル同期タブをアクティブにする
                 const navItems = document.querySelectorAll('.settings-nav-item');
                 const tabPanes = document.querySelectorAll('.settings-tab-pane');
@@ -253,6 +253,7 @@ function initSettings() {
         openBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 settingsModal.classList.add('active');
+                syncBackgroundScrollLock();
             });
         });
     }
@@ -382,13 +383,13 @@ function initSettings() {
         openBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 settingsModal.classList.add('active');
-                document.body.classList.add('no-scroll');
+                syncBackgroundScrollLock();
             });
         });
 
         closeBtn.addEventListener('click', () => {
             settingsModal.classList.remove('active');
-            document.body.classList.remove('no-scroll');
+            syncBackgroundScrollLock();
             if (tutorialMode) endTutorial();
         });
     }
@@ -397,7 +398,7 @@ function initSettings() {
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
                 settingsModal.classList.remove('active');
-                document.body.classList.remove('no-scroll');
+                syncBackgroundScrollLock();
                 if (tutorialMode) endTutorial();
             }
         });
@@ -1266,7 +1267,7 @@ function openSyncReport() {
     const report = document.getElementById('sync-report');
     if (!settingsModal || !report) return;
     settingsModal.classList.add('active');
-    document.body.classList.add('no-scroll');
+    syncBackgroundScrollLock();
     document.querySelectorAll('.settings-nav-item').forEach(nav => nav.classList.toggle('active', nav.getAttribute('data-tab') === 'files'));
     document.querySelectorAll('.settings-tab-pane').forEach(pane => pane.classList.toggle('active', pane.id === 'settings-tab-files'));
     loadSyncReport().then(() => report.scrollIntoView({ behavior: 'smooth', block: 'start' }));

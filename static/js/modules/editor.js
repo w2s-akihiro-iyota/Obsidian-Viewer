@@ -127,9 +127,10 @@ function initEditor() {
         }
     });
 
-    // Ctrl+S で保存
+    // Ctrl+S で保存。CapsLock 中は e.key が 'S' になるので、大文字も受ける。
+    // Shift を押したとき（Ctrl+Shift+S）は、これまでどおりブラウザに任せる
     document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
             // エディタページでのみ動作
             if (document.activeElement === textarea || filenameInput || editPath) {
                 e.preventDefault();
@@ -269,12 +270,11 @@ function initEditor() {
     if (resizer) {
         let isResizing = false;
         const panes = document.querySelector('.editor-panes');
-        const inputPane = document.querySelector('.editor-input-pane');
-        const previewPane = document.querySelector('.editor-preview-pane');
+        const phoneQuery = window.matchMedia('(max-width: 768px)');
 
         resizer.addEventListener('mousedown', (e) => {
-            // モバイルでは無効
-            if (window.matchMedia('(max-width: 768px)').matches) return;
+            // スマホの幅（縦並び）ではドラッグしない
+            if (phoneQuery.matches) return;
             isResizing = true;
             document.body.classList.add('editor-resizing');
             resizer.classList.add('active');
@@ -288,8 +288,10 @@ function initEditor() {
             const totalWidth = rect.width;
             const ratio = Math.min(Math.max(offset / totalWidth, 0.2), 0.8);
 
-            inputPane.style.flex = `0 0 ${ratio * 100}%`;
-            previewPane.style.flex = `0 0 ${(1 - ratio) * 100}%`;
+            // 入力欄の幅は CSS のカスタムプロパティで渡し、使うのは横並び（PC の幅）の CSS だけにする。
+            // インラインの flex にすると、スマホの幅の縦並びにも残って入力欄が小さいままになる（X-10）。
+            // プレビューは残りを使う（editor.css の .editor-pane の flex: 1）
+            panes.style.setProperty('--editor-input-flex', `0 0 ${ratio * 100}%`);
         });
 
         document.addEventListener('mouseup', () => {

@@ -11,7 +11,7 @@
 - 背景のスクロールの固定: モーダルが開いているあいだは、裏の本文をスクロールさせない（body.no-scroll。B-24）
 - エディタ: Ctrl+S で保存し、ブラウザの保存は止める（保存の POST は page.route で受け、サーバーに届かせない）
 
-直っていない不具合（ロードマップの ID）は、直したら通るテストを xfail(strict=True) で置いている（書き方の約束は
+直っていない不具合（ロードマップの ID）は、直したら通るテストを xfail(strict=True) で置く（書き方の約束は
 CLAUDE.md の Testing と conftest.py の E2ESite.precondition）。直して通るようになると XPASS で落ちるので、そのときは印を外す
 """
 import re
@@ -296,8 +296,6 @@ def _expect_wheel_does_not_scroll(page):
     assert page.evaluate("document.scrollingElement.scrollTop") == before, "モーダルの裏で本文がスクロールした"
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="B-24: ? の一覧を開いたまま Ctrl+K を押すと、body の no-scroll が外れる（検索の裏で本文がスクロールする）")
 def test_ショートカット一覧の上でCtrlKを押しても検索の裏で本文はスクロールしない(e2e):
     page = e2e.open()
     page.keyboard.press("?")
@@ -311,8 +309,6 @@ def test_ショートカット一覧の上でCtrlKを押しても検索の裏で
     _expect_wheel_does_not_scroll(page)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="B-24: 設定の上で Ctrl+K → Esc で検索を閉じると、設定は開いたままなのに body の no-scroll が外れる")
 def test_設定の上で開いた検索をEscで閉じても設定は開いたままで背景は固定のまま(e2e):
     page = e2e.open()
     page.locator("#settings-open-btn").click()
@@ -331,8 +327,6 @@ def test_設定の上で開いた検索をEscで閉じても設定は開いた�
 
 # ---------- つながりの歩数のラジオ（B-25） ----------
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason="B-25: つながりの歩数（ラジオ）を押したあと、? で一覧が開かず G でつながりが閉じない（ラジオを文字の入力欄とみなす）")
 def test_つながりの歩数を押したあともクエスチョンとGが効く(e2e):
     page = e2e.open()
     page.keyboard.press("g")
@@ -357,9 +351,7 @@ def test_つながりの歩数を押したあともクエスチョンとGが効�
 @pytest.mark.parametrize("key", [
     "s",
     # CapsLock 中は e.key が 'S' になる（Playwright では CapsLock の状態を作れないので、key が 'S' の Ctrl+S を送る）
-    pytest.param("S", marks=pytest.mark.xfail(
-        strict=True, raises=AssertionError,
-        reason="B-27: e.key が 'S'（CapsLock 中）の Ctrl+S で、保存の POST が出ず、keydown も preventDefault されない")),
+    "S",
 ])
 def test_エディタはCtrlSで保存しブラウザの保存を止める(e2e, key):
     page = e2e.open_path("/editor")

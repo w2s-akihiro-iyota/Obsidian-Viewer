@@ -119,6 +119,12 @@ body.page-editor footer {
     overflow: hidden;
 }
 
+/* 境目をドラッグして決めた入力欄の幅（editor.js が .editor-panes に --editor-input-flex を付ける）。
+   付いていなければ半分ずつ。スマホの幅（縦並び）では使わない（下の @media で flex: 1 に戻す） */
+.editor-input-pane {
+    flex: var(--editor-input-flex, 1);
+}
+
 .editor-pane-header {
     display: flex;
     align-items: center;
@@ -205,10 +211,20 @@ body.editor-resizing .editor-preview-pane {
         flex-direction: column;
     }
 
+    /* PC の幅でドラッグした幅は、縦並びには持ち込まない（PC の幅に戻ればまた効く） */
+    .editor-input-pane {
+        flex: 1;
+    }
+
+    /* スマホの幅ではドラッグできないので、つかめるように見せない（カーソルも、乗せたときの色も変えない） */
     .editor-resizer {
         width: 100%;
         height: 4px;
-        cursor: row-resize;
+        cursor: default;
+    }
+
+    .editor-resizer:hover {
+        background: var(--border-color);
     }
 
     .editor-preview-pane {

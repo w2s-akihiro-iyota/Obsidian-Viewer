@@ -358,7 +358,7 @@ function initSearch() {
 
         const openModal = () => {
             searchModal.classList.add('active');
-            document.body.classList.add('no-scroll'); // Lock scroll
+            syncBackgroundScrollLock();
             renderRecent();
             // visibility の切り替えが終わってからでないとフォーカスできない
             setTimeout(() => modalSearchInput.focus(), 50);
@@ -369,7 +369,8 @@ function initSearch() {
             clearTimeout(modalDebounceTimer);
             modalRequestSeq++; // 閉じた後に届いた検索結果は捨てる
             searchModal.classList.remove('active');
-            document.body.classList.remove('no-scroll'); // Unlock scroll
+            // 設定などの上で開いていたら、そちらが開いているあいだは固定のまま（B-24）
+            syncBackgroundScrollLock();
             modalSearchInput.value = '';
             modalSearchResults.innerHTML = '';
             selectedIndex = -1;
