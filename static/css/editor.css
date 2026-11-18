@@ -186,9 +186,27 @@ body.page-editor footer {
     touch-action: none;
 }
 
+/* つかめる範囲: 見た目の線（4px）はそのままで、プレビューの側へ 20px 広げる（合わせて 24px。X-14）。
+   入力欄の側には広げない（入力欄のスクロールバーにかぶる）。プレビューの左の余白（24px）の中に収まる */
+.editor-resizer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: -20px;
+}
+
 .editor-resizer:hover,
 .editor-resizer.active {
     background: var(--accent-purple);
+}
+
+/* キーボードで選んでいる境目（← → で幅を変えられる。X-15） */
+.editor-resizer:focus-visible {
+    background: var(--accent-purple);
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
 }
 
 /* --- Resizing state --- */
@@ -229,6 +247,11 @@ body.editor-resizing .editor-preview-pane {
 
     .editor-resizer:hover {
         background: var(--border-color);
+    }
+
+    /* 縦並びでは動かせないので、つかめる範囲も広げない（なぞったら、ふつうにページをスクロールする） */
+    .editor-resizer::before {
+        display: none;
     }
 
     .editor-preview-pane {

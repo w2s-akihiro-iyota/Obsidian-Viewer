@@ -66,20 +66,9 @@ function initEditor() {
             });
         }
 
-        // KaTeX
-        if (window.renderMathInElement) {
-            renderMathInElement(preview, {
-                delimiters: [
-                    { left: '$$', right: '$$', display: true },
-                    { left: '$', right: '$', display: false },
-                    { left: '\\(', right: '\\)', display: false },
-                    { left: '\\[', right: '\\]', display: true }
-                ],
-                // Mermaid の図（先に pre から div に置き換えている）の中の $ を数式にしない
-                ignoredClasses: ['mermaid'],
-                throwOnError: false
-            });
-        }
+        // KaTeX（math.js。記事ページと同じ描き方で、ドル記号の数式（.math.inline・.math.block）も描く。B-30）。
+        // Mermaid の図（先に pre から div に置き換えている）の中の $ を数式にしない
+        if (typeof renderMathIn === 'function') renderMathIn(preview, { ignoredClasses: ['mermaid'] });
     }
 
     // リアルタイムプレビュー
@@ -269,17 +258,49 @@ function initEditor() {
     // ペインリサイザー
     // マウスでもタッチ（769px 以上のタブレットなど）でもドラッグできるように pointer events で受ける（X-12）。
     // 押した指・ボタンを境目に捕まえ（setPointerCapture）、境目の外へ出ても動きと離したことが境目に届くようにする。
-    // タッチでなぞってもページがスクロールしないのは、editor.css の .editor-resizer の touch-action: none
+    // タッチでなぞってもページがスクロールしないのは、editor.css の .editor-resizer の touch-action: none。
+    // キーボードでも動かせる（X-15）: 境目を選んで ← → で RESIZER_STEP ずつ、Home・End で端まで。
+    // 今の入力欄の幅（%）は aria-valuenow に持ち、範囲（aria-valuemin・aria-valuemax）はドラッグとキーで同じ
     if (resizer) {
+        const RESIZER_STEP = 5;     // ← → を 1 回押して動かす幅（%）
         let dragPointerId = null;   // ドラッグしている指・ボタンの pointerId（していなければ null）
+        let grabOffset = 0;         // つかんだ所の、境目の左端からの距離（広げた範囲（X-14）でつかんでも、その所が境目についてくる）
         const panes = document.querySelector('.editor-panes');
+        const inputPane = document.querySelector('.editor-input-pane');
         const phoneQuery = window.matchMedia('(max-width: 768px)');
+        const ratioMin = Number(resizer.getAttribute('aria-valuemin'));
+        const ratioMax = Number(resizer.getAttribute('aria-valuemax'));
+
+        // 入力欄の幅（枠に対する %）を決める。CSS のカスタムプロパティで渡し、使うのは横並び（PC の幅）の CSS だけにする。
+        // インラインの flex にすると、スマホの幅の縦並びにも残って入力欄が小さいままになる（X-10）。
+        // プレビューは残りを使う（editor.css の .editor-pane の flex: 1）
+        function setInputRatio(percent) {
+            const ratio = Math.min(Math.max(percent, ratioMin), ratioMax);
+            panes.style.setProperty('--editor-input-flex', `0 0 ${ratio}%`);
+            resizer.setAttribute('aria-valuenow', String(Math.round(ratio)));
+        }
+
+        // スマホの幅（縦並び）では動かせないので、選べないようにし、読み上げからも外す
+        function syncResizerForWidth() {
+            resizer.tabIndex = phoneQuery.matches ? -1 : 0;
+            if (phoneQuery.matches) resizer.setAttribute('aria-hidden', 'true');
+            else resizer.removeAttribute('aria-hidden');
+        }
+        syncResizerForWidth();
+        phoneQuery.addEventListener('change', syncResizerForWidth);
+        if (panes && inputPane && !phoneQuery.matches) {
+            const width = panes.getBoundingClientRect().width;
+            if (width) resizer.setAttribute('aria-valuenow', String(Math.round(inputPane.getBoundingClientRect().width / width * 100)));
+        }
 
         resizer.addEventListener('pointerdown', (e) => {
             // スマホの幅（縦並び）ではドラッグしない。ドラッグ中に別の指で触れても、最初の指のまま
             if (phoneQuery.matches || !panes || dragPointerId !== null) return;
             dragPointerId = e.pointerId;
+            grabOffset = e.clientX - resizer.getBoundingClientRect().left;
             resizer.setPointerCapture(e.pointerId);
+            // クリックで選び、続けて ← → で動かせるようにする（下の preventDefault で、ふつうのフォーカスが起きないため）
+            resizer.focus({ preventScroll: true });
             document.body.classList.add('editor-resizing');
             resizer.classList.add('active');
             e.preventDefault();
@@ -288,14 +309,16 @@ function initEditor() {
         resizer.addEventListener('pointermove', (e) => {
             if (e.pointerId !== dragPointerId) return;
             const rect = panes.getBoundingClientRect();
-            const offset = e.clientX - rect.left;
-            const totalWidth = rect.width;
-            const ratio = Math.min(Math.max(offset / totalWidth, 0.2), 0.8);
+            setInputRatio((e.clientX - grabOffset - rect.left) / rect.width * 100);
+        });
 
-            // 入力欄の幅は CSS のカスタムプロパティで渡し、使うのは横並び（PC の幅）の CSS だけにする。
-            // インラインの flex にすると、スマホの幅の縦並びにも残って入力欄が小さいままになる（X-10）。
-            // プレビューは残りを使う（editor.css の .editor-pane の flex: 1）
-            panes.style.setProperty('--editor-input-flex', `0 0 ${ratio * 100}%`);
+        resizer.addEventListener('keydown', (e) => {
+            if (phoneQuery.matches || !panes || e.altKey || e.ctrlKey || e.metaKey) return;
+            const now = Number(resizer.getAttribute('aria-valuenow'));
+            const next = { ArrowLeft: now - RESIZER_STEP, ArrowRight: now + RESIZER_STEP, Home: ratioMin, End: ratioMax }[e.key];
+            if (next === undefined) return;
+            e.preventDefault();
+            setInputRatio(next);
         });
 
         // 離したとき・ブラウザがドラッグを取り上げたとき（pointercancel）に終える。捕まえは離すとブラウザが外す

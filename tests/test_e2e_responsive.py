@@ -14,8 +14,8 @@ CLAUDE.md の Testing と conftest.py の E2ESite.precondition）。直して通
 """
 import re
 
-from conftest import (E2E_ACTIVE, E2E_GRAPH_BUTTON, E2E_GRAPH_PANEL, E2E_PC, E2E_PHONE, E2E_SHORTCUT_SHEET,
-                      import_playwright)
+from conftest import (E2E_ACTIVE, E2E_EDITOR_RESIZER, E2E_GRAPH_BUTTON, E2E_GRAPH_PANEL, E2E_PC, E2E_PHONE,
+                      E2E_SHORTCUT_SHEET, import_playwright)
 
 expect = import_playwright().expect
 
@@ -244,7 +244,7 @@ def test_スマホのドロワーを開いたままPCの幅に広げてもドロ
 def test_エディタの境目をドラッグしてからスマホの幅にしても入力欄とプレビューは同じ高さ(e2e):
     page = e2e.open_path("/editor")
     input_pane, preview_pane = page.locator(".editor-input-pane"), page.locator(".editor-preview-pane")
-    resizer = page.locator("#editor-resizer").bounding_box()
+    resizer = page.locator(E2E_EDITOR_RESIZER).bounding_box()
     panes = page.locator(".editor-panes").bounding_box()
     y = resizer["y"] + resizer["height"] / 2
     page.mouse.move(resizer["x"] + resizer["width"] / 2, y)
@@ -264,7 +264,7 @@ def test_エディタの境目をドラッグしてからスマホの幅にし�
 def test_エディタの境目はタッチでもドラッグできスマホの幅ではタッチのスクロールを止めない(e2e):
     page = e2e.open_path("/editor")
     input_pane = page.locator(".editor-input-pane")
-    resizer = page.locator("#editor-resizer")
+    resizer = page.locator(E2E_EDITOR_RESIZER)
     box = resizer.bounding_box()
     panes = page.locator(".editor-panes").bounding_box()
     # 境目に届いた入力の種類を記録する（マウスではなくタッチとして届いたことを確かめる）

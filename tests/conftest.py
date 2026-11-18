@@ -131,6 +131,7 @@ E2E_GRAPH_PANEL = "#local-graph"            # つながりのパネル（768px �
 E2E_GRAPH_BUTTON = "#local-graph-toggle"    # つながりのボタン（768px 以下では「＋」の中の最初の項目）
 E2E_SHORTCUT_SHEET = "#shortcut-sheet"      # ? のショートカット一覧
 E2E_DIR_BROWSER = "#dir-browser-modal"      # 設定の中のフォルダ選び（E2ESite.open_dir_browser で開く）
+E2E_EDITOR_RESIZER = "#editor-resizer"      # エディタの入力欄とプレビューの境目（ドラッグ・←→ で幅を変える）
 E2E_ACTIVE = re.compile(r"\bactive\b")      # モーダル・ドロワーが開いている印のクラス
 # フォルダ選び（E2ESite.open_dir_browser）で返す偽の同期の設定（本物の設定は読まない）。同期を有効にしておくと「参照...」が出る
 E2E_FAKE_SYNC_CONFIG = {"sync_enabled": True, "auto_sync_enabled": False, "content_src": "/e2e-元", "extra_sources": [],

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/static/js/vendor/katex-0.16.9/katex.min.css">
 <script defer src="/static/js/vendor/katex-0.16.9/katex.min.js"></script>
 <script defer src="/static/js/vendor/katex-0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="{{ static_url('js/modules/math.js') }}"></script>
 {% endblock %}
 
 {% block body_class %}page-editor{% endblock %}
@@ -62,7 +63,11 @@
         </div>
         <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false"{% if edit_path %} data-edit-path="{{ edit_path }}" data-view-slug="{{ edit_slug }}"{% endif %}></textarea>
     </div>
-    <div class="editor-resizer" id="editor-resizer"></div>
+    {# 境目: ドラッグ（マウス・タッチ）か、選んで ← → Home End で入力欄の幅を変える（editor.js。X-12・X-15）。
+       aria-valuenow は入力欄の幅（%）。範囲はドラッグと同じ。スマホの幅では動かせないので、editor.js が選べなくする #}
+    <div class="editor-resizer" id="editor-resizer" role="separator" aria-orientation="vertical" aria-label="編集とプレビューの境目"
+         aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" tabindex="0" title="ドラッグか、クリックしてから ← → で幅を変える"
+         data-shortcut-place="{{ shortcuts.FOCUS_EDITOR_RESIZER }}"></div>
     <div class="editor-pane editor-preview-pane">
         <div class="editor-pane-header">
             <span>プレビュー</span>
