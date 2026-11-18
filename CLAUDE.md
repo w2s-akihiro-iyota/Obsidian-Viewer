@@ -47,7 +47,7 @@ app/
 ├── utils/
 │   ├── helpers.py         # 管理者判定・CSRF判定等のユーティリティ
 │   ├── messages.py        # i18nメッセージリーダー
-│   └── static_version.py  # CSS・JS の URL に中身から作った版（?v=）を付ける（テンプレートの static_url / stylesheet_urls）
+│   └── static_version.py  # CSS・JS の URL に中身から作った版（?v=）を付ける（テンプレートの static_url / stylesheet_urls）。版付きの URL の配信（VersionedStaticFiles）
 ├── cache.py               # インメモリキャッシュのインスタンス管理
 ├── config.py              # アプリケーションのパス・定数設定
 ├── events.py              # バックグラウンド処理用のイベント管理
@@ -86,6 +86,8 @@ static/
 - テーマは CSS Custom Properties (`--variable`) で切り替え
   - アクセント色は用途で使い分ける: 線・地・飾りは `--accent-purple`、文字は `--accent-text`、白い文字を載せる塗りは `--accent-fill`（どれもテーマごとの値は `variables.css`）。色を直書きしない
 - テンプレートから CSS・JS を読み込むときは `{{ static_url("js/modules/x.js") }}` を使う。版（`?v=`）は中身から自動で付くので、手で書かない。CSS を足すときは `static/css/style.css` に `@import` を足す
+  - 版は起動して最初に使ったときに作り、再起動まで変えない（ページのたびにファイルを見に行くと、Docker のマウント越しで 1 秒以上かかるため）。CSS・JS を直したら再起動する（下の Build & Run）
+  - 版付きの URL はブラウザが 1 年覚える（`Cache-Control: immutable`。`app/utils/static_version.py` の `VersionedStaticFiles`）。版の付かない URL（vendor・logo など）には付けない
 - 状態管理は `localStorage` (テーマ、サイドバー状態、サイドバー幅)
 - アイコンは Lucide SVG を使用
 - モーダル（開いているときは `.active`）の一覧は `core.js` の `MODALS_TOP_FIRST` の 1 つだけ。Esc・裏のスクロールの固定・ショートカットを止めるのは、どれもここから決まる
@@ -143,6 +145,8 @@ docker-compose up -d --build     # ビルド＆起動
 docker-compose down              # 停止
 docker-compose logs -f           # ログ確認
 ```
+- `app/`・`templates/`・`static/` はマウントしているが、Uvicorn は変更を自動で読み直さない。`app/` の Python か `static/` の CSS・JS を変えたら `docker restart obsidian-viewer-app`（テンプレートは次のリクエストから新しくなる）
+  - Python だけ古いままだと、新しいテンプレートが新しい名前を使ったときに全ページが 500 になる。CSS・JS は版が変わらないので、ブラウザが古いものを使い続ける
 
 ### Important Paths (Docker Container)
 - コンテンツ: `/app/content/`
