@@ -90,7 +90,11 @@ E2E_VIEWERS = (E2E_ADMIN, E2E_PUBLIC)
 E2E_GRAPH_PANEL = "#local-graph"            # つながりのパネル（768px 以下では下からのシート）
 E2E_GRAPH_BUTTON = "#local-graph-toggle"    # つながりのボタン（768px 以下では「＋」の中の最初の項目）
 E2E_SHORTCUT_SHEET = "#shortcut-sheet"      # ? のショートカット一覧
+E2E_DIR_BROWSER = "#dir-browser-modal"      # 設定の中のフォルダ選び（E2ESite.open_dir_browser で開く）
 E2E_ACTIVE = re.compile(r"\bactive\b")      # モーダル・ドロワーが開いている印のクラス
+# フォルダ選び（E2ESite.open_dir_browser）で返す偽の同期の設定（本物の設定は読まない）。同期を有効にしておくと「参照...」が出る
+E2E_FAKE_SYNC_CONFIG = {"sync_enabled": True, "auto_sync_enabled": False, "content_src": "/e2e-元", "extra_sources": [],
+                        "images_src": "", "base_url": "", "interval_minutes": 60, "last_sync": ""}
 # サーバーが立ち上がるまで・止まるまで待つ上限（秒）
 E2E_SERVER_START_TIMEOUT = 15
 E2E_SERVER_STOP_TIMEOUT = 10
@@ -327,6 +331,22 @@ class E2ESite:
         応答を MESSAGES に入れたあとの初期化は、ほかの処理をはさまずに続けて走るので、MESSAGES が埋まっていれば keydown も付いている
         """
         page.wait_for_function("() => Object.keys(MESSAGES.system).length > 0")
+
+    def open_dir_browser(self, page, **list_dirs) -> None:
+        """
+        管理者のページで設定を開き、同期の元フォルダの「参照...」からフォルダ選び（E2E_DIR_BROWSER）を開く（開いたかはテストが確かめる）
+
+        同期の設定（/api/sync/config）は E2E_FAKE_SYNC_CONFIG、フォルダの一覧（/api/list-dirs）は list_dirs
+        （route.fulfill の引数。json・status など）の偽の応答にする。本物の設定と、コンテナのフォルダは読まない。
+        同期の設定はページを読んだときに読むので、偽の応答を付けてから読み直す
+        """
+        page.route(re.compile(r"/api/sync/config$"), lambda route: route.fulfill(json=E2E_FAKE_SYNC_CONFIG))
+        page.route(re.compile(r"/api/list-dirs\?"), lambda route: route.fulfill(**list_dirs))
+        page.reload()
+        self.wait_ready(page)
+        page.locator("#settings-open-btn").click()
+        page.locator(".settings-nav-item[data-tab='files']").click()
+        page.locator(".browser-dir-btn[data-target='setting-content-src']").click()
 
     def wait_until(self, page, condition: str, message: str, arg=None, polling="raf") -> None:
         """

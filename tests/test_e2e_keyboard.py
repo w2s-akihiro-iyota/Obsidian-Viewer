@@ -21,8 +21,8 @@ import re
 
 import pytest
 
-from conftest import (E2E_ACTIVE, E2E_ADMIN, E2E_GRAPH_BUTTON, E2E_GRAPH_PANEL, E2E_IMAGE_NOTE, E2E_PUBLIC,
-                      E2E_SHORTCUT_SHEET, E2E_VIEWERS, import_playwright)
+from conftest import (E2E_ACTIVE, E2E_ADMIN, E2E_DIR_BROWSER, E2E_FAKE_SYNC_CONFIG, E2E_GRAPH_BUTTON, E2E_GRAPH_PANEL,
+                      E2E_IMAGE_NOTE, E2E_PUBLIC, E2E_SHORTCUT_SHEET, E2E_VIEWERS, import_playwright)
 
 playwright_api = import_playwright()
 expect = playwright_api.expect
@@ -38,13 +38,10 @@ SEARCH_INPUT = "#modal-search-input"
 SEARCH_ITEMS = "#modal-search-results .search-result-item"
 SETTINGS = "#settings-modal"
 WELCOME = "#welcome-modal"
-DIR_BROWSER = "#dir-browser-modal"
 TUTORIAL_BANNER = "#tutorial-banner"
 LIGHTBOX = "#lightbox-overlay"
 LIGHTBOX_IMAGE = "#lightbox-image"
 EDITOR_WRITES = re.compile(r"/api/editor/(save|update)$")
-SYNC_CONFIG = re.compile(r"/api/sync/config$")
-LIST_DIRS = re.compile(r"/api/list-dirs\?")
 
 SELECTED = re.compile(r"\bselected\b")
 NO_SCROLL = re.compile(r"\bno-scroll\b")
@@ -405,23 +402,14 @@ def test_チュートリアル中の設定をEscで閉じるとチュートリ�
     expect(page.locator("body")).not_to_have_class(NO_SCROLL)
 
 
-# フォルダ選びの偽の応答（本物の設定と、コンテナのフォルダは読まない）。同期を有効にしておくと「参照...」が出る
-FAKE_SYNC_CONFIG = {"sync_enabled": True, "auto_sync_enabled": False, "content_src": "/e2e-元", "extra_sources": [],
-                    "images_src": "", "base_url": "", "interval_minutes": 60, "last_sync": ""}
+# フォルダ選びの偽の応答（コンテナのフォルダは読まない。同期の設定は E2ESite.open_dir_browser が偽の応答にする）
 FAKE_DIRS = {"current": "/e2e-元", "parent": "/", "dirs": [{"name": "サブ", "path": "/e2e-元/サブ"}]}
 
 
 def test_設定の中のフォルダ選びはEsc1回目でフォルダ選びだけ閉じ2回目で設定を閉じる(e2e):
     page = e2e.open()
-    # 同期の設定は開いたときに読むので、偽の応答を付けてから読み直す
-    page.route(SYNC_CONFIG, lambda route: route.fulfill(json=FAKE_SYNC_CONFIG))
-    page.route(LIST_DIRS, lambda route: route.fulfill(json=FAKE_DIRS))
-    page.reload()
-    e2e.wait_ready(page)
-    settings, dir_browser = page.locator(SETTINGS), page.locator(DIR_BROWSER)
-    page.locator("#settings-open-btn").click()
-    page.locator(".settings-nav-item[data-tab='files']").click()
-    page.locator(".browser-dir-btn[data-target='setting-content-src']").click()
+    e2e.open_dir_browser(page, json=FAKE_DIRS)
+    settings, dir_browser = page.locator(SETTINGS), page.locator(E2E_DIR_BROWSER)
     with e2e.precondition():
         expect(dir_browser).to_have_class(E2E_ACTIVE)
         expect(page.locator("#dir-current-path")).to_have_text(FAKE_DIRS["current"])
@@ -429,7 +417,7 @@ def test_設定の中のフォルダ選びはEsc1回目でフォルダ選びだ�
     page.keyboard.press("Escape")
     expect(dir_browser).not_to_have_class(E2E_ACTIVE)
     expect(settings).to_have_class(E2E_ACTIVE)
-    expect(page.locator("#setting-content-src")).to_have_value(FAKE_SYNC_CONFIG["content_src"])   # 選ばずに閉じる
+    expect(page.locator("#setting-content-src")).to_have_value(E2E_FAKE_SYNC_CONFIG["content_src"])   # 選ばずに閉じる
 
     page.keyboard.press("Escape")
     expect(settings).not_to_have_class(E2E_ACTIVE)
