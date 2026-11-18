@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi.templating import Jinja2Templates
 
 from app import shortcuts
-from app.config import TEMPLATES_DIR
+from app.config import SPECULATION_RULES_JSON, TEMPLATES_DIR
 from app.core.tag_syntax import tag_href
 from app.utils.messages import get_system
 from app.utils.static_version import static_url, stylesheet_urls
@@ -19,3 +19,5 @@ templates.env.globals["static_url"] = static_url
 templates.env.globals["stylesheet_urls"] = stylesheet_urls
 # タグ欄のリンク（X-1。本文のタグの描画と同じ URL の作り方。例: {{ tag_href(tag) }}）
 templates.env.globals["tag_href"] = tag_href
+# 先読み（F-15）のルールの JSON。base.html の <script type="speculationrules"> にそのまま出す（CSP はこの中身の hash で許す。S-10）
+templates.env.globals["speculation_rules_json"] = SPECULATION_RULES_JSON

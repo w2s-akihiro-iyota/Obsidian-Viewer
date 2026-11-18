@@ -1,5 +1,8 @@
 from datetime import timedelta, timezone
 from pathlib import Path
+import base64
+import hashlib
+import json
 import os
 
 # Base directory (Obsidian-Viewer root)
@@ -32,6 +35,44 @@ VIEW_AS_PUBLIC = "public"
 
 # 管理用ポートで受け付ける Host 名（DNS リバインディング対策）
 ADMIN_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
+# 先読み（F-15）のルール。base.html の <script type="speculationrules"> に、この JSON をそのまま出す（テンプレートで書き足さない）。
+# リンクにマウスを乗せているあいだ（スマホは押した瞬間）に、同じサイトの記事（/view/*）だけを裏で読み込む。
+# 外部サイト・添付（/media）・エディタ・API・新しいタブで開くリンク・download 付きは先読みしない
+SPECULATION_RULES_JSON = json.dumps({
+    "prerender": [{
+        "where": {
+            "and": [
+                {"href_matches": "/view/*"},
+                {"not": {"selector_matches": "[target=_blank], [download]"}},
+            ]
+        },
+        "eagerness": "moderate",
+    }]
+}, separators=(",", ":"))
+
+# ページ（text/html の応答）に付ける CSP（S-10）。ノートに書いた生の HTML のスクリプトを、サニタイズをすり抜けても動かさない。
+# - script-src: 'self' の外のファイルと、先読みのルール（上の JSON の hash）だけ。インラインの script・イベント属性・
+#   javascript: の URL・eval は動かない。'inline-speculation-rules' は使わない（ノートに書いた speculationrules まで通る）
+# - style-src: Mermaid が SVG の中に style 要素・style 属性を書くので 'unsafe-inline' を残す
+# - img-src: カードリンクの画像は外のサイト（https）にある
+# - upgrade-insecure-requests は付けない（LAN の http の配信が壊れる）
+# 付けるのは app/main.py のミドルウェアと、そこを通らない 500 のエラー画面（app/api/errors.py）
+_SPECULATION_RULES_HASH = base64.b64encode(hashlib.sha256(SPECULATION_RULES_JSON.encode("utf-8")).digest()).decode("ascii")
+CONTENT_SECURITY_POLICY = "; ".join((
+    "default-src 'self'",
+    f"script-src 'self' 'sha256-{_SPECULATION_RULES_HASH}'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' https:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "media-src 'self'",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+))
 
 # 画面に出す日時のタイムゾーン（JST）
 JST = timezone(timedelta(hours=9))

@@ -1,5 +1,6 @@
 """コンテンツレンダリングサービス"""
 import re
+from app.core.html_sanitizer import sanitize_html
 from app.core.markdown import md, process_admonition_blocks
 from app.services.wikilinks import EmbedContext, process_wikilinks
 
@@ -28,10 +29,14 @@ def render_markdown(body: str, published_only: bool = True, deps: set | None = N
     管理者向けに描画するときだけ False を明示する（渡し忘れても非公開ノートが漏れない側に倒す）。
     deps を渡すと、埋め込んだノートのパスを集める（埋め込み元が更新されたらキャッシュを作り直すため）。
     source_path は描画するノート自身のパス。自分自身の埋め込みを止めるのに使う。
+
+    最後に、描き終わった HTML 全体を許可したタグと属性だけに作り直す（S-10。ノートに書いた生の HTML を動かさない）。
+    内部リンクや埋め込みも Markdown の変換の前に本文へ差し込むので、埋め込みの中身まで含めた全体にかける。
+    記事ページ・リンクのプレビュー・エディタのプレビューはどれもここを通り、キャッシュにはかけた後の HTML が入る。
     """
     ctx = EmbedContext(published_only=published_only, render=_render, deps=deps,
                        stack=(source_path,) if source_path else ())
-    return _render(body, ctx)
+    return sanitize_html(_render(body, ctx))
 
 
 def _render(body: str, ctx: EmbedContext) -> str:

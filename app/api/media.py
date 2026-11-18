@@ -6,6 +6,8 @@
 添付は Vault の中身なので、HTML や SVG が混ざっていてもこのサイトの権限でスクリプトを動かさない:
 - すべての応答に nosniff と CSP sandbox を付ける（直接開いてもスクリプト・フォームを止める）
 - 画面に埋め込む画像（MEDIA_INLINE_EXTS）以外は Content-Disposition: attachment でダウンロードにする
+- 画像以外は Content-Type を application/octet-stream にする（S-10）。.js を application/javascript で返すと、
+  同じサイトの URL なので、ページの CSP（script-src 'self'）を通って <script src="/media/..."> で動いてしまう
 """
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -23,6 +25,8 @@ _MEDIA_SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": "sandbox",
 }
+# 画像以外の添付の Content-Type（ブラウザに中身の種類を推測させず、スクリプト・スタイルとしても読ませない）
+_DOWNLOAD_MEDIA_TYPE = "application/octet-stream"
 
 
 @router.api_route(MEDIA_URL_PREFIX + "{path:path}", methods=["GET", "HEAD"])
@@ -38,5 +42,6 @@ async def get_media(request: Request, path: str):
     ext = target.suffix.lower().lstrip('.')
     inline = ext in MEDIA_INLINE_EXTS
     return FileResponse(target, headers=_MEDIA_SECURITY_HEADERS,
+                        media_type=None if inline else _DOWNLOAD_MEDIA_TYPE,
                         filename=None if inline else target.name,
                         content_disposition_type="inline" if inline else "attachment")

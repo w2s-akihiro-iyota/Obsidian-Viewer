@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.config import STATICS_DIR
+from app.config import CONTENT_SECURITY_POLICY, STATICS_DIR
 from app.api.errors import handle_http_exception, handle_unexpected_error
 from app.api.routes import router
 from app.core.indexing import refresh_global_caches
@@ -65,6 +65,20 @@ async def reject_cross_site_writes(request: Request, call_next):
         logger.warning("Cross-site request rejected: %s %s", request.method, request.url.path)
         return JSONResponse({"status": "error", "message": get_error("E102")}, status_code=403)
     return await call_next(request)
+
+
+@app.middleware("http")
+async def add_page_csp(request: Request, call_next):
+    """
+    ページ（text/html の応答）に CSP を付ける（S-10。ポリシーは app/config.py）
+
+    すでに CSP がある応答（添付の sandbox。app/api/media.py）はそのままにする。
+    500 のエラー画面は ServerErrorMiddleware が一番外で作り、ここを通らないので、app/api/errors.py が自分で付ける
+    """
+    response = await call_next(request)
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+    return response
 
 
 # Mount Static Files（アプリの CSS・JS・部品の画像だけ。Vault の添付は /media で配信する: app/api/media.py）

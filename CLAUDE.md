@@ -28,6 +28,7 @@ app/
 │   ├── dataview.py        # Obsidian Dataviewライクなクエリ処理
 │   ├── graph.py           # グラフ（全体・ローカル）の組み立て。外部向けは公開ノートだけで作る
 │   ├── heatmap.py         # ダッシュボードのヒートマップ（最終更新日の分布）
+│   ├── html_sanitizer.py  # 描いた HTML を許可リストで組み直す（sanitize_html。render_markdown の最後でかける）
 │   ├── indexing.py        # ファイルインデックス作成・ツリー構築（scan_notes で各ノートを 1 回だけ読む）
 │   ├── markdown.py        # Markdownレンダリング・カスタムプラグイン
 │   ├── note_health.py     # ダッシュボードの「手入れが必要なノート」（リンク切れ・孤立・タグなし）
@@ -107,8 +108,14 @@ static/
 - Vault の添付は `media/` に置き `/media/{path}`（`app/api/media.py`）で配信する。`/static` はだれにでも配信されるので添付を置かない
   - 管理者は全部。外部の人は同梱サンプル（`media/_viewer-samples/`）と、公開ノートが参照する添付（`cache.PUBLIC_MEDIA_PATHS`。`refresh_global_caches()` で作る）だけ。それ以外は 404（403 にしない＝存在を知らせない）
   - `MEDIA_DIR` の外（`..`・絶対パス・外を指すシンボリックリンク）は `resolve()` して弾く
-  - 応答には必ず `X-Content-Type-Options: nosniff` と `Content-Security-Policy: sandbox` を付ける。画像（`MEDIA_INLINE_EXTS`）以外は `Content-Disposition: attachment`（Vault の HTML・SVG でスクリプトを動かさない）
+  - 応答には必ず `X-Content-Type-Options: nosniff` と `Content-Security-Policy: sandbox` を付ける。画像（`MEDIA_INLINE_EXTS`）以外は `Content-Disposition: attachment` と `application/octet-stream`（Vault の HTML・SVG・JS でスクリプトを動かさない。.js がページの CSP の `script-src 'self'` をすり抜けないように）
   - 索引の作り直しに失敗したら許可リストを空にする（fail-closed）
+- ノートの HTML（生の HTML を含む）は、`render_markdown()`（`app/services/content.py`）の最後で `sanitize_html()`（`app/core/html_sanitizer.py`）を通す。許可したタグ・属性・CSS のプロパティだけを組み直し、HTML に無いタグは文字で出す
+  - 描画のプラグインが新しいタグ・属性・class を出すようにしたら、`_ALLOWED_ATTRS`（「アプリの出力」の見出しの下）に足し、`tests/test_html_sanitizer.py` の `_APP_FEATURES` に記法を足す（足し忘れると、落ちたものを名指しして落ちる）
+  - href の scheme は `LINK_SCHEMES`（http・https・mailto・obsidian）だけ。自動リンク（`<scheme:...>`）も同じ定数で決める
+- ページ（text/html の応答）には CSP を付ける（`app/config.py` の `CONTENT_SECURITY_POLICY`。`app/main.py` のミドルウェアと、500 のエラー画面は `app/api/errors.py`）
+  - テンプレートにインラインの `<script>`・`onclick=` などのイベント属性・`javascript:` を書かない。`static/js/` のファイルにして src で読む（`tests/test_csp.py` が見張る）
+  - 先読みのルールは `SPECULATION_RULES_JSON` に置き、CSP はその hash で許す（テンプレートで書き足さない）。HTMX は htmx-config で eval と script タグを切っているので、`hx-trigger` の `[...]` のフィルタ・`hx-on` は使えない
 - `MARKDOWN_CACHE` のキーは `(path, published_only)`。閲覧者の種類で Dataview の結果が変わるため、共有しない
 - パストラバーサル防止: `..` や `/` で始まるパスを拒否
 - ファイル読み込みは必ず `CONTENT_DIR` 配下に制限

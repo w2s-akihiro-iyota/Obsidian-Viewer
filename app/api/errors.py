@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import templates
+from app.config import CONTENT_SECURITY_POLICY
 from app.utils.helpers import requested_view_as, viewer_context
 from app.utils.messages import get_error
 
@@ -94,7 +95,17 @@ def _fallback_html(page: ErrorPage) -> HTMLResponse:
 
 
 def render_error_page(request: Request, page: ErrorPage, headers: dict | None = None) -> Response:
-    """アプリの枠の中にエラー画面を描く。描けなければ素の HTML で返す（管理者の ?as=public は外部の人の表示。F-17）"""
+    """
+    アプリの枠の中にエラー画面を描く。描けなければ素の HTML で返す（管理者の ?as=public は外部の人の表示。F-17）
+
+    どちらにもページの CSP を付ける（S-10）。500 のエラー画面は app/main.py の CSP のミドルウェアを通らないため
+    """
+    response = _render_error_page(request, page, headers)
+    response.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
+    return response
+
+
+def _render_error_page(request: Request, page: ErrorPage, headers: dict | None) -> Response:
     viewer = viewer_context(request, requested_view_as(request))
     try:
         return templates.TemplateResponse(request=request, name="error.html", status_code=page.status,

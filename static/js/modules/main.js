@@ -3,7 +3,7 @@
 // ==============================================
 
 // 記事のプロパティ（<details open>）の開閉を localStorage の propertiesOpen に覚える。
-// 閉じて覚えているときは、base.html が描画前に付けた properties-collapsed を、実際に閉じるのと入れ替える
+// 閉じて覚えているときは、before-paint.js が描画前に付けた properties-collapsed を、実際に閉じるのと入れ替える
 function initNoteProperties() {
     const details = document.getElementById('note-properties');
     if (!details) return;
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
 
-    // コードの配色（highlight.js のテーマ）は、base.html の head で localStorage の codeTheme から決めてある。
+    // コードの配色（highlight.js のテーマ）は、head の before-paint.js で localStorage の codeTheme から決めてある。
     // 画面テーマとは連動しない（設定で選んだ codeTheme を保つ）
 
     // Expose for usage in settings
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // コードの配色を切り替える（設定の「コードテーマ」から呼ぶ）。
-    // テーマ名とファイルの対応は base.html の window.codeThemeHref に 1 か所だけ置く
+    // テーマ名とファイルの対応は before-paint.js の window.codeThemeHref に 1 か所だけ置く
     window.updateHighlightTheme = (themeName) => {
         const link = document.getElementById('highlight-theme');
         if (!link) {

@@ -60,8 +60,10 @@
 
             <div class="search-container">
                 <!-- 検索欄と、その下のツールバー（公開状態・並び替え）。切り替えると form ごと送る -->
+                {# 送るのは、送信と、data-autosubmit の付いた欄の change だけ（検索欄に打って離れても送らない）。
+                   欄は from: で選ぶ。change[...] のフィルタは HTMX が eval で作るので使わない（htmx-config で eval を切っている。S-10） #}
                 <form action="/" method="get" class="search-form" hx-get="/"
-                    hx-trigger="submit, change[target.hasAttribute('data-autosubmit')]">
+                    hx-trigger="submit, change from:[data-autosubmit]">
                     <div class="search-input-wrapper">
                         <input type="text" name="q" value="{{ query.q }}" placeholder="ノートを検索…" class="search-input"
                             aria-label="ノートを検索">

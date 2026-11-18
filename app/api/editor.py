@@ -1,6 +1,7 @@
 """エディタ系エンドポイント（localhost限定）"""
 # Standard library
 import logging
+from html import escape
 from pathlib import Path
 
 # Third party
@@ -151,7 +152,8 @@ async def editor_preview(request: Request):
         html = render_markdown(body, published_only=False, source_path=source_path)
     except Exception as e:
         logger.error("Preview render error: %s", e)
-        html = f"<p style='color:#ff6b6b;'>レンダリングエラー: {e}</p>"
+        # 例外の文字にはノートの中身が混ざることがあるので、エスケープしてから HTML に入れる（S-10）
+        html = f"<p style='color:#ff6b6b;'>レンダリングエラー: {escape(str(e))}</p>"
 
     return HTMLResponse(content=html)
 

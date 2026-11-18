@@ -7,6 +7,8 @@
     <img src="/media/...">、frontmatter の image / thumbnail（名前・[[名前]]・![[名前|300]]・/media/ の URL）
 - MEDIA_DIR の外（..・%2e%2e・絶対パス・外を指すシンボリックリンク）と、存在しないものは管理者でも 404
 - 応答には nosniff と CSP sandbox。画像以外（html・pdf 等）はダウンロード（attachment）。svg は <img> で出せるよう inline
+  - 画像以外の Content-Type は application/octet-stream（.js を application/javascript で返すと、ページの CSP の
+    script-src 'self' で読み込めてしまう。S-10）
 - 描画が出す画像の URL は、外部の人にもすべて 200（描画と許可リストの引き方がそろっている）
 - OGP 画像は許可リストと同じ抽出で選ぶ（コードの中を拾わない・タイトルを混ぜない）
 - 索引の作り直しに失敗したら、許可リストを空にする（fail-closed）
@@ -57,7 +59,7 @@ _NOTES = {
 _PUBLIC_FILES = ("公開画像.png", "sub/md 画像.png", "HTML画像.png", "表紙.png", "表紙2.png", "サムネ.png",
                  "UPPER.PNG", "子の画像.png", SAMPLE)
 _HIDDEN_FILES = ("秘密画像.png", "未参照.png", "コード内.png", "インライン.png", "見出し付き.png", "samples/vault.png")
-_OTHER_FILES = ("page.html", "evil.svg", "doc.pdf")
+_OTHER_FILES = ("page.html", "evil.svg", "doc.pdf", "app.js", "style.css", "data.json")
 
 
 @pytest.fixture
@@ -158,6 +160,22 @@ def test_添付の応答はnosniffとsandboxを付け画像以外はダウンロ
     assert res.headers["x-content-type-options"] == "nosniff"
     assert res.headers["content-security-policy"] == "sandbox"
     assert res.headers.get("content-disposition", "").startswith("attachment") == attachment
+
+
+@pytest.mark.parametrize("rel, content_type", [
+    ("公開画像.png", "image/png"),
+    ("evil.svg", "image/svg+xml"),
+    ("app.js", "application/octet-stream"),
+    ("style.css", "application/octet-stream"),
+    ("page.html", "application/octet-stream"),
+    ("data.json", "application/octet-stream"),
+    ("doc.pdf", "application/octet-stream"),
+])
+def test_画像以外の添付はoctet_streamで返す(media_site, rel, content_type):
+    # 同じサイトの URL なので、.js をスクリプトの種類で返すと <script src="/media/..."> で動いてしまう（CSP の 'self' を通る）
+    res = _get(TestClient(app, base_url=ADMIN), rel)
+    assert res.status_code == 200
+    assert res.headers["content-type"].split(";")[0] == content_type
 
 
 # ---------- 描画・OGP と許可リストがそろっている ----------
