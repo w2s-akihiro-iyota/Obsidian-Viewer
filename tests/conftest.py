@@ -66,6 +66,46 @@ def use_test_vault(monkeypatch):
 
 
 # ==============================================
+# ノートに書いた生の HTML（S-10）。描画の契約（test_html_sanitizer.py）と API の契約（test_api.py）で使う
+# ==============================================
+
+# 動いたら・要素や属性として残ったら、この印が出力に残る書き方にしてある（文字として残ることも無い）
+RAW_HTML_MARK = "s10xss"
+RAW_HTML_ATTACKS = (
+    f"<script>{RAW_HTML_MARK}()</script>\n\n"
+    f'<img src="x" onerror="{RAW_HTML_MARK}()">\n\n'
+    f'<a href="javascript:{RAW_HTML_MARK}()">リンク</a>\n\n'
+    f'<iframe src="javascript:{RAW_HTML_MARK}()"></iframe>\n\n'
+    '<div hx-get="/api/sync/run" hx-trigger="load">s10</div>\n\n'
+    f'<svg onload="{RAW_HTML_MARK}()"><script>{RAW_HTML_MARK}()</script></svg>\n'
+)
+RAW_HTML_NOTE = "危ない.md"            # 本文に RAW_HTML_ATTACKS を書いた公開ノート
+RAW_HTML_EMBEDDING_NOTE = "埋め込む.md"  # RAW_HTML_NOTE を埋め込む公開ノート
+RAW_HTML_PARTNER_NOTE = "相手.md"      # リンク・埋め込み・Dataview の相手（見出し・節・タグ・true/false の項目）
+
+
+@pytest.fixture
+def raw_html_site(tmp_path, use_test_vault, isolated_caches):
+    """生の HTML を書いたノート・それを埋め込むノート・アプリの記法の相手のノート・非公開のノートを置いた Vault（索引を作り直す）"""
+    vault, media = tmp_path / "vault", tmp_path / "media"
+    vault.mkdir()
+    media.mkdir()
+    use_test_vault(vault, media)
+    (media / "pic.png").write_bytes(b"png")
+    notes = {
+        RAW_HTML_PARTNER_NOTE: ("---\npublish: true\ntags: [t1]\ndone: true\nflag: false\n---\n"
+                                "# 相手の見出し\n相手の本文 #相手タグ\n\n## 節\n節の本文\n"),
+        RAW_HTML_NOTE: f"---\npublish: true\n---\n本文\n\n{RAW_HTML_ATTACKS}",
+        RAW_HTML_EMBEDDING_NOTE: f"---\npublish: true\n---\n前\n\n![[{RAW_HTML_NOTE[:-3]}]]\n",
+        "非公開.md": "---\npublish: false\n---\n非公開の本文\n",
+    }
+    for rel, text in notes.items():
+        (vault / rel).write_text(text, encoding="utf-8")
+    indexing.refresh_global_caches()
+    return vault
+
+
+# ==============================================
 # E2E（ブラウザで JS の動きを確かめる。Q-17）
 #
 # テスト用のノートだけを読むサーバーを、空いているポートにスレッドで立て、Playwright の Chromium で開く。
@@ -105,11 +145,28 @@ E2E_XFAIL_WAIT_MS = 2000
 # ブラウザから送ってよいリクエスト。GET・HEAD のほかは、書き込まない POST（エディタのプレビュー。Markdown を描いて返すだけ）だけ
 E2E_SAFE_METHODS = {"GET", "HEAD"}
 E2E_READ_ONLY_POSTS = {"/api/editor/preview"}
+# CSP の違反（securitypolicyviolation）を拾う仕掛け（S-10）。open_path が開くどのページにも入れる。
+# 今のページの分は window.__e2eCspViolations に、開いたページ全部の分は console を通して E2ESite.csp_violations にためる
+# （console の知らせは、そのあとに呼んだ page.evaluate などの戻りより先に届く）
+_E2E_CSP_MARK = "[e2e-csp]"
+_E2E_CSP_LISTENER = """
+window.__e2eCspViolations = [];
+window.addEventListener('securitypolicyviolation', (event) => {
+    const text = [decodeURIComponent(location.pathname), event.effectiveDirective, event.blockedURI,
+                  `${event.sourceFile}:${event.lineNumber}`, event.sample].join(' ');
+    window.__e2eCspViolations.push(text);
+    console.info(MARK + ' ' + text);
+}, true);
+""".replace("MARK", repr(_E2E_CSP_MARK))
 
 # テスト用のノート（E2E_NOTES）のうち、テストが名前で使うもの
 E2E_ENTRY_NOTE = "入口のノート.md"   # つながり 2 歩・見出し・長い本文。たいていのテストはここを開く
 E2E_IMAGE_NOTE = "画像のノート.md"   # 先頭に画像（押すと拡大）と長い本文
+E2E_RICH_NOTE = "描画のノート.md"    # 数式・Mermaid・コード・カードリンク・画像（CSP の下でも描けるか。S-10）
+E2E_RAW_HTML_NOTE = "生のHTMLのノート.md"   # 本文に生の <script>・onerror・javascript: のリンク（動かないか。S-10）
 E2E_SEARCH_WORD = "ipsum"           # 非公開のノート以外の本文にある語（クイックスイッチャーで候補が 3 件以上出る）
+# 描画のノートの Mermaid の点を押したときに呼ばせようとする関数の名前（securityLevel が loose なら呼ばれる。S-10）
+E2E_MERMAID_CALLBACK = "e2eMermaidCallback"
 
 # テスト用の添付（添付の置き場からのパス → 中身）。1×1 の PNG を、ノートの ![[...|幅x高さ]] で押せる大きさに広げて出す
 E2E_IMAGE = "e2e-画像.png"
@@ -125,6 +182,9 @@ _E2E_LONG_BODY = "\n\n".join(f"段落 {i}: 長い本文。スクロールでき�
 # - フォルダ 2 段（フォルダ1/サブ/）に 3 件（ツリーの矢印キー用）
 # - ひとり: どこともつながらない。非公開: 外部の人には見えない
 # - 画像: 先頭の画像（E2E_IMAGE）を押すと拡大する。本文が長く、裏の本文がスクロールできる
+# - 描画: 数式（インラインとブロック）・Mermaid（ラベルの <br/> と、点を押すと関数を呼ぶ click）・コード・カードリンク・画像。
+#   カードリンクの画像は https の外の画像（CSP の img-src https:）。どこにもつながらない 127.0.0.1:1 にして、外へは出ない
+# - 生の HTML: 動いたら window に印を付ける <script>・onerror・javascript: のリンク。サニタイズと CSP のどちらかで止まる
 E2E_NOTES = {
     E2E_ENTRY_NOTE: ("---\npublish: true\n---\n# 入口の見出し\n\n[[つながり先のノートA]] と [[つながり先のノートB]] へ。\n\n"
                      f"## 中くらいの見出し\n\n{_E2E_LONG_BODY}\n\n### 小さい見出し\n\nおわり {E2E_SEARCH_WORD}\n"),
@@ -134,6 +194,16 @@ E2E_NOTES = {
     "ひとりのノート.md": f"---\npublish: true\n---\n# ひとり\n\nどこともつながらない {E2E_SEARCH_WORD}\n",
     "非公開のノート.md": "---\npublish: false\n---\n# 非公開\n\n非公開の本文\n",
     E2E_IMAGE_NOTE: f"---\npublish: true\n---\n# 画像\n\n![[{E2E_IMAGE}|320x160]]\n\n{_E2E_LONG_BODY}\n",
+    E2E_RICH_NOTE: ("---\npublish: true\n---\n# 描画\n\n数式 $E=mc^2$ と\n\n$$\n\\int_0^1 x\\,dx\n$$\n\n"
+                    "```python\nprint(\"色付け\")\n```\n\n"
+                    "```mermaid\nflowchart LR\n    A[\"一行目<br/>二行目\"] --> B[\"押せる点\"]\n"
+                    f"    click B {E2E_MERMAID_CALLBACK}\n```\n\n"
+                    "```cardlink\nurl: https://127.0.0.1:1/e2e-card\ntitle: カードリンク\n"
+                    "image: https://127.0.0.1:1/e2e-card.png\n```\n\n"
+                    f"![[{E2E_IMAGE}|320x160]]\n"),
+    E2E_RAW_HTML_NOTE: ("---\npublish: true\n---\n# 生のHTML\n\n<script>window.__e2eNoteScript = 1</script>\n\n"
+                        '<img src="/static/images/e2e-missing.png" onerror="window.__e2eNoteOnerror = 1">\n\n'
+                        '<a href="javascript:window.__e2eNoteLink = 1">動いてはいけないリンク</a>\n'),
 }
 
 
@@ -257,14 +327,15 @@ class E2ESite:
     """
     E2E のテストから使う、テスト用のノートだけのサイト（ページを開く・準備ができるまで待つ）
 
-    開いたページの JS のエラー（pageerror）は errors に、止めた書き込み（_block_writes）は blocked に集め、
-    テストの終わりにどちらも 0 件であることを e2e が確かめる
+    開いたページの JS のエラー（pageerror）は errors に、止めた書き込み（_block_writes）は blocked に、
+    CSP の違反（_E2E_CSP_LISTENER）は csp_violations に集め、テストの終わりにどれも 0 件であることを e2e が確かめる
     """
     browser: object
     servers: E2EServers
     wait_ms: int = E2E_WAIT_MS      # expect で書けない待ち（wait_until・応答など）の上限。xfail のテストでは短くする（e2e）
     errors: list[str] = field(default_factory=list)
     blocked: list[str] = field(default_factory=list)
+    csp_violations: list[str] = field(default_factory=list)
     contexts: list = field(default_factory=list)
 
     ENTRY = E2E_ENTRY_NOTE
@@ -284,20 +355,34 @@ class E2ESite:
           （True でも、出るのを待たずに返す。出たかはテストが expect で待つ）
         - PC のサイドバーは開いておく（既定は畳む）
         - GET・HEAD 以外のリクエストは、既定で止める（_block_writes）
+        - CSP の違反を拾う（_E2E_CSP_LISTENER）
         """
         port = {E2E_ADMIN: self.servers.admin_port, E2E_PUBLIC: self.servers.public_port}[viewer]
         context = self.browser.new_context(viewport=E2E_VIEWPORTS[width])
         self.contexts.append(context)
         context.route("**/*", self._block_writes)
+        context.add_init_script(_E2E_CSP_LISTENER)
         init_script = "localStorage.setItem('sidebarCollapsed', 'false');"
         if not welcome:
             init_script += " localStorage.setItem('welcomeShown', 'true');"
         context.add_init_script(init_script)
         page = context.new_page()
         page.on("pageerror", lambda error: self.errors.append(f"{page.url}: {error}"))
+        page.on("console", self._collect_csp_violation)
         page.goto(f"http://127.0.0.1:{port}{path}")
         self.wait_ready(page)
         return page
+
+    def _collect_csp_violation(self, message) -> None:
+        """_E2E_CSP_LISTENER が console に出した CSP の違反をためる"""
+        if message.text.startswith(_E2E_CSP_MARK):
+            self.csp_violations.append(message.text[len(_E2E_CSP_MARK):].strip())
+
+    def take_csp_violations(self) -> list[str]:
+        """ためた CSP の違反を返して空にする（わざと違反させるテストが、終わりの確かめ（e2e）に残さないために使う）"""
+        taken = list(self.csp_violations)
+        self.csp_violations.clear()
+        return taken
 
     def _block_writes(self, route) -> None:
         """
@@ -388,7 +473,7 @@ def e2e(request, e2e_browser, e2e_servers, e2e_vault, monkeypatch):
     ADMIN_PORT の差し替えはこのテストのあいだだけ（TestClient のテストは base_url の 8001 を管理者とみなしているので、漏らさない）。
     xfail の印が付いたテストでは、expect と wait_until の上限を E2E_XFAIL_WAIT_MS にする（expect の設定は全体に効くので、
     終わったら必ず既定に戻す）。
-    終わったらブラウザの context を閉じ、開いたページに JS のエラーが無かったこと・書き込みを止めなかったことを確かめる
+    終わったらブラウザの context を閉じ、開いたページに JS のエラーと CSP の違反が無かったこと・書き込みを止めなかったことを確かめる
     """
     expect = import_playwright().expect
     marked_xfail = request.node.get_closest_marker("xfail") is not None
@@ -405,4 +490,6 @@ def e2e(request, e2e_browser, e2e_servers, e2e_vault, monkeypatch):
         for context in site.contexts:
             context.close()
     assert not site.errors, f"ページで JS のエラーが出た: {site.errors}"
+    assert not site.csp_violations, (
+        f"ページで CSP の違反が出た（インラインのスクリプト・eval などを足していないか。S-10）: {site.csp_violations}")
     assert not site.blocked, f"書き込みのリクエストを止めた（テストが送ってはいけない）: {site.blocked}"

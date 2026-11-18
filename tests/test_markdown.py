@@ -5,6 +5,7 @@
 - Admonition: ```ad-type のフェンスを callout の記法（> [!TYPE]）に書き換える
 - cardlink: ```cardlink のフェンスをリンクカードにする
 - mark: ==text== を <mark> にする
+- 自動リンク（<https://...>）: http・https・mailto・obsidian だけ。<ASP:RadioButton> のような山かっこの中のコロンはリンクにしない（S-10）
 """
 import re
 import threading
@@ -263,3 +264,35 @@ def test_見出しの中のタグもリンクになる():
     html = md.render("## 見出し #タグ")
     assert "<h2" in html
     assert _inline_tags(html)[0][2] == "#タグ"
+
+
+# ---------- 自動リンク（S-10） ----------
+
+@pytest.mark.parametrize("src, href", [
+    ("<https://example.com/a?b=1>", "https://example.com/a?b=1"),
+    ("<HTTP://example.com>", "HTTP://example.com"),
+    ("<mailto:a@example.com>", "mailto:a@example.com"),
+    ("<a@example.com>", "mailto:a@example.com"),
+    ("<obsidian://open?vault=v>", "obsidian://open?vault=v"),
+])
+def test_自動リンクはhttpとhttpsとmailtoとobsidianだけ(src, href):
+    assert f'<a href="{href}">' in md.render(src)
+
+
+@pytest.mark.parametrize("src, text", [
+    ("<ASP:RadioButton> を置く", "&lt;ASP:RadioButton&gt; を置く"),
+    ("<w2cm:RadioButtonGroup>", "&lt;w2cm:RadioButtonGroup&gt;"),
+    ("<ftp://example.com/>", "&lt;ftp://example.com/&gt;"),
+    ("<tel:0120-000-000>", "&lt;tel:0120-000-000&gt;"),
+])
+def test_ほかのschemeに見える山かっこは自動リンクにせず文字のまま(src, text):
+    # 自動リンクにすると < > が消え、href もサニタイズで落ちて、押せない文字だけが残っていた
+    html = md.render(src)
+    assert "<a" not in html
+    assert text in html
+
+
+@pytest.mark.parametrize("src", ["[x](javascript:alert(1))", "[x](vbscript:msgbox(1))", "<javascript:alert(1)>"])
+def test_javascriptなどのリンクは今までどおりリンクにしない(src):
+    # markdown-it の validateLink の働き（javascript:・vbscript:・file:・data: を止める）は変えない
+    assert "<a" not in md.render(src)

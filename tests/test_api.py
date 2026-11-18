@@ -16,6 +16,8 @@
 - ローカルグラフ（F-8）: /api/graph?center=&depth= の点と距離・深さの不正値・404・外部には公開ノートだけ・上限
   - グラフは索引の作り直しで作り、記事ページと /api/graph はそれを使う（Q-15）
 - ノートを読む回数（Q-1）: 索引の作り直しは各ノートを 1 回だけ読む。記事ページは描画キャッシュが効いていれば読み直さない
+- ノートに書いた生の HTML（S-10）: 記事ページ・リンクのプレビュー・エディタのプレビューは、サニタイズした本文を返す。
+  エディタのプレビューの描画エラーも、例外の文字をエスケープして出す
 - 先読み（F-15）: どの画面も、先読みするのは同じサイトの記事（/view/*）だけ。外部サイト・添付・エディタ・API・新しいタブ・download は対象にしない
 """
 import builtins
@@ -43,6 +45,7 @@ from app.services.content import render_markdown
 from app.services.images import MediaIndex
 from app.services.publish_check import check_publish
 from app.utils.messages import get_system
+from conftest import RAW_HTML_ATTACKS, RAW_HTML_EMBEDDING_NOTE, RAW_HTML_MARK, RAW_HTML_NOTE
 
 ADMIN = "http://localhost:8001"     # 管理用ポート（is_admin_request が管理者とみなす）
 PUBLIC = "http://localhost:8000"
@@ -1473,6 +1476,44 @@ def test_プレビューは編集中のノートのパスをリンク元にす�
     assert 'href="/view/a/同名"' in preview()
     # 索引に無いパスは無視する
     assert 'href="/view/a/同名"' in preview(path="b/無い.md")
+
+
+def test_プレビューの描画エラーは例外の文字をエスケープして出す(site, monkeypatch):
+    # 例外の文字にはノートの中身が混ざることがある。HTML として入れるとタグが動く（S-10）
+    def broken_render(*args, **kwargs):
+        raise ValueError('<img src=x onerror="s10xss()">')
+
+    monkeypatch.setattr(editor_api, "render_markdown", broken_render)
+    html = TestClient(app, base_url=ADMIN).post("/api/editor/preview", json={"content": "本文"}).text
+    assert "<img" not in html
+    assert "&lt;img src=x onerror=&quot;s10xss()&quot;&gt;" in html
+
+
+# ---------- ノートに書いた生の HTML はサニタイズして返す（S-10） ----------
+
+# 記事ページは説明（OGP）などにも本文の文字が出るので、要素・属性として残っていないことを見る
+_RAW_HTML_LEFTOVERS = (f"<script>{RAW_HTML_MARK}", f'onerror="{RAW_HTML_MARK}', 'href="javascript:',
+                       f'onload="{RAW_HTML_MARK}', 'hx-get="/api/sync')
+
+
+@pytest.mark.parametrize("path", [RAW_HTML_NOTE, RAW_HTML_EMBEDDING_NOTE])
+def test_記事ページとリンクのプレビューは外部の人にサニタイズした本文を返す(raw_html_site, path):
+    public = TestClient(app, base_url=PUBLIC)
+    page = public.get(f"/view/{cache.PATH_TO_SLUG[path]}")
+    assert page.status_code == 200
+    for leftover in _RAW_HTML_LEFTOVERS:
+        assert leftover not in page.text, leftover
+    preview = public.get("/api/preview", params={"path": path})
+    assert preview.status_code == 200
+    assert RAW_HTML_MARK not in preview.json()["content"]
+
+
+def test_エディタのプレビューもサニタイズした本文を返す(raw_html_site):
+    res = TestClient(app, base_url=ADMIN).post("/api/editor/preview", json={"content": f"本文\n\n{RAW_HTML_ATTACKS}"})
+    assert res.status_code == 200
+    assert "本文" in res.text
+    assert RAW_HTML_MARK not in res.text
+    assert "hx-get" not in res.text
 
 
 # ---------- 既存ノートの保存は作り直しを待たない（Q-20） ----------

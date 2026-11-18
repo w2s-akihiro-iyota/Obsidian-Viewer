@@ -4,9 +4,11 @@ from markdown_it.token import Token
 import re
 from html import escape
 from urllib.parse import quote
+from markdown_it.rules_inline import autolink as markdown_it_autolink
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 
+from app.core.html_sanitizer import LINK_SCHEMES
 from app.core.tag_syntax import TAG_RE, tag_href, tag_name_from_match
 
 # Markdown Setup
@@ -73,6 +75,28 @@ def tag_plugin(md):
     md.inline.ruler.before('emphasis', 'tag', tag)
 
 
+# 自動リンク（<scheme:...>）の形（markdown-it の AUTOLINK_RE と同じ）
+_AUTOLINK_RE = re.compile(r'([a-zA-Z][a-zA-Z0-9+.\-]{1,31}):([^<>\x00-\x20]*)')
+
+
+def autolink_scheme_plugin(md):
+    """
+    自動リンク（<https://...>）にする scheme を、サニタイザーが href に残すもの（LINK_SCHEMES）だけにする（S-10）
+
+    markdown-it はどんな scheme でも自動リンクにするので、<ASP:RadioButton> のような文字が < > の消えたリンクになり、
+    href はサニタイズで落ちて、押せない文字だけが残っていた。ほかの scheme は自動リンクにせず、文字のまま見せる。
+    メールアドレスの自動リンク（<a@example.com>）と、ふつうのリンク [x](url) の判定（validateLink）は変えない。
+    """
+    def autolink(state, silent):
+        if state.src[state.pos] == '<':
+            end = state.src.find('>', state.pos + 1, state.posMax)
+            m = _AUTOLINK_RE.fullmatch(state.src, state.pos + 1, end) if end > 0 else None
+            if m and m.group(1).lower() not in LINK_SCHEMES:
+                return False
+        return markdown_it_autolink(state, silent)
+    md.inline.ruler.at('autolink', autolink)
+
+
 # MarkdownIt Instance
 md = (
     markdown_it.MarkdownIt("commonmark", {"breaks": True, "html": True})
@@ -80,6 +104,7 @@ md = (
     .enable("strikethrough")
     .use(mark_plugin)
     .use(tag_plugin)
+    .use(autolink_scheme_plugin)
     .use(dollarmath_plugin)
     .use(tasklists_plugin)
 )

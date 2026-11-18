@@ -10,64 +10,19 @@
     {% for href in stylesheet_urls() %}
     <link rel="stylesheet" href="{{ href }}">
     {% endfor %}
-    <script>
-        // Apply theme immediately to prevent flash
-        (function () {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-
-            // Apply sidebar state immediately to prevent flash
-            const savedSidebarState = localStorage.getItem('sidebarCollapsed');
-            const isCollapsed = savedSidebarState === null ? true : savedSidebarState === 'true';
-            if (isCollapsed) {
-                document.documentElement.classList.add('sidebar-collapsed');
-            }
-
-            // Apply sidebar width immediately to prevent flash
-            const savedWidth = localStorage.getItem('sidebarWidth');
-            if (savedWidth && window.innerWidth > 768) {
-                document.documentElement.style.setProperty('--sidebar-width', savedWidth + 'px');
-            }
-
-            // 読みやすい幅と文字サイズも描画前に付ける（後から付けると、全幅で一度描いてから縮んでかくつく）。
-            // 既定値と付け替えは settings.js と同じ
-            if (localStorage.getItem('readableWidth') !== 'false') {
-                document.documentElement.classList.add('readable-width');
-            }
-            document.documentElement.classList.add('font-' + (localStorage.getItem('fontSize') || 'medium'));
-
-            // 記事のプロパティを閉じて覚えているときも、描画前に閉じた見た目にする（開いてから閉じるちらつきを防ぐ）。
-            // 外すのと、開閉の保存は main.js
-            if (localStorage.getItem('propertiesOpen') === 'false') {
-                document.documentElement.classList.add('properties-collapsed');
-            }
-        })();
-    </script>
+    {# スクリプトはインラインに書かない。ページの CSP（S-10。app/config.py）の script-src は 'self' と先読みの hash だけなので、
+       インラインの script・onload= などのイベント属性・eval は動かない。static/js/ のファイルにして src で読む #}
     <!-- 外部ライブラリはすべて static/js/vendor/ に版を固定して置き、CDN には頼らない（Q-3） -->
     <!-- Mermaid（約 3.5MB）はここでは読まない。図のあるページ・プレビューでだけ mermaid.js が読み込む（読み込み先はこの 1 か所） -->
     <meta name="mermaid-src" content="/static/js/vendor/mermaid-11.17.2/mermaid.min.js">
-    <!-- Highlight.js (Local)。コードの配色は設定の codeTheme で決める（既定 github-dark）。
-         画面テーマ（dark/light など）とは連動しない。対応表は window.codeThemeHref に1か所だけ置き、main.js の切り替えも使う -->
+    <!-- Highlight.js (Local)。コードの配色は設定の codeTheme で決める（既定 github-dark。before-paint.js が差し替える） -->
     <link id="highlight-theme" rel="stylesheet" href="/static/css/themes/github-dark.min.css">
-    <script>
-        (function () {
-            const files = {
-                'github-dark': 'github-dark.min.css',
-                'github': 'github.min.css',
-                'dracula': 'dracula.min.css',
-                'nord': 'nord.min.css',
-                'tokyo-night-dark': 'tokyo-night-dark.min.css',
-                'atom-one-dark': 'atom-one-dark.min.css'
-            };
-            window.codeThemeHref = function (name) {
-                return '/static/css/themes/' + (files[name] || files['github-dark']);
-            };
-            const link = document.getElementById('highlight-theme');
-            const saved = localStorage.getItem('codeTheme');
-            if (link && saved) link.href = window.codeThemeHref(saved);
-        })();
-    </script>
+    <!-- 描く前に <html> へテーマ・サイドバーの開閉と幅・読みやすい幅・文字サイズ・プロパティの開閉と、コードの配色を付ける（ちらつき防止）。
+         defer を付けない。#highlight-theme より後ろに置く -->
+    <script src="{{ static_url('js/modules/before-paint.js') }}"></script>
     <script src="{{ static_url('js/vendor/highlight.min.js') }}"></script>
+    {# HTMX は eval（hx-trigger の [...] のフィルタ・hx-on など）と、差し替えた中身の script 要素を動かさない（S-10。どちらも CSP でも止まる） #}
+    <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false}'>
     <script src="/static/js/vendor/htmx-1.9.10/htmx.min.js"></script>
     <script src="{{ static_url('js/modules/core.js') }}" defer></script>
     <script src="{{ static_url('js/modules/table-copy.js') }}" defer></script>
@@ -87,19 +42,8 @@
          対象は同じサイトの記事（/view/*）だけ。外部サイト・添付（/media）・エディタ・API は先読みしない（GET だけで、書き込みは起きない）。
          新しいタブで開くリンクと download 付きも外す。
          先読みのあいだもページの JS は動くので、「見た」ことが前提の処理（閲覧履歴の記録など）は core.js の whenPageShown() を通す -->
-    <script type="speculationrules">
-    {
-        "prerender": [{
-            "where": {
-                "and": [
-                    { "href_matches": "/view/*" },
-                    { "not": { "selector_matches": "[target=_blank], [download]" } }
-                ]
-            },
-            "eagerness": "moderate"
-        }]
-    }
-    </script>
+    {# ルールの中身は app/config.py の SPECULATION_RULES_JSON。CSP はその hash で許すので、タグの中に空白や改行を書き足さない（S-10） #}
+    <script type="speculationrules">{{ speculation_rules_json|safe }}</script>
     {% block head %}{% endblock %}
 </head>
 

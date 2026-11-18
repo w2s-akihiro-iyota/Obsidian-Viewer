@@ -136,7 +136,9 @@ function applyMermaidConfig() {
     mermaidLib.initialize({
         startOnLoad: false,
         theme: getMermaidTheme(),
-        securityLevel: 'loose',
+        // strict: ノートの図の click で、ページの関数を呼ばせない（loose では click からページの関数を呼べる。S-10）。
+        // ラベルの <br> は strict でも改行として描く
+        securityLevel: 'strict',
         flowchart: { useMaxWidth: false },
         sequence: { useMaxWidth: false },
         gantt: { useMaxWidth: false },
