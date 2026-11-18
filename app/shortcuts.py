@@ -80,7 +80,8 @@ ALL_PAGE_IDS = frozenset(page.id for page in PAGES)
 FOCUS_QUICK_SWITCHER = "quick-switcher"
 FOCUS_TREE_FILTER = "tree-filter"
 FOCUS_TREE = "tree"
-FOCUS_PLACES = frozenset({FOCUS_QUICK_SWITCHER, FOCUS_TREE_FILTER, FOCUS_TREE})
+FOCUS_EDITOR_RESIZER = "editor-resizer"     # エディタの入力欄とプレビューの境目（X-15）
+FOCUS_PLACES = frozenset({FOCUS_QUICK_SWITCHER, FOCUS_TREE_FILTER, FOCUS_TREE, FOCUS_EDITOR_RESIZER})
 
 # 画面が直に使うショートカット（グループの定義の中でも、この定数を使う）
 SHORTCUT_CLOSE = Shortcut(
@@ -149,6 +150,17 @@ SHORTCUT_GROUPS: tuple[ShortcutGroup, ...] = (
         shortcuts=(
             Shortcut((("Ctrl", "S"),), "保存する", "保存"),
             Shortcut((("Tab",),), "字下げ（スペース4つ）", "字下げ"),
+        ),
+    ),
+    ShortcutGroup(
+        # 境目を選んでいるときだけ効く（入力欄では ← → はカーソルの移動）。エディタの下の段には出さない（editor.html は group("editor") だけ）
+        id="editor-resizer",
+        label="エディタの境目（管理者のみ）",
+        contexts=frozenset({FOCUS_EDITOR_RESIZER}),
+        admin_only=True,
+        shortcuts=(
+            Shortcut((("←",), ("→",)), "編集とプレビューの幅を変える", "幅"),
+            Shortcut((("Home",), ("End",)), "編集をいちばん狭く・いちばん広くする", "端まで"),
         ),
     ),
 )
