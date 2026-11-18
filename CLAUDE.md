@@ -88,7 +88,7 @@ static/
 - テンプレートから CSS・JS を読み込むときは `{{ static_url("js/modules/x.js") }}` を使う。版（`?v=`）は中身から自動で付くので、手で書かない。CSS を足すときは `static/css/style.css` に `@import` を足す
   - 版は起動して最初に使ったときに作り、再起動まで変えない（ページのたびにファイルを見に行くと、Docker のマウント越しで 1 秒以上かかるため）。CSS・JS を直したら再起動する（下の Build & Run）
   - 版付きの URL はブラウザが 1 年覚える（`Cache-Control: immutable`。`app/utils/static_version.py` の `VersionedStaticFiles`）。版の付かない URL（vendor・logo など）には付けない
-- 状態管理は `localStorage` (テーマ、サイドバー状態、サイドバー幅)
+- 状態管理は `localStorage` (テーマ、サイドバー状態、サイドバー幅、全体グラフの配置（`graph-render.js` の `layoutKey`。点と線が変わったら計算し直す）)
 - アイコンは Lucide SVG を使用
 - モーダル（開いているときは `.active`）の一覧は `core.js` の `MODALS_TOP_FIRST` の 1 つだけ。Esc・裏のスクロールの固定・ショートカットを止めるのは、どれもここから決まる
   - モーダルを足したら、`MODALS_TOP_FIRST` に重なりの上からの順で足す（根拠は z-index と、同じ値なら DOM の順。z-index は `variables.css` の `--z-*` を使う）

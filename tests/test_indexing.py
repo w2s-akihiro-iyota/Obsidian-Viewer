@@ -268,3 +268,17 @@ def test_別名のリンクは索引の作り直しでつながる(isolated_cach
     assert cache.NOTE_RESOLVER.resolve("週次") == "定例.md"
     assert cache.FORWARD_LINK_CACHE["参照元.md"] == ["定例.md"]
     assert {f["path"]: f["missing_links"] for f in cache.GLOBAL_FILE_CACHE}["参照元.md"] == ["無い"]
+
+
+def test_リンク先の一覧は本文に出てきた順で重複を除く(isolated_cache):
+    """起動ごとに順が変わらない（X-16。前は set を通していて、文字列のハッシュが起動ごとに違うため、
+    リンク先の順と全体グラフの線の順（＝点の配置）が起動ごとに変わった）"""
+    from app import cache
+    from app.core import indexing
+
+    for name in ("あ", "い", "う", "え"):
+        _write(isolated_cache / f"{name}.md", "本文")
+    _write(isolated_cache / "参照元.md", "[[う]] と [[あ]] と [[え]]、もう一度 [[あ]]、[[い]]、[[う]]")
+    indexing.refresh_global_caches()
+    assert cache.FORWARD_LINK_CACHE["参照元.md"] == ["う.md", "あ.md", "え.md", "い.md"]
+    assert [t for s, t in cache.LINK_GRAPH.links if s == "参照元.md"] == ["う.md", "あ.md", "え.md", "い.md"]

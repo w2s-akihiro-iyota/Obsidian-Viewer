@@ -1,7 +1,7 @@
 // ==============================================
 // graph.js - 全体グラフ（/graph）
 // 描画は graph-render.js の renderForceGraph。最初は全部の点が枠に収まる倍率で開き、
-// ?focus=<slug> のときはそのノートを中央に寄せて色を付ける
+// ?focus=<slug> のときはそのノートを中央に寄せて色を付ける。配置は localStorage に覚える（Q-39）
 // ==============================================
 
 (function () {
@@ -32,6 +32,8 @@
             const focus = focusSlug ? data.nodes.find(n => n.slug === focusSlug) : null;
             const graph = renderForceGraph(canvas, data, {
                 hideLabelsBelow: 0.5,   // 全体を収めた小さい倍率では、ラベルが重なって読めないので隠す
+                // 配置を覚えて、点と線が変わっていなければ次は計算せずに描く（Q-39）。外部の人の表示は点が違うので別に覚える
+                layoutKey: isPublicView() ? 'graphLayoutPublic' : 'graphLayout',
                 nodeClass: d => (focus && d.id === focus.id ? 'is-focus' : ''),
             });
             const show = (duration) => {
