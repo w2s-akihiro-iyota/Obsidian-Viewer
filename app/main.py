@@ -9,7 +9,6 @@ logger = logging.getLogger("app.main")
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import CONTENT_SECURITY_POLICY, STATICS_DIR
 from app.api.errors import handle_http_exception, handle_unexpected_error
@@ -19,6 +18,7 @@ from app.services.media_migration import migrate_legacy_media
 from app.services.sync import background_sync_loop
 from app.utils.helpers import is_same_origin_request
 from app.utils.messages import get_error
+from app.utils.static_version import VersionedStaticFiles
 
 def _prepare_caches() -> None:
     """起動時の準備。添付を以前の置き場（static/images）から MEDIA_DIR へ移してから、索引を作る"""
@@ -82,7 +82,8 @@ async def add_page_csp(request: Request, call_next):
 
 
 # Mount Static Files（アプリの CSS・JS・部品の画像だけ。Vault の添付は /media で配信する: app/api/media.py）
-app.mount("/static", StaticFiles(directory=str(STATICS_DIR)), name="static")
+# 版付きの URL（?v=）はブラウザに長く覚えさせる（app/utils/static_version.py）
+app.mount("/static", VersionedStaticFiles(directory=str(STATICS_DIR)), name="static")
 
 # Include API Router
 app.include_router(router)
