@@ -302,7 +302,9 @@ def _build_link_maps(files: list[dict], bodies: dict[str, str], resolver: NoteRe
                         "slug": path_to_slug.get(source_path, source_path)
                     })
 
-        forward[source_path] = list(set(resolved_targets))
+        # 出てきた順を保ったまま重複を除く（set を通すと、文字列のハッシュが起動ごとに違うため順が変わり、
+        # 全体グラフの線の順＝点の配置まで起動ごとに変わる。X-16）
+        forward[source_path] = list(dict.fromkeys(resolved_targets))
         f["missing_links"] = list(missing_links)
 
     logger.info("Backlink cache built: %d files with backlinks.", len(backlinks))

@@ -10,7 +10,12 @@ const GRAPH_SETTLE_TICKS = 300;
 // 771 ノードの全体グラフでは 300 tick に 1 秒以上かかり、まとめて計算すると画面が止まっていた）。
 // 続きは MessageChannel で呼ぶ（setTimeout は続けて呼ぶと 4ms 以上待たされ、全体で 1.5 秒ほど遅くなった）
 const GRAPH_SETTLE_SLICE_MS = 12;
+// 最初の 1 回だけは、長いタスク（50ms）にならない長さまで計算する。点が少ないグラフ（つながりなど）はここで終わり、
+// メッセージを出さずにすぐ描く（12ms だと、d3 の処理がまだ温まっていない初回は点 3 つでも終わらないことがあった）
+const GRAPH_SETTLE_FIRST_SLICE_MS = 45;
 const GRAPH_SETTLING_MESSAGE = '配置を計算しています…';
+// 覚えた配置（Q-39）の形の版。形を変えたら上げる（古い形は読まずに計算し直す）
+const GRAPH_LAYOUT_STORE_VERSION = 1;
 // 拡大縮小できる倍率の範囲（枠に収めるときの最小倍率の既定値もこれ）
 const GRAPH_MIN_ZOOM = 0.05;
 const GRAPH_MAX_ZOOM = 4;
@@ -43,6 +48,7 @@ function renderForceGraph(container, data, options = {}) {
         nodeClass: () => '',        // (d) => 追加のクラス
         ariaLabel: 'ノートのつながりのグラフ',
         onNodeClick: (d) => { window.location.href = withViewAs(viewUrl(d.slug)); },
+        layoutKey: null,            // 配置を localStorage に覚えるキー（Q-39。全体グラフだけ）。点と線がまったく同じなら、次は計算せずに描く
     }, options);
 
     container.innerHTML = '';
@@ -193,8 +199,25 @@ function renderForceGraph(container, data, options = {}) {
     let destroyed = false;
     let channel = null;
     let ticks = 0;
-    function settleSlice() {
-        const until = performance.now() + GRAPH_SETTLE_SLICE_MS;
+
+    // 覚えた配置が今の点と線のものなら、計算せずにそれを使う（Q-39）。位置は枠の真ん中からのずれで覚える
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const signature = o.layoutKey ? graphLayoutSignature(data.nodes, data.links, idOf) : null;
+    const saved = signature ? readGraphLayout(o.layoutKey, signature) : null;
+    const restored = Boolean(saved) && data.nodes.every(n => Array.isArray(saved[n.id]));
+    if (restored) {
+        data.nodes.forEach(n => {
+            n.x = centerX + saved[n.id][0];
+            n.y = centerY + saved[n.id][1];
+            n.vx = 0;
+            n.vy = 0;
+        });
+        simulation.alpha(simulation.alphaMin());   // 落ち着いたあとと同じ（ドラッグしたときだけ動き出す）
+        ticks = GRAPH_SETTLE_TICKS;
+    }
+    function settleSlice(budgetMs) {
+        const until = performance.now() + budgetMs;
         while (ticks < GRAPH_SETTLE_TICKS && performance.now() < until) {
             simulation.tick();
             ticks++;
@@ -203,12 +226,13 @@ function renderForceGraph(container, data, options = {}) {
     }
     const ready = new Promise((resolve) => {
         function show() {
+            if (signature && !restored) saveGraphLayout(o.layoutKey, signature, data.nodes, centerX, centerY);
             place();
             simulation.on('tick', place);
             container.replaceChildren(svg.node());
             resolve();
         }
-        if (settleSlice()) {
+        if (settleSlice(GRAPH_SETTLE_FIRST_SLICE_MS)) {
             show();
             return;
         }
@@ -220,7 +244,7 @@ function renderForceGraph(container, data, options = {}) {
         channel = new MessageChannel();
         channel.port1.onmessage = () => {
             if (destroyed) return;
-            if (settleSlice()) {
+            if (settleSlice(GRAPH_SETTLE_SLICE_MS)) {
                 channel.port1.close();
                 show();
             } else {
@@ -238,6 +262,40 @@ function renderForceGraph(container, data, options = {}) {
     }
 
     return { svg, node, label, ready, zoomToFit, focusNode, destroy };
+}
+
+// 点と線の組み合わせを表す短い文字列（並び順に左右されない）。覚えた配置が今のグラフのものかを見分ける（Q-39）
+function graphLayoutSignature(nodes, links, idOf) {
+    const ids = nodes.map(n => String(n.id)).sort();
+    const pairs = links.map(l => `${idOf(l.source)}\u0000${idOf(l.target)}`).sort();
+    let hash = 0x811c9dc5;   // FNV-1a（32 ビット）
+    for (const text of [ids.join('\u0001'), pairs.join('\u0001')]) {
+        for (let i = 0; i < text.length; i++) {
+            hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+        }
+    }
+    return `${ids.length}:${pairs.length}:${(hash >>> 0).toString(36)}`;
+}
+
+// 覚えた配置（点の id → 枠の真ん中からのずれ [x, y]）。無い・形が違う・別の点と線のものなら null
+function readGraphLayout(key, signature) {
+    try {
+        const saved = JSON.parse(localStorage.getItem(key));
+        if (saved && saved.version === GRAPH_LAYOUT_STORE_VERSION && saved.signature === signature) return saved.positions;
+    } catch (e) {
+        // 読めなければ計算し直す
+    }
+    return null;
+}
+
+function saveGraphLayout(key, signature, nodes, centerX, centerY) {
+    const round = v => Math.round(v * 10) / 10;
+    const positions = Object.fromEntries(nodes.map(n => [n.id, [round(n.x - centerX), round(n.y - centerY)]]));
+    try {
+        localStorage.setItem(key, JSON.stringify({ version: GRAPH_LAYOUT_STORE_VERSION, signature, positions }));
+    } catch (e) {
+        // 覚えられなくても描ける（容量を超えた・保存できないブラウザ）
+    }
 }
 
 // ドラッグ（動かした点の周りだけシミュレーションを再開する）
