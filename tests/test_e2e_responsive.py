@@ -7,6 +7,7 @@
 - ⋮: 768px 以下は「＋」の中（#article-dial-menu）、PC は記事ヘッダーの元の場所。またぐと ⋮ のドロップダウンを閉じる
 - スマホのドロワー: 目次の項目を押したあと・開いたまま PC の幅に広げたあとも、本文はスクロールできる（sidebar.js）
 - エディタ: 境目をドラッグしてから 768px 以下にしても、縦に並んだ入力欄とプレビューは同じ高さ（editor.js）
+  タッチでもドラッグできる（769px 以上のタブレットなど）。768px 以下ではタッチのスクロールを止めない（X-12）
 
 直っていない不具合（ロードマップの ID）は、直したら通るテストを xfail(strict=True) で置く（書き方の約束は
 CLAUDE.md の Testing と conftest.py の E2ESite.precondition）。直して通るようになると XPASS で落ちるので、そのときは印を外す
@@ -29,6 +30,10 @@ SIDEBAR = "#sidebar"
 IS_OPEN = re.compile(r"\bis-open\b")
 SHOW = re.compile(r"\bshow\b")
 OVERFLOW = re.compile(r"overflow")
+RESIZING = re.compile(r"\beditor-resizing\b")    # エディタの境目をドラッグしているあいだ body に付くクラス
+# エディタの境目を左端までドラッグしたあとの入力欄の幅の上限（枠に対する割合。editor.js は 2 割より狭くしない）。
+# 半分ずつの初めの幅でも「入力欄 < プレビュー」になる（プレビューの左の線のぶん）ので、プレビューとは比べない
+DRAGGED_TO_LEFT = 0.3
 
 
 def _wait_graph_fits(e2e, page, before=None) -> int:
@@ -247,10 +252,41 @@ def test_エディタの境目をドラッグしてからスマホの幅にし�
     page.mouse.move(panes["x"], y, steps=5)     # 左端まで
     page.mouse.up()
     with e2e.precondition():
-        assert input_pane.bounding_box()["width"] < preview_pane.bounding_box()["width"], "ドラッグで入力欄が狭くならない"
+        assert input_pane.bounding_box()["width"] < panes["width"] * DRAGGED_TO_LEFT, "ドラッグで入力欄が狭くならない"
 
     e2e.resize(page, E2E_PHONE)
     e2e.wait_until(page, """() => {
         const height = selector => document.querySelector(selector).getBoundingClientRect().height;
         return Math.abs(height('.editor-input-pane') - height('.editor-preview-pane')) <= 10;
     }""", "縦に並んだ入力欄とプレビューの高さがそろわない")
+
+
+def test_エディタの境目はタッチでもドラッグできスマホの幅ではタッチのスクロールを止めない(e2e):
+    page = e2e.open_path("/editor")
+    input_pane = page.locator(".editor-input-pane")
+    resizer = page.locator("#editor-resizer")
+    box = resizer.bounding_box()
+    panes = page.locator(".editor-panes").bounding_box()
+    # 境目に届いた入力の種類を記録する（マウスではなくタッチとして届いたことを確かめる）
+    page.evaluate("""() => {
+        window.resizerPointerTypes = [];
+        document.getElementById('editor-resizer')
+            .addEventListener('pointerdown', e => window.resizerPointerTypes.push(e.pointerType));
+    }""")
+    # 指で左端までなぞる。CDP のタッチはブラウザが本物のタッチとして扱う（pointerType が touch の pointer events になり、
+    # touch-action が許していればスクロールに回して pointercancel を出す）。Playwright の touchscreen は tap しか無い
+    cdp = page.context.new_cdp_session(page)
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
+    for step in range(1, 6):
+        cdp.send("Input.dispatchTouchEvent",
+                 {"type": "touchMove", "touchPoints": [{"x": x - (x - panes["x"]) * step / 5, "y": y}]})
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+    assert page.evaluate("window.resizerPointerTypes") == ["touch"]
+    assert input_pane.bounding_box()["width"] < panes["width"] * DRAGGED_TO_LEFT, "タッチのドラッグで入力欄が狭くならない"
+    expect(page.locator("body")).not_to_have_class(RESIZING)   # 指を離したらドラッグを終える
+
+    # 768px 以下はドラッグしないので、境目に触れてもページはスクロールできる
+    e2e.resize(page, E2E_PHONE)
+    expect(resizer).to_have_css("touch-action", "auto")

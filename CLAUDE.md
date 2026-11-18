@@ -87,6 +87,10 @@ static/
 - テンプレートから CSS・JS を読み込むときは `{{ static_url("js/modules/x.js") }}` を使う。版（`?v=`）は中身から自動で付くので、手で書かない。CSS を足すときは `static/css/style.css` に `@import` を足す
 - 状態管理は `localStorage` (テーマ、サイドバー状態、サイドバー幅)
 - アイコンは Lucide SVG を使用
+- モーダル（開いているときは `.active`）の一覧は `core.js` の `MODALS_TOP_FIRST` の 1 つだけ。Esc・裏のスクロールの固定・ショートカットを止めるのは、どれもここから決まる
+  - モーダルを足したら、`MODALS_TOP_FIRST` に重なりの上からの順で足す（根拠は z-index と、同じ値なら DOM の順。z-index は `variables.css` の `--z-*` を使う）
+  - `.active` を付け外ししたら `syncBackgroundScrollLock()` を呼ぶ。Esc は `closeOnEscapeWhenTopmost(modal, close)` で受ける（いちばん上のときだけ閉じる）
+  - モーダルの外のキー操作（ショートカット・つながりやツリーの Esc など）は、`isAnyModalOpen()` を見てモーダルに譲る
 
 ### HTML (Jinja2 Templates)
 - base.html をベースレイアウトとして継承
@@ -138,7 +142,7 @@ docker-compose logs -f           # ログ確認
 - 静的ファイル: `/app/static/`
 - Vault の添付: `/app/media/`（`./media` をマウント）
 - 設定ファイル: `/app/app/server_config.yaml` (gitignore対象)
-- ホストPC Vault: `/0_host_pc:ro` (読み取り専用マウント)
+- ホストPC Vault: `/0_host_pc`（`docker-compose.override.yml` でマウント。読むだけなら `:ro`、ブラウザのエディタから Vault へ保存するなら `:ro` を外す。README の手順 3）
 
 ### Files NOT Tracked in Git
 - `docker-compose.override.yml` - ホスト固有のVaultパスを書く（`docker-compose.yml` は共通設定として Git 管理する。個人のパスを書かない）

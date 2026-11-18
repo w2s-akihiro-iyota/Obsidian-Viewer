@@ -182,6 +182,8 @@ body.page-editor footer {
     transition: background var(--motion-fast);
     position: relative;
     z-index: 2;
+    /* タッチでなぞったときに、ページのスクロールにしないで境目のドラッグにする（editor.js。X-12） */
+    touch-action: none;
 }
 
 .editor-resizer:hover,
@@ -216,11 +218,13 @@ body.editor-resizing .editor-preview-pane {
         flex: 1;
     }
 
-    /* スマホの幅ではドラッグできないので、つかめるように見せない（カーソルも、乗せたときの色も変えない） */
+    /* スマホの幅ではドラッグできないので、つかめるように見せない（カーソルも、乗せたときの色も変えない）。
+       境目に触れてなぞっても、ふつうにページをスクロールできるようにする */
     .editor-resizer {
         width: 100%;
         height: 4px;
         cursor: default;
+        touch-action: auto;
     }
 
     .editor-resizer:hover {

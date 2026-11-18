@@ -51,11 +51,11 @@
 
 {% block content %}
 {% import "partials/_d3.html" as d3lib %}
-{% set local_graph_key = shortcuts.find_shortcut("view", ("G",)) %}
+{% set local_graph_key = shortcuts.SHORTCUT_LOCAL_GRAPH %}
 {% set local_graph_label = local_graph_key.short ~ " (" ~ local_graph_key.keys[0]|join("+") ~ ")" %}
 {# 右上のアクション置き場（layout.css の .article-actions。置き場所は article-actions.js が決める）
    つながり（F-8）: ボタンと、押すと出るパネル（狭い画面では下からのシート）。開閉は local-graph-panel.js、中身は local-graph.js が描く
-   G キーは app/shortcuts.py の定義から data-shortcut-key で渡す
+   開閉のキー（G）は app/shortcuts.py の定義（SHORTCUT_LOCAL_GRAPH）から data-shortcut-key で渡す
    768px 以下（D-11）: 右上は「＋」1 つにまとめ、押すと「つながり」と「メニュー」を縦に出す（開閉は article-dial.js）。
    PC では「＋」・暗幕・ラベル・メニューの枠は出さず、つながりのボタンだけを今までどおり置く。
    「メニュー」の枠には、記事ヘッダーの ⋮（.page-menu-container）を 768px 以下のときだけ article-dial.js が移す（中身を 2 回書かない） #}

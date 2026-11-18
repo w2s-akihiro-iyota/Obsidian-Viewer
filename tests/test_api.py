@@ -9,6 +9,7 @@
 - 記事ページのヘッダー（D-1）: パンくず・タイトル・メタ情報
 - ヘルプ（D-5 / X-4）: 6タブ。「書き方」「管理者向け」タブとエディタのショートカットは管理者だけ（外部表示中の管理者にも出す）
 - 画面上のショートカット表示（F-9）: ヘルプの表・? のチートシート・下の段のヒントは app/shortcuts.py の定義から描く
+  - つながりのボタンの G・クイックスイッチャーの Esc は定数で引くので、キーを変えても記事ページを描ける（Q-29）
 - ノート一覧（D-2 / D-10）: 並び替え・タグの件数（外部には公開ノートだけで数える）・条件のチップ・抜粋・非公開の印
   - 検索欄の tag:・path: はクイックスイッチャーと同じく絞り込む（B-8）
 - ダッシュボード（F-6 / D-8）: 手入れが必要なノート（リンク切れ・孤立・タグなし）・ヒートマップ・0 件の表示
@@ -19,6 +20,7 @@
 """
 import builtins
 import copy
+import dataclasses
 import json
 import os
 import pathlib
@@ -724,7 +726,7 @@ def test_フォーカスの場所の目印は定義のidで出す(site):
 def test_クイックスイッチャーの下の段は定義から描く(site):
     html = TestClient(app, base_url=PUBLIC).get("/").text
     footer = re.search(r'<div class="search-modal-footer key-hint-bar">(.*?)</div>', html, re.S).group(1)
-    expected = [s for s in shortcuts.group("quick-switcher").shortcuts] + [shortcuts.find_shortcut("global", ("Esc",))]
+    expected = [s for s in shortcuts.group("quick-switcher").shortcuts] + [shortcuts.SHORTCUT_CLOSE]
     assert re.findall(r"<span>(.*?)</span>", footer) == [f"{_keys_html(s.keys, '')} {s.short}" for s in expected]
     assert [s.short for s in expected] == ["選択", "開く", "新しいタブ", "閉じる"]   # 今の文言のまま
 
@@ -1212,7 +1214,33 @@ def test_つながりのボタンはショートカットの定義から名前�
         assert f'{attr}="つながり (G)"' in button
     assert 'aria-expanded="false"' in button and 'aria-controls="local-graph"' in button
     # 開閉のキーは JS に持たせず、定義から渡す
-    assert f'data-shortcut-key="{shortcuts.find_shortcut("view", ("G",)).keys[0][0]}"' in button
+    assert f'data-shortcut-key="{shortcuts.SHORTCUT_LOCAL_GRAPH.keys[0][0]}"' in button
+
+
+def _rekey(monkeypatch, shortcut, keys):
+    """定義の shortcut のキーを keys に変える（app/shortcuts.py のその 1 か所を書き換えたのと同じ定義にする）"""
+    rekeyed = dataclasses.replace(shortcut, keys=keys)
+    groups = tuple(dataclasses.replace(g, shortcuts=tuple(rekeyed if s is shortcut else s for s in g.shortcuts))
+                   for g in shortcuts.SHORTCUT_GROUPS)
+    monkeypatch.setattr(shortcuts, "SHORTCUT_GROUPS", groups)
+    monkeypatch.setattr(shortcuts, "_GROUPS_BY_ID", {g.id: g for g in groups})
+    for name, value in list(vars(shortcuts).items()):
+        if value is shortcut:
+            monkeypatch.setattr(shortcuts, name, rekeyed)
+
+
+def test_つながりと閉じるのキーを変えても記事ページを描き新しいキーを出す(graph_site, monkeypatch):
+    # Q-29: 画面はキーで探さずに定義を引くので、キーを変えても 500 にならない
+    _rekey(monkeypatch, shortcuts.SHORTCUT_LOCAL_GRAPH, (("L",),))
+    _rekey(monkeypatch, shortcuts.SHORTCUT_CLOSE, (("Q",),))
+    response = _get(TestClient(app, base_url=ADMIN), "中心.md")
+    assert response.status_code == 200
+    button = _toggle(response.text)
+    assert 'title="つながり (L)"' in button and 'data-shortcut-key="L"' in button
+    footer = re.search(r'<div class="search-modal-footer key-hint-bar">(.*?)</div>', response.text, re.S).group(1)
+    assert "<span><kbd>Q</kbd> 閉じる</span>" in footer
+    # ヘルプの「グラフビュー」の説明も定義のキーを出す
+    assert "記事ページの<b>右上のボタン</b>（<kbd>L</kbd>）で" in response.text
 
 
 def test_つながりのボタンの数は1歩でつながるノートの数(graph_site):
@@ -1260,7 +1288,8 @@ def test_記事ページとグラフのAPIは索引の作り直しで作った�
 
 
 def test_ショートカットの定義に記事ページのGがありヘルプとチートシートに載る(graph_site):
-    shortcut = shortcuts.find_shortcut("view", ("G",))
+    shortcut = shortcuts.SHORTCUT_LOCAL_GRAPH
+    assert shortcut.keys == (("G",),) and shortcut in shortcuts.group("view").shortcuts
     assert shortcut.description == "つながりを開く・閉じる" and shortcut.short == "つながり"
     assert shortcuts.group("view").contexts == frozenset({"view"})
     for base_url in (ADMIN, PUBLIC):

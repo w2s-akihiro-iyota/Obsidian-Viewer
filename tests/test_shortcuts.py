@@ -4,10 +4,11 @@
 - ? でショートカット一覧を開く行がある
 - 管理者だけのグループは管理者にだけ返す
 - チートシートは、いまの画面だけのグループ → どの画面でも → そのほか の順に並べる
+- 画面が直に使うショートカット（つながりの G・閉じる Esc）は、キーで探さず定数で引ける（Q-29）
 """
 from app.shortcuts import (
-    ALL_PAGE_IDS, FOCUS_PLACES, PAGES, SHORTCUT_GROUPS, Shortcut, find_page, find_shortcut, group, groups_for_page,
-    visible_groups,
+    ALL_PAGE_IDS, FOCUS_PLACES, PAGES, SHORTCUT_CLOSE, SHORTCUT_GROUPS, SHORTCUT_LOCAL_GRAPH, Shortcut, find_page, group,
+    groups_for_page, visible_groups,
 )
 
 
@@ -81,5 +82,8 @@ def test_どのグループも画面かフォーカスの場所のどれかで�
         assert len([g for g in SHORTCUT_GROUPS if place in g.contexts]) == 1, place
 
 
-def test_キーでショートカットを引く():
-    assert find_shortcut("global", ("Esc",)).short == "閉じる"
+def test_画面が直に使うショートカットは定数で引けてグループの定義に入っている():
+    # テンプレートはキーで探さずに定数を使う。グループもその定数を持つので、キーを変えるのは定数の 1 か所だけ
+    assert any(s is SHORTCUT_CLOSE for s in group("global").shortcuts)
+    assert any(s is SHORTCUT_LOCAL_GRAPH for s in group("view").shortcuts)
+    assert SHORTCUT_CLOSE.short == "閉じる" and SHORTCUT_LOCAL_GRAPH.short == "つながり"

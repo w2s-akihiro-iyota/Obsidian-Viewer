@@ -104,7 +104,8 @@ function initFileTree() {
             // 日本語入力の変換確定（Enter）や候補選択（↑↓）は横取りしない
             if (e.isComposing || e.keyCode === 229) return;
 
-            if (e.key === 'Escape' && filterInput.value) {
+            // モーダルが開いているときの Esc は、そちらに譲る（ようこそは打っている最中にも出て、フォーカスは欄に残る）
+            if (e.key === 'Escape' && filterInput.value && !isAnyModalOpen()) {
                 filterInput.value = '';
                 render();
             } else if (e.key === 'ArrowDown' || e.key === 'Enter') {

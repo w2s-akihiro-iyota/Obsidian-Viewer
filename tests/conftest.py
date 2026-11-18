@@ -4,6 +4,7 @@ E2E のテストファイル（test_e2e_*.py）は、2 ファイル以上で使�
 `from conftest import ...` で読む（pytest の既定の読み込み方では、pytest が読んだこの conftest と同じモジュールになる）
 """
 import asyncio
+import base64
 import re
 import socket
 import threading
@@ -103,7 +104,14 @@ E2E_READ_ONLY_POSTS = {"/api/editor/preview"}
 
 # テスト用のノート（E2E_NOTES）のうち、テストが名前で使うもの
 E2E_ENTRY_NOTE = "入口のノート.md"   # つながり 2 歩・見出し・長い本文。たいていのテストはここを開く
+E2E_IMAGE_NOTE = "画像のノート.md"   # 先頭に画像（押すと拡大）と長い本文
 E2E_SEARCH_WORD = "ipsum"           # 非公開のノート以外の本文にある語（クイックスイッチャーで候補が 3 件以上出る）
+
+# テスト用の添付（添付の置き場からのパス → 中身）。1×1 の PNG を、ノートの ![[...|幅x高さ]] で押せる大きさに広げて出す
+E2E_IMAGE = "e2e-画像.png"
+E2E_MEDIA = {
+    E2E_IMAGE: base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),
+}
 
 # 本文の段落（記事ページがスクロールできる長さにする）
 _E2E_LONG_BODY = "\n\n".join(f"段落 {i}: 長い本文。スクロールできる長さにするための文。" for i in range(40))
@@ -112,6 +120,7 @@ _E2E_LONG_BODY = "\n\n".join(f"段落 {i}: 長い本文。スクロールでき�
 # - 入口: つながりが 2 歩（入口 → 先A・先B、先B → 二歩先）。見出し（h1〜h3）と長い本文
 # - フォルダ 2 段（フォルダ1/サブ/）に 3 件（ツリーの矢印キー用）
 # - ひとり: どこともつながらない。非公開: 外部の人には見えない
+# - 画像: 先頭の画像（E2E_IMAGE）を押すと拡大する。本文が長く、裏の本文がスクロールできる
 E2E_NOTES = {
     E2E_ENTRY_NOTE: ("---\npublish: true\n---\n# 入口の見出し\n\n[[つながり先のノートA]] と [[つながり先のノートB]] へ。\n\n"
                      f"## 中くらいの見出し\n\n{_E2E_LONG_BODY}\n\n### 小さい見出し\n\nおわり {E2E_SEARCH_WORD}\n"),
@@ -120,6 +129,7 @@ E2E_NOTES = {
     "フォルダ1/サブ/二歩先のノート.md": f"---\npublish: true\n---\n# 二歩先\n\n二歩先の本文 {E2E_SEARCH_WORD}\n",
     "ひとりのノート.md": f"---\npublish: true\n---\n# ひとり\n\nどこともつながらない {E2E_SEARCH_WORD}\n",
     "非公開のノート.md": "---\npublish: false\n---\n# 非公開\n\n非公開の本文\n",
+    E2E_IMAGE_NOTE: f"---\npublish: true\n---\n# 画像\n\n![[{E2E_IMAGE}|320x160]]\n\n{_E2E_LONG_BODY}\n",
 }
 
 
@@ -222,13 +232,18 @@ def e2e_servers():
 
 @pytest.fixture
 def e2e_vault(tmp_path, use_test_vault, isolated_caches):
-    """E2E のテスト用のノート（E2E_NOTES）を置き、アプリの読む場所を差し替えて索引を作る"""
+    """E2E のテスト用のノート（E2E_NOTES）と添付（E2E_MEDIA）を置き、アプリの読む場所を差し替えて索引を作る"""
     notes_dir = tmp_path / "vault"
     for rel, text in E2E_NOTES.items():
         path = notes_dir / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
-    use_test_vault(notes_dir, tmp_path / "media")
+    media_dir = tmp_path / "media"
+    for rel, data in E2E_MEDIA.items():
+        path = media_dir / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    use_test_vault(notes_dir, media_dir)
     indexing.refresh_global_caches()
     return notes_dir
 
@@ -251,25 +266,29 @@ class E2ESite:
     ENTRY = E2E_ENTRY_NOTE
     SEARCH_WORD = E2E_SEARCH_WORD
 
-    def open(self, note: str = ENTRY, *, viewer: str = E2E_ADMIN, width: str = E2E_PC):
+    def open(self, note: str = ENTRY, *, viewer: str = E2E_ADMIN, width: str = E2E_PC, welcome: bool = False):
         """ノートの記事ページを開く（URL はファイル名ではなくスラッグ）。引数は open_path と同じ"""
-        return self.open_path(f"/view/{quote(cache.PATH_TO_SLUG[note])}", viewer=viewer, width=width)
+        return self.open_path(f"/view/{quote(cache.PATH_TO_SLUG[note])}", viewer=viewer, width=width, welcome=welcome)
 
-    def open_path(self, path: str, *, viewer: str = E2E_ADMIN, width: str = E2E_PC):
+    def open_path(self, path: str, *, viewer: str = E2E_ADMIN, width: str = E2E_PC, welcome: bool = False):
         """
         画面（/editor など）を新しいブラウザ（context）で開き、キー操作を受け付けるまで待ったページを返す
 
         - viewer: E2E_ADMIN（管理用ポート）か E2E_PUBLIC（公開用ポート）
         - width: E2E_PC（1280×900）か E2E_PHONE（390×844）
-        - ようこそ（初回の 1 秒後に出て G・? を止める）は出さず、PC のサイドバーは開いておく（既定は畳む）
+        - welcome: ようこそ（管理者の初回だけ、画面に出た 1 秒後に出て G・? を止める）を出すか。既定は出さない
+          （True でも、出るのを待たずに返す。出たかはテストが expect で待つ）
+        - PC のサイドバーは開いておく（既定は畳む）
         - GET・HEAD 以外のリクエストは、既定で止める（_block_writes）
         """
         port = {E2E_ADMIN: self.servers.admin_port, E2E_PUBLIC: self.servers.public_port}[viewer]
         context = self.browser.new_context(viewport=E2E_VIEWPORTS[width])
         self.contexts.append(context)
         context.route("**/*", self._block_writes)
-        context.add_init_script(
-            "localStorage.setItem('welcomeShown', 'true'); localStorage.setItem('sidebarCollapsed', 'false');")
+        init_script = "localStorage.setItem('sidebarCollapsed', 'false');"
+        if not welcome:
+            init_script += " localStorage.setItem('welcomeShown', 'true');"
+        context.add_init_script(init_script)
         page = context.new_page()
         page.on("pageerror", lambda error: self.errors.append(f"{page.url}: {error}"))
         page.goto(f"http://127.0.0.1:{port}{path}")

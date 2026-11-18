@@ -72,20 +72,76 @@ function withViewAs(url) {
     return parsed.pathname + parsed.search + parsed.hash;
 }
 
-// --- モーダルの裏の本文のスクロールの固定 ---
-// 開いているあいだ、裏の本文のスクロールを止めるモーダル（開いているときは .active が付く）。
-// 画像の拡大（#lightbox-overlay）は止めていないので入れない
-const SCROLL_LOCKING_MODALS_OPEN = '#help-modal.active, #settings-modal.active, #welcome-modal.active, #shortcut-sheet.active, #search-modal.active';
+// --- モーダル（重なり・Esc・裏のスクロールの固定・ショートカットを止める） ---
+// モーダルの一覧はこの 1 つだけ（開いているときは .active が付く）。モーダルを足したら、ここに足す。
+// 次のことは、どれもこの一覧から決める（前はそれぞれが自分の一覧を持っていて、足し忘れると食い違った。Q-32）
+//   - Esc で閉じるのは、開いているもののうちいちばん上の 1 つだけ（closeOnEscapeWhenTopmost。B-28）
+//   - 1 つでも開いていれば、裏の本文のスクロールを止める（syncBackgroundScrollLock。B-24）
+//   - 1 つでも開いていれば、? の一覧を開かず、記事ページの G などのショートカットを効かせない。
+//     つながり・＋・ツリーの絞り込み欄の Esc も、モーダルに譲る（isAnyModalOpen）
+// 並びは重なりの上からの順で、実際の重なり（z-index。同じ z-index なら DOM で後ろにあるほうが上）に合わせる
+//   - 画像の拡大: 9999（content.css の .lightbox-overlay）。どのモーダルより上
+//   - 検索: --z-quick-switcher（3200。variables.css）。Ctrl+K で、ようこそ・設定・ヘルプの上からも開くので、それらより上（B-29）
+//   - ようこそ: 3100（tutorial.css の #welcome-modal）
+//   - ? の一覧: --z-modal（3000。settings.css の .settings-modal）。同じ 3000 のヘルプ・設定より DOM で後ろ
+//     （base.html の include の順: 検索 → ようこそ → ヘルプ → 設定 → 一覧）
+//   - フォルダ選び: 設定の中に入れ子（_modal_settings.html）で、設定の中身より上（z-index: var(--z-dropdown)）。設定の上にだけ開く
+//   - 設定: 3000（.settings-modal）。ヘルプより DOM で後ろ
+//   - ヘルプ: 3000（tutorial.css の #help-modal）
+const MODALS_TOP_FIRST = [
+    '#lightbox-overlay',
+    '#search-modal',
+    '#welcome-modal',
+    '#shortcut-sheet',
+    '#dir-browser-modal',
+    '#settings-modal',
+    '#help-modal',
+];
 
 /**
- * 本文のスクロールの固定（body.no-scroll）を、いま開いているモーダルに合わせる。
+ * 開いているモーダルのうち、いちばん上のもの（どれも開いていなければ null）
+ */
+function topmostOpenModal() {
+    for (const selector of MODALS_TOP_FIRST) {
+        const modal = document.querySelector(`${selector}.active`);
+        if (modal) return modal;
+    }
+    return null;
+}
+
+/**
+ * モーダルが 1 つでも開いているか。
+ * 開いているあいだは、? の一覧を開かず、記事ページの G などのショートカットを効かせない。
+ * モーダルの外の Esc の受け手（つながり・＋・ツリーの絞り込み欄）も、これを見てモーダルに譲る
+ */
+function isAnyModalOpen() {
+    return topmostOpenModal() !== null;
+}
+
+/**
+ * modal がいちばん上に開いているときだけ、Esc で close を呼ぶ（モーダルの Esc は、どれもこれで受ける）。
+ * どれがいちばん上かを MODALS_TOP_FIRST の 1 か所で決めるのは、各モーダルが自分が開いているかだけを見て Esc を受けると、
+ * 重なっているとき 1 回の Esc で下のモーダルまで閉じてしまうため（ヘルプの上で Ctrl+K で開いた検索を Esc で閉じると、ヘルプも閉じた。B-28）。
+ * 閉じたら preventDefault し、同じ Esc の受け手のうち後から呼ばれるものは、defaultPrevented を見て何もしない。
+ * そうしないと、上のモーダルが閉じたあとに呼ばれる受け手から見て、下のモーダルが「いちばん上」になり、続けて閉じてしまう
+ */
+function closeOnEscapeWhenTopmost(modal, close) {
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented || topmostOpenModal() !== modal) return;
+        e.preventDefault();
+        close();
+    });
+}
+
+/**
+ * 本文のスクロールの固定（body.no-scroll）を、いま開いているモーダルに合わせる（画像の拡大も止める。X-11）。
  * 1 つでも開いていれば固定し、全部閉じたら外す。モーダルの .active を付けた・外したあとに必ず呼ぶ。
  * 付け外しをここ 1 か所で決めるのは、モーダルが重なることがあるため。
  * 閉じるモーダルが自分で外すと、まだ開いているモーダルの裏で本文が動いてしまう
  * （? の一覧の上で Ctrl+K を押すと、一覧が閉じて検索が残る。設定の上で開いた検索を閉じても、設定は残る。B-24）
  */
 function syncBackgroundScrollLock() {
-    document.body.classList.toggle('no-scroll', Boolean(document.querySelector(SCROLL_LOCKING_MODALS_OPEN)));
+    document.body.classList.toggle('no-scroll', isAnyModalOpen());
 }
 
 // --- Toast Notification System ---
