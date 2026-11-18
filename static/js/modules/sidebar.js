@@ -321,10 +321,13 @@ function initSidebar() {
         if (!inner) return;
         inner.innerHTML = `
             <div class="preview-header">
-                <span class="preview-title">${data.title}</span>
+                <span class="preview-title"></span>
             </div>
             <div class="preview-content markdown-body">${data.content}</div>
         `;
+        // 本文はサーバーで描いた Markdown の HTML なのでそのまま入れる。タイトル（frontmatter の title かファイル名）は
+        // textContent で入れ、< などが入っても文字のまま出す（S-9）
+        inner.querySelector('.preview-title').textContent = data.title;
         if (link) {
             updateTooltipPosition(link);
         }

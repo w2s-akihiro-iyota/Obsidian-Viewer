@@ -924,7 +924,9 @@ function initSyncSettings() {
             if (res.ok) {
                 renderDirList(data);
             } else {
-                dirList.innerHTML = `<div class="error-msg">${data.message || 'フォルダの取得に失敗しました'}</div>`;
+                // サーバーの文言（例外の文字列。パスが入る）は textContent で入れ、< などが入っても文字のまま出す（S-8）
+                dirList.innerHTML = '<div class="error-msg"></div>';
+                dirList.querySelector('.error-msg').textContent = data.message || 'フォルダの取得に失敗しました';
             }
         } catch (err) {
             console.error("Failed to load dirs", err);
@@ -955,8 +957,10 @@ function initSyncSettings() {
             item.className = 'dir-item';
             item.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                <span>${dir.name}</span>
+                <span></span>
             `;
+            // フォルダ名は textContent で入れ、< などが入っても文字のまま出す（S-8）
+            item.querySelector('span').textContent = dir.name;
             item.onclick = () => loadDirs(dir.path);
             dirList.appendChild(item);
         });
