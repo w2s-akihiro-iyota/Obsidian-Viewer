@@ -159,7 +159,7 @@ const LOCAL_GRAPH_RESIZE_DELAY = 150;
             renderList(data);
             return;
         }
-        graph = renderForceGraph(canvas, data, {
+        const drawn = renderForceGraph(canvas, data, {
             linkDistance: 60,
             charge: -150,
             labelPlacement: 'below',
@@ -175,7 +175,9 @@ const LOCAL_GRAPH_RESIZE_DELAY = 150;
             nodeClass: d => (d.distance === 0 ? 'is-center' : `is-hop${d.distance}`),
             ariaLabel: `${panel.dataset.title} のつながり`,
         });
-        graph.zoomToFit();
+        graph = drawn;
+        // 点は配置が落ち着いてから出る（graph-render.js。つながりの点は少ないので、ふつうはすぐ）。枠に収めるのはそのあと
+        drawn.ready.then(() => drawn.zoomToFit());
     }
 
     function load(depth) {

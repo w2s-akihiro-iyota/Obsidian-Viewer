@@ -38,15 +38,18 @@
                 graph.zoomToFit();
                 if (focus) graph.focusNode(focus.id, { minScale: 1.5, duration });
             };
-            show(600);
-            // 枠の大きさが変わったら（読みやすい幅の設定の反映・ウィンドウの大きさの変更）合わせ直す
-            if (window.ResizeObserver) {
-                let size = `${canvas.clientWidth}x${canvas.clientHeight}`;
-                new ResizeObserver(() => {
-                    const now = `${canvas.clientWidth}x${canvas.clientHeight}`;
-                    if (now !== size) { size = now; show(0); }
-                }).observe(canvas);
-            }
+            // 点は配置が落ち着いてから出る（graph-render.js）。枠に収めるのはそのあと
+            graph.ready.then(() => {
+                show(600);
+                // 枠の大きさが変わったら（読みやすい幅の設定の反映・ウィンドウの大きさの変更）合わせ直す
+                if (window.ResizeObserver) {
+                    let size = `${canvas.clientWidth}x${canvas.clientHeight}`;
+                    new ResizeObserver(() => {
+                        const now = `${canvas.clientWidth}x${canvas.clientHeight}`;
+                        if (now !== size) { size = now; show(0); }
+                    }).observe(canvas);
+                }
+            });
         })
         .catch(() => showMessage('グラフのデータを読み込めませんでした'));
 })();

@@ -6,6 +6,11 @@
 
 // フォースレイアウトが落ち着くまでの tick 数（d3 の既定 alphaMin・alphaDecay で約 300）
 const GRAPH_SETTLE_TICKS = 300;
+// 落ち着くまでの計算を、1 回にこの時間（ms）までに分ける。あいだに画面を描かせて、固めない（Q-37。
+// 771 ノードの全体グラフでは 300 tick に 1 秒以上かかり、まとめて計算すると画面が止まっていた）。
+// 続きは MessageChannel で呼ぶ（setTimeout は続けて呼ぶと 4ms 以上待たされ、全体で 1.5 秒ほど遅くなった）
+const GRAPH_SETTLE_SLICE_MS = 12;
+const GRAPH_SETTLING_MESSAGE = '配置を計算しています…';
 // 拡大縮小できる倍率の範囲（枠に収めるときの最小倍率の既定値もこれ）
 const GRAPH_MIN_ZOOM = 0.05;
 const GRAPH_MAX_ZOOM = 4;
@@ -15,8 +20,10 @@ const GRAPH_MAX_ZOOM = 4;
  * @param {HTMLElement} container 描画先（中身は置き換える）
  * @param {{nodes: Array, links: Array}} data /api/graph の JSON
  * @param {object} options 下の defaults を参照
- * @returns {{svg, node, label, zoomToFit: Function, focusNode: Function, destroy: Function}}
- *   destroy は描き直す前に呼ぶ（シミュレーションを止め、container を空にする）
+ * @returns {{svg, node, label, ready: Promise, zoomToFit: Function, focusNode: Function, destroy: Function}}
+ *   点は配置が落ち着いてから container に入れる（点が飛び回らない）。計算が 1 回の切れ目で終わらないときは、
+ *   そのあいだ GRAPH_SETTLING_MESSAGE を出す。入れ終わると ready が解決する。zoomToFit・focusNode は ready のあとに呼ぶ
+ *   destroy は描き直す前に呼ぶ（計算とシミュレーションを止め、container を空にする。そのあと ready は解決しない）
  */
 function renderForceGraph(container, data, options = {}) {
     const o = Object.assign({
@@ -42,8 +49,8 @@ function renderForceGraph(container, data, options = {}) {
     const width = container.clientWidth;
     const height = container.clientHeight || Math.max(600, window.innerHeight - 120);
 
-    const svg = d3.select(container)
-        .append('svg')
+    // 配置が落ち着くまでは container に入れない（下の settle）
+    const svg = d3.create('svg')
         .attr('class', 'graph-svg')
         .attr('width', width)
         .attr('height', height)
@@ -81,9 +88,6 @@ function renderForceGraph(container, data, options = {}) {
             .force('x', d3.forceX(width / 2).strength(o.gravity))
             .force('y', d3.forceY(height / 2).strength(o.gravity));
     }
-    // 最初の配置は描く前に落ち着かせる（点が飛び回らず、すぐ枠に収められる）
-    simulation.tick(GRAPH_SETTLE_TICKS);
-
     const link = g.append('g')
         .selectAll('line')
         .data(data.links)
@@ -120,8 +124,6 @@ function renderForceGraph(container, data, options = {}) {
         node.attr('cx', d => d.x).attr('cy', d => d.y);
         label.attr('x', d => d.x).attr('y', d => d.y);
     }
-    place();
-    simulation.on('tick', place);
 
     if (o.hover) {
         node.on('mouseover', function (event, d) {
@@ -186,12 +188,56 @@ function renderForceGraph(container, data, options = {}) {
         return true;
     }
 
+    // 最初の配置は、描く前に落ち着かせる（点が飛び回らず、すぐ枠に収められる）。
+    // 計算は GRAPH_SETTLE_SLICE_MS ずつに分け、終わらなければ次のタスクで続ける（あいだに画面が描ける）
+    let destroyed = false;
+    let channel = null;
+    let ticks = 0;
+    function settleSlice() {
+        const until = performance.now() + GRAPH_SETTLE_SLICE_MS;
+        while (ticks < GRAPH_SETTLE_TICKS && performance.now() < until) {
+            simulation.tick();
+            ticks++;
+        }
+        return ticks >= GRAPH_SETTLE_TICKS;
+    }
+    const ready = new Promise((resolve) => {
+        function show() {
+            place();
+            simulation.on('tick', place);
+            container.replaceChildren(svg.node());
+            resolve();
+        }
+        if (settleSlice()) {
+            show();
+            return;
+        }
+        const message = document.createElement('div');
+        message.className = 'graph-message';
+        message.setAttribute('role', 'status');
+        message.textContent = GRAPH_SETTLING_MESSAGE;
+        container.replaceChildren(message);
+        channel = new MessageChannel();
+        channel.port1.onmessage = () => {
+            if (destroyed) return;
+            if (settleSlice()) {
+                channel.port1.close();
+                show();
+            } else {
+                channel.port2.postMessage(null);
+            }
+        };
+        channel.port2.postMessage(null);
+    });
+
     function destroy() {
+        destroyed = true;
+        if (channel) channel.port1.close();
         simulation.stop();
         container.innerHTML = '';
     }
 
-    return { svg, node, label, zoomToFit, focusNode, destroy };
+    return { svg, node, label, ready, zoomToFit, focusNode, destroy };
 }
 
 // ドラッグ（動かした点の周りだけシミュレーションを再開する）
