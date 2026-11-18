@@ -19,6 +19,6 @@
             </div>
             <div id="modal-search-results" class="search-modal-results" role="listbox" aria-label="検索結果"></div>
             {# 下の段は定義から描く（クイックスイッチャーのキー＋どの画面でも使える Esc） #}
-            <div class="search-modal-footer key-hint-bar">{{ sc.hint_items(shortcuts.group("quick-switcher"), [shortcuts.find_shortcut("global", ("Esc",))]) }}</div>
+            <div class="search-modal-footer key-hint-bar">{{ sc.hint_items(shortcuts.group("quick-switcher"), [shortcuts.SHORTCUT_CLOSE]) }}</div>
         </div>
     </div>

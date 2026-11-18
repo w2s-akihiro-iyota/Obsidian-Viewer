@@ -267,22 +267,26 @@ function initEditor() {
     }
 
     // ペインリサイザー
+    // マウスでもタッチ（769px 以上のタブレットなど）でもドラッグできるように pointer events で受ける（X-12）。
+    // 押した指・ボタンを境目に捕まえ（setPointerCapture）、境目の外へ出ても動きと離したことが境目に届くようにする。
+    // タッチでなぞってもページがスクロールしないのは、editor.css の .editor-resizer の touch-action: none
     if (resizer) {
-        let isResizing = false;
+        let dragPointerId = null;   // ドラッグしている指・ボタンの pointerId（していなければ null）
         const panes = document.querySelector('.editor-panes');
         const phoneQuery = window.matchMedia('(max-width: 768px)');
 
-        resizer.addEventListener('mousedown', (e) => {
-            // スマホの幅（縦並び）ではドラッグしない
-            if (phoneQuery.matches) return;
-            isResizing = true;
+        resizer.addEventListener('pointerdown', (e) => {
+            // スマホの幅（縦並び）ではドラッグしない。ドラッグ中に別の指で触れても、最初の指のまま
+            if (phoneQuery.matches || !panes || dragPointerId !== null) return;
+            dragPointerId = e.pointerId;
+            resizer.setPointerCapture(e.pointerId);
             document.body.classList.add('editor-resizing');
             resizer.classList.add('active');
             e.preventDefault();
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing || !panes) return;
+        resizer.addEventListener('pointermove', (e) => {
+            if (e.pointerId !== dragPointerId) return;
             const rect = panes.getBoundingClientRect();
             const offset = e.clientX - rect.left;
             const totalWidth = rect.width;
@@ -294,12 +298,14 @@ function initEditor() {
             panes.style.setProperty('--editor-input-flex', `0 0 ${ratio * 100}%`);
         });
 
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                document.body.classList.remove('editor-resizing');
-                resizer.classList.remove('active');
-            }
-        });
+        // 離したとき・ブラウザがドラッグを取り上げたとき（pointercancel）に終える。捕まえは離すとブラウザが外す
+        const endDrag = (e) => {
+            if (e.pointerId !== dragPointerId) return;
+            dragPointerId = null;
+            document.body.classList.remove('editor-resizing');
+            resizer.classList.remove('active');
+        };
+        resizer.addEventListener('pointerup', endDrag);
+        resizer.addEventListener('pointercancel', endDrag);
     }
 }

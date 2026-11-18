@@ -3,9 +3,6 @@
 // 中身は templates/partials/_modal_shortcuts.html がサーバー側で描く（定義は app/shortcuts.py）
 // ==============================================
 
-// これらが開いているあいだは ? で開かない（ほかのモーダルの操作を邪魔しない）
-const SHORTCUT_SHEET_BLOCKERS = '#help-modal.active, #search-modal.active, #settings-modal.active, #welcome-modal.active, #lightbox-overlay.active';
-
 function initShortcutSheet() {
     const modal = document.getElementById('shortcut-sheet');
     if (!modal) return;
@@ -47,12 +44,9 @@ function initShortcutSheet() {
         [...first, ...rest].forEach(section => body.appendChild(section));
     }
 
+    closeOnEscapeWhenTopmost(modal, close);
+
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && isOpen()) {
-            e.preventDefault();
-            close();
-            return;
-        }
         // 開いたまま Ctrl+K を押したら、クイックスイッチャーに譲る（下に重ならないように閉じる）
         if (isOpen() && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
             close({ restoreFocus: false });
@@ -64,7 +58,8 @@ function initShortcutSheet() {
             close();
             return;
         }
-        if (document.querySelector(SHORTCUT_SHEET_BLOCKERS)) return;
+        // ほかのモーダルが開いているあいだは開かない（そちらの操作を邪魔しない。一覧自身が開いていれば、上で閉じている）
+        if (isAnyModalOpen()) return;
         e.preventDefault();
         open();
     });
@@ -132,12 +127,4 @@ function isShortcutKey(e) {
     if (target.isContentEditable) return false;
     if (target instanceof HTMLInputElement) return NON_TYPING_INPUT_TYPES.has(target.type);
     return !target.closest('textarea, select, [contenteditable]:not([contenteditable="false"])');
-}
-
-/**
- * モーダル（ヘルプ・ショートカット一覧・クイックスイッチャー・設定・ようこそ・画像の拡大）が開いているか
- * 開いているあいだは、記事ページの G などのショートカットを効かせず、Esc もそちらに譲る
- */
-function isShortcutModalOpen() {
-    return Boolean(document.querySelector(`${SHORTCUT_SHEET_BLOCKERS}, #shortcut-sheet.active`));
 }

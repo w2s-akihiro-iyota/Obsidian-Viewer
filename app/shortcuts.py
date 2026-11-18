@@ -17,6 +17,8 @@
     下の段のヒントとチートシートは、フォーカスのある場所を contexts に持つグループを選ぶ・先頭に出す。
 
 テンプレートからは、このモジュールを Jinja のグローバル shortcuts として使う（例: shortcuts.group("tree")）。
+画面が 1 つのショートカットを直に使うとき（つながりのボタンの G・クイックスイッチャーの下の段の Esc）は、
+キーで探さず定数（SHORTCUT_LOCAL_GRAPH など）で引く。キーを変えても、引く側を直さずに済むように（Q-29）。
 """
 import re
 from dataclasses import dataclass
@@ -80,6 +82,15 @@ FOCUS_TREE_FILTER = "tree-filter"
 FOCUS_TREE = "tree"
 FOCUS_PLACES = frozenset({FOCUS_QUICK_SWITCHER, FOCUS_TREE_FILTER, FOCUS_TREE})
 
+# 画面が直に使うショートカット（グループの定義の中でも、この定数を使う）
+SHORTCUT_CLOSE = Shortcut(
+    (("Esc",),),
+    "ヘルプ・設定・ようこそ・ショートカット一覧・クイックスイッチャー・画像の拡大・つながり・＋（スマホ）を閉じる。"
+    "重なっているときは、上のものから 1 つずつ閉じる",
+    "閉じる",
+)   # クイックスイッチャーの下の段にも出す
+SHORTCUT_LOCAL_GRAPH = Shortcut((("G",),), "つながりを開く・閉じる", "つながり")   # つながりのボタンの名前と開閉のキー
+
 SHORTCUT_GROUPS: tuple[ShortcutGroup, ...] = (
     ShortcutGroup(
         id="global",
@@ -88,7 +99,7 @@ SHORTCUT_GROUPS: tuple[ShortcutGroup, ...] = (
         shortcuts=(
             Shortcut((("Ctrl", "K"),), "クイックスイッチャーを開く・閉じる", "クイックスイッチャー"),
             Shortcut((("?",),), "ショートカット一覧を開く", "ショートカット一覧"),
-            Shortcut((("Esc",),), "ヘルプ・ショートカット一覧・クイックスイッチャー・画像の拡大・つながりを閉じる", "閉じる"),
+            SHORTCUT_CLOSE,
         ),
     ),
     ShortcutGroup(
@@ -96,7 +107,7 @@ SHORTCUT_GROUPS: tuple[ShortcutGroup, ...] = (
         label="記事ページ",
         contexts=frozenset({"view"}),
         shortcuts=(
-            Shortcut((("G",),), "つながりを開く・閉じる", "つながり"),
+            SHORTCUT_LOCAL_GRAPH,
         ),
     ),
     ShortcutGroup(
@@ -153,14 +164,6 @@ def visible_groups(is_admin: bool) -> tuple[ShortcutGroup, ...]:
 def group(group_id: str) -> ShortcutGroup:
     """id でグループを引く（無い id はテンプレートの書き間違いなので KeyError にする）"""
     return _GROUPS_BY_ID[group_id]
-
-
-def find_shortcut(group_id: str, chord: tuple[str, ...]) -> Shortcut:
-    """グループの中から、押し方 chord を含むショートカットを引く（無ければ KeyError）"""
-    for shortcut in group(group_id).shortcuts:
-        if chord in shortcut.keys:
-            return shortcut
-    raise KeyError((group_id, chord))
 
 
 def find_page(body_class: str) -> Page | None:

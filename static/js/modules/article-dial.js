@@ -76,7 +76,7 @@ const ARTICLE_DIAL_READY_CLASS = 'article-dial-ready';
 
     // Esc: つながりのシート（local-graph-panel.js がキャプチャで先に受ける）や、ほかのモーダルが開いているときはそちらに譲る
     document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape' || !isOpen() || e.defaultPrevented || isShortcutModalOpen()) return;
+        if (e.key !== 'Escape' || !isOpen() || e.defaultPrevented || isAnyModalOpen()) return;
         e.preventDefault();
         close();
     });

@@ -394,13 +394,10 @@ function initSearch() {
                 e.preventDefault();
                 if (searchModal.classList.contains('active')) closeModal();
                 else openModal();
-                return;
-            }
-            // Close on Escape key
-            if (e.key === 'Escape' && searchModal.classList.contains('active')) {
-                closeModal();
             }
         });
+        // Esc で閉じる。ヘルプ・設定などの上で開いていても、閉じるのは検索だけ（B-28）
+        closeOnEscapeWhenTopmost(searchModal, closeModal);
 
         modalSearchInput.addEventListener('keydown', (e) => {
             // 日本語入力の変換確定（Enter）や候補選択（↑↓）は横取りしない

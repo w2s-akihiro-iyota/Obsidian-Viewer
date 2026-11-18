@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (lightboxOverlay && lightboxImage && lightboxClose) {
         const closeLightbox = () => {
             lightboxOverlay.classList.remove('active');
+            syncBackgroundScrollLock();
             lightboxOverlay.setAttribute('aria-hidden', 'true');
             // Remove src after transition to prevent layout jumps
             setTimeout(() => {
@@ -167,11 +168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && lightboxOverlay.classList.contains('active')) {
-                closeLightbox();
-            }
-        });
+        closeOnEscapeWhenTopmost(lightboxOverlay, closeLightbox);
 
         // Attach click event to all article images (except those inside links)
         document.querySelectorAll('.markdown-body img').forEach(img => {
@@ -182,6 +179,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 lightboxImage.src = img.src;
                 lightboxImage.alt = img.alt || '拡大画像';
                 lightboxOverlay.classList.add('active');
+                // 開いているあいだは裏の本文をスクロールさせない（X-11）
+                syncBackgroundScrollLock();
                 lightboxOverlay.setAttribute('aria-hidden', 'false');
             });
         });

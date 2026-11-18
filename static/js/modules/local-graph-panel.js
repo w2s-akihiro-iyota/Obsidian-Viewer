@@ -91,10 +91,10 @@ function createLocalGraphPanel(o) {
         close(false);
     });
 
-    // Esc と G。キャプチャで先に受け、ほかのモーダル（ヘルプ・チートシート・クイックスイッチャー・画像の拡大）が
+    // Esc と G。キャプチャで先に受け、モーダル（core.js の MODALS_TOP_FIRST）が
     // 開いているときは何もしない（Esc はそちらが閉じる）
     document.addEventListener('keydown', (e) => {
-        if (isShortcutModalOpen()) return;
+        if (isAnyModalOpen()) return;
         if (e.key === 'Escape') {
             if (!isOpen()) return;
             // 開いているつながりだけを閉じる（ツリーの絞り込み欄などの Esc は動かさない）

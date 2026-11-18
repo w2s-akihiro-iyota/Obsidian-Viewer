@@ -54,14 +54,7 @@ function initHelpModal() {
             }
         });
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && helpModal.classList.contains('active')) {
-                closeHelp();
-            }
-            if ((e.key === '/' || e.key === 's') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                // Keep existing search focus or handle s key
-            }
-        });
+        closeOnEscapeWhenTopmost(helpModal, closeHelp);
 
         // Help Modal Tabs logic
         document.querySelectorAll('.help-tab').forEach(tab => {
@@ -145,11 +138,7 @@ function initWelcomeModal() {
         if (e.target === welcomeModal) closeWelcome();
     });
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && welcomeModal.classList.contains('active')) {
-            closeWelcome();
-        }
-    });
+    closeOnEscapeWhenTopmost(welcomeModal, closeWelcome);
 }
 
 // --- Tutorial Logic ---
@@ -248,15 +237,6 @@ function initSettings() {
         document.getElementById('settings-open-btn-mobile')
     ].filter(btn => btn !== null);
     const closeBtn = document.getElementById('close-settings-modal');
-
-    if (settingsModal && openBtns.length > 0 && closeBtn) {
-        openBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                settingsModal.classList.add('active');
-                syncBackgroundScrollLock();
-            });
-        });
-    }
 
     // Inputs
     const fontSizeSelect = document.getElementById('setting-font-size');
@@ -378,7 +358,13 @@ function initSettings() {
         document.documentElement.style.setProperty('--preview-max-height', ph + 'px');
     };
 
-    // Event Listeners (Moved inside initial check)
+    // 設定を閉じる（×・背景・Esc で共通）。チュートリアル中なら、チュートリアルも終える
+    const closeSettings = () => {
+        settingsModal.classList.remove('active');
+        syncBackgroundScrollLock();
+        if (tutorialMode) endTutorial();
+    };
+
     if (settingsModal && openBtns.length > 0 && closeBtn) {
         openBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -387,21 +373,14 @@ function initSettings() {
             });
         });
 
-        closeBtn.addEventListener('click', () => {
-            settingsModal.classList.remove('active');
-            syncBackgroundScrollLock();
-            if (tutorialMode) endTutorial();
-        });
+        closeBtn.addEventListener('click', closeSettings);
     }
 
     if (settingsModal) {
         settingsModal.addEventListener('click', (e) => {
-            if (e.target === settingsModal) {
-                settingsModal.classList.remove('active');
-                syncBackgroundScrollLock();
-                if (tutorialMode) endTutorial();
-            }
+            if (e.target === settingsModal) closeSettings();
         });
+        closeOnEscapeWhenTopmost(settingsModal, closeSettings);
     }
 
     // Tab Navigation
@@ -933,6 +912,7 @@ function initSyncSettings() {
             selectedDirPath = '/';
         }
         dirModal.classList.add('active');
+        syncBackgroundScrollLock();
         loadDirs(selectedDirPath);
     }
 
@@ -994,12 +974,20 @@ function initSyncSettings() {
         openDirBrowser(btn.dataset.target);
     });
 
-    dirCloseBtn.onclick = () => dirModal.classList.remove('active');
+    // フォルダ選びを閉じる（×・決定・Esc で共通）
+    const closeDirBrowser = () => {
+        dirModal.classList.remove('active');
+        syncBackgroundScrollLock();
+    };
+
+    dirCloseBtn.onclick = closeDirBrowser;
+    // Esc は選ばずに閉じる（× と同じ）。下の設定は開いたまま
+    closeOnEscapeWhenTopmost(dirModal, closeDirBrowser);
 
     dirSelectBtn.onclick = () => {
         if (currentActiveInput && selectedDirPath) {
             currentActiveInput.value = selectedDirPath;
-            dirModal.classList.remove('active');
+            closeDirBrowser();
         }
     };
 
