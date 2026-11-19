@@ -392,8 +392,15 @@ function initSearch() {
             // Ctrl+K（Mac は Cmd+K）で開く・閉じる
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
                 e.preventDefault();
-                if (searchModal.classList.contains('active')) closeModal();
-                else openModal();
+                if (searchModal.classList.contains('active')) {
+                    closeModal();
+                    return;
+                }
+                // 画像の拡大は検索より上に重なる（core.js の MODALS_TOP_FIRST）。開いたままだと見えない検索が開くので、
+                // 拡大を閉じてから開く（閉じ方は main.js の拡大の閉じるボタンと同じ。X-13）
+                const lightbox = document.getElementById('lightbox-overlay');
+                if (lightbox && lightbox.classList.contains('active')) lightbox.querySelector('.lightbox-close')?.click();
+                openModal();
             }
         });
         // Esc で閉じる。ヘルプ・設定などの上で開いていても、閉じるのは検索だけ（B-28）

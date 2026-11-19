@@ -79,15 +79,18 @@ function withViewAs(url) {
 //   - 1 つでも開いていれば、裏の本文のスクロールを止める（syncBackgroundScrollLock。B-24）
 //   - 1 つでも開いていれば、? の一覧を開かず、記事ページの G などのショートカットを効かせない。
 //     つながり・＋・ツリーの絞り込み欄の Esc も、モーダルに譲る（isAnyModalOpen）
-// 並びは重なりの上からの順で、実際の重なり（z-index。同じ z-index なら DOM で後ろにあるほうが上）に合わせる
-//   - 画像の拡大: 9999（content.css の .lightbox-overlay）。どのモーダルより上
-//   - 検索: --z-quick-switcher（3200。variables.css）。Ctrl+K で、ようこそ・設定・ヘルプの上からも開くので、それらより上（B-29）
-//   - ようこそ: 3100（tutorial.css の #welcome-modal）
-//   - ? の一覧: --z-modal（3000。settings.css の .settings-modal）。同じ 3000 のヘルプ・設定より DOM で後ろ
+// 並びは重なりの上からの順で、実際の重なり（z-index。同じ z-index なら DOM で後ろにあるほうが上）に合わせる。
+// z-index は variables.css の --z-* だけで決める（数字を直書きしない。Q-33）。並びと重なりが合うかは E2E が見る
+// （test_e2e_keyboard.py の test_モーダルの一覧の順は実際の重なりの順と合う）
+//   - 画像の拡大: --z-lightbox（content.css の .lightbox-overlay）。どのモーダルより上。
+//     Ctrl+K を押したら、拡大を閉じてから検索を開く（検索は拡大より下なので、開いたままだと見えない検索が開いた。X-13）
+//   - 検索: --z-quick-switcher（settings.css の .search-modal）。Ctrl+K で、ようこそ・設定・ヘルプの上からも開くので、それらより上（B-29）
+//   - ようこそ: --z-welcome（tutorial.css の #welcome-modal）
+//   - ? の一覧: --z-modal（settings.css の .settings-modal）。同じ --z-modal のヘルプ・設定より DOM で後ろ
 //     （base.html の include の順: 検索 → ようこそ → ヘルプ → 設定 → 一覧）
 //   - フォルダ選び: 設定の中に入れ子（_modal_settings.html）で、設定の中身より上（z-index: var(--z-dropdown)）。設定の上にだけ開く
-//   - 設定: 3000（.settings-modal）。ヘルプより DOM で後ろ
-//   - ヘルプ: 3000（tutorial.css の #help-modal）
+//   - 設定: --z-modal（.settings-modal）。ヘルプより DOM で後ろ
+//   - ヘルプ: --z-modal（tutorial.css の #help-modal）
 const MODALS_TOP_FIRST = [
     '#lightbox-overlay',
     '#search-modal',

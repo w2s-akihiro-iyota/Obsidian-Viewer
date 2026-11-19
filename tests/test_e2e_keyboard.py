@@ -11,6 +11,8 @@
 - モーダルの重なり: ヘルプ・設定・ようこその上で開いた検索は、見た目でもいちばん上に出る（B-29）。
   重なっていたら、1 回の Esc でいちばん上の 1 つだけ閉じる（その検索、設定の中のフォルダ選び。B-28）。
   設定も Esc で閉じ、チュートリアル中ならチュートリアルも終える（X-9）
+  画像の拡大の上で Ctrl+K を押したら、拡大を閉じてから検索を開く（検索は拡大より下なので、見えない検索が開いていた。X-13）。
+  core.js の MODALS_TOP_FIRST の並びは、実際の重なり（z-index と DOM の順）と合う（Q-33）
 - 背景のスクロールの固定: モーダル（画像の拡大も。X-11）が開いているあいだは、裏の本文をスクロールさせない（body.no-scroll。B-24）
 - エディタ: Ctrl+S で保存し、ブラウザの保存は止める（保存の POST は page.route で受け、サーバーに届かせない）
 
@@ -334,6 +336,49 @@ def test_ヘルプや設定やようこその上で開いた検索は見た目�
         expect(page.locator(SEARCH)).to_have_class(E2E_ACTIVE)
 
     e2e.wait_until(page, SEARCH_INPUT_DRAWN_ON_TOP, f"{under}の上で開いた検索が、{under}の下に隠れている（B-29）")
+
+
+def test_画像の拡大の上でCtrlKを押すと拡大を閉じて検索を開く(e2e):
+    page = e2e.open(E2E_IMAGE_NOTE)
+    lightbox = page.locator(LIGHTBOX)
+    page.locator(".markdown-body img.obsidian-image").click()
+    with e2e.precondition():
+        expect(lightbox).to_have_class(E2E_ACTIVE)
+
+    page.keyboard.press("Control+k")
+    # 検索は拡大より下（B-29）。拡大を開いたままだと、見えない検索に入力欄のフォーカスが移っていた（X-13）
+    expect(lightbox).not_to_have_class(E2E_ACTIVE)
+    expect(page.locator(SEARCH)).to_have_class(E2E_ACTIVE)
+    expect(page.locator(SEARCH_INPUT)).to_be_focused()
+    e2e.wait_until(page, SEARCH_INPUT_DRAWN_ON_TOP, "画像の拡大の上で開いた検索が見えていない（X-13）")
+    expect(page.locator("body")).to_have_class(NO_SCROLL)    # 検索が開いているので、裏の固定は続く
+
+
+# MODALS_TOP_FIRST（core.js）の隣どうしで、前のものが実際に上に重なっているか（z-index が大きいか、同じなら DOM で後ろか）。
+# 合わないものを返す。ほかのモーダルの中に入れ子のもの（設定の中のフォルダ選び）は、外のモーダルの中の重なりなので比べない
+MODAL_LADDER_MISMATCHES = """() => {
+    const modals = MODALS_TOP_FIRST.map(selector => document.querySelector(selector))
+        .filter(el => el && !el.parentElement.closest(MODALS_TOP_FIRST.join(',')));
+    const z = el => Number(getComputedStyle(el).zIndex);
+    const mismatches = [];
+    for (let i = 0; i + 1 < modals.length; i++) {
+        const [upper, lower] = [modals[i], modals[i + 1]];
+        const laterInDom = Boolean(lower.compareDocumentPosition(upper) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (!(z(upper) > z(lower) || (z(upper) === z(lower) && laterInDom))) {
+            mismatches.push(`#${upper.id}（${z(upper)}）が #${lower.id}（${z(lower)}）の上に重ならない`);
+        }
+    }
+    return { count: modals.length, mismatches };
+}"""
+
+
+def test_モーダルの一覧の順は実際の重なりの順と合う(e2e):
+    # 記事ページには、画像の拡大も含めて MODALS_TOP_FIRST のモーダルが全部ある
+    page = e2e.open(E2E_IMAGE_NOTE)
+    result = page.evaluate(MODAL_LADDER_MISMATCHES)
+    with e2e.precondition():
+        assert result["count"] >= 6, result
+    assert result["mismatches"] == []
 
 
 @pytest.mark.parametrize("under", UNDER_SEARCH)
