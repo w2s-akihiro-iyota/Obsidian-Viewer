@@ -102,8 +102,21 @@ function initEditor() {
         previewTimer = setTimeout(updatePreview, PREVIEW_DEBOUNCE);
     });
 
-    // Tab キーで4スペース挿入
+    // Tab キーで4スペース挿入（Shift+Tab も同じ）。
+    // ただし Esc を押した直後の Tab・Shift+Tab だけは字下げせず、ブラウザに任せて次・前の欄へ移る（X-17）。
+    // Tab を全部字下げにすると、キーボードだけでは入力欄から出られない。Esc のあとに別のキーを打つか、入力欄を離れたら字下げに戻る
+    let tabLeavesTextarea = false;
+    textarea.addEventListener('blur', () => { tabLeavesTextarea = false; });
     textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            tabLeavesTextarea = true;
+            return;
+        }
+        if (e.key === 'Tab' && tabLeavesTextarea) {
+            tabLeavesTextarea = false;
+            return;     // 既定の動き（フォーカスの移動）に任せる
+        }
+        if (e.key !== 'Shift') tabLeavesTextarea = false;   // Shift+Tab の Shift では戻さない
         if (e.key === 'Tab') {
             e.preventDefault();
             const start = textarea.selectionStart;

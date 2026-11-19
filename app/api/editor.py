@@ -28,6 +28,25 @@ from app.utils.messages import get_error, get_system
 router = APIRouter()
 
 
+def _bad_request() -> JSONResponse:
+    """本文を読めないとき・項目が文字でないときの 400（B-31）"""
+    return JSONResponse({"status": "error", "message": get_error("E210")}, status_code=400)
+
+
+async def _read_json_object(request: Request) -> dict | None:
+    """本文を JSON のオブジェクトとして読む。UTF-8 でない・JSON でない・オブジェクトでないときは None（呼ぶ側が 400 を返す。B-31。
+    前はそのまま request.json() で読み、例外のまま 500 になっていた）"""
+    try:
+        data = await request.json()
+    except ValueError:   # UTF-8 でない（UnicodeDecodeError）・JSON でない（JSONDecodeError）。どちらも ValueError
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _all_str(*values) -> bool:
+    return all(isinstance(v, str) for v in values)
+
+
 @router.get("/editor", response_class=HTMLResponse)
 async def editor_page(request: Request, path: str = "", name: str = ""):
     """
@@ -80,11 +99,15 @@ async def editor_update_note(request: Request):
     """既存ノートを上書き保存する（localhost限定）。開いたあとに更新されていたら 409"""
     if error := admin_guard(request): return error
 
-    data = await request.json()
+    data = await _read_json_object(request)
+    if data is None:
+        return _bad_request()
     path = data.get("path", "")
     content = data.get("content", "")
     base_hash = data.get("base_hash", "")
     force = data.get("force") is True
+    if not _all_str(path, content, base_hash):
+        return _bad_request()
 
     # 保存前に公開だったか（公開 → 非公開の保存だけは、作り直しを待つ必要がある）
     was_published = any(f.get("path") == path and f.get("published") for f in cache.GLOBAL_FILE_CACHE)
@@ -136,8 +159,12 @@ async def editor_preview(request: Request):
     """Markdownプレビューを返す（localhost限定）"""
     if error := admin_guard(request): return error
 
-    data = await request.json()
+    data = await _read_json_object(request)
+    if data is None:
+        return _bad_request()
     content = data.get("content", "")
+    if not _all_str(content):
+        return _bad_request()
 
     if not content.strip():
         return HTMLResponse(content="<p style='color:var(--text-muted);'>プレビューするコンテンツがありません</p>")
@@ -163,9 +190,14 @@ async def editor_save(request: Request):
     """Markdownファイルを保存する（localhost限定）"""
     if error := admin_guard(request): return error
 
-    data = await request.json()
-    filename = data.get("filename", "").strip()
+    data = await _read_json_object(request)
+    if data is None:
+        return _bad_request()
+    filename = data.get("filename", "")
     content = data.get("content", "")
+    if not _all_str(filename, content):
+        return _bad_request()
+    filename = filename.strip()
 
     # バリデーション: ファイル名必須
     if not filename:

@@ -61,7 +61,7 @@
         <div class="editor-pane-header">
             <span>編集</span>
         </div>
-        <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false"{% if edit_path %} data-edit-path="{{ edit_path }}" data-view-slug="{{ edit_slug }}"{% endif %}></textarea>
+        <textarea id="editor-textarea" placeholder="Markdownを入力..." spellcheck="false" aria-describedby="editor-key-hints"{% if edit_path %} data-edit-path="{{ edit_path }}" data-view-slug="{{ edit_slug }}"{% endif %}></textarea>
     </div>
     {# 境目: ドラッグ（マウス・タッチ）か、選んで ← → Home End で入力欄の幅を変える（editor.js。X-12・X-15）。
        aria-valuenow は入力欄の幅（%）。範囲はドラッグと同じ。スマホの幅では動かせないので、editor.js が選べなくする #}
@@ -75,6 +75,7 @@
         <div id="editor-preview" class="markdown-body"></div>
     </div>
 </div>
-{# 保存のキーが常に見えるように、エディタの下の段にキーを出す（定義は app/shortcuts.py。F-9） #}
-<div class="key-hint-bar editor-key-hints" aria-label="エディタのショートカット">{{ sc.hint_items(shortcuts.group("editor")) }}</div>
+{# 保存のキーが常に見えるように、エディタの下の段にキーを出す（定義は app/shortcuts.py。F-9）。
+   入力欄の説明（aria-describedby）にもつなぎ、入力欄に入ったときに読み上げる（X-17）。説明は中の文字から作るので aria-label は付けない #}
+<div class="key-hint-bar editor-key-hints" id="editor-key-hints">{{ sc.hint_items(shortcuts.group("editor")) }}</div>
 {% endblock %}

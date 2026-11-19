@@ -1,4 +1,4 @@
-"""エディタの E2E（B-30・X-14・X-15。仕組みは conftest.py の e2e。768px をまたぐ動きは test_e2e_responsive.py）
+"""エディタの E2E（B-30・X-14・X-15・X-17。仕組みは conftest.py の e2e。768px をまたぐ動きは test_e2e_responsive.py）
 
 - プレビューの数式: ドル記号の数式（Markdown の描画の dollarmath が作る .math.inline・.math.block）も、
   記事ページと同じく KaTeX で描く（math.js の renderMathIn を記事ページと共有する。B-30）
@@ -7,6 +7,8 @@
 - 境目のキーボード: 区切り（role="separator"）として読み上げ、今の幅（aria-valuenow。入力欄の幅の %）を持つ。
   クリックかフォーカスで選び、[←] [→] で 5% ずつ、[Home] [End] でいちばん狭く（20%）・広く（80%）する。
   選んでいるときに ? を押すと、一覧の先頭に「エディタの境目」が出る。スマホの幅（縦並び）では選べない（X-15）
+- 入力欄から出る: [Tab]・[Shift]+[Tab] は字下げ。[Esc] を押した直後の [Tab]・[Shift]+[Tab] だけ、字下げせずに次・前の欄へ移る
+  （キーボードだけで入力欄から出られる）。Esc のあとに別のキーを打つと字下げに戻る。入力欄はエディタの下の段の説明とつなぐ（X-17）
 
 プレビューは POST /api/editor/preview（e2e はプレビューだけサーバーに届かせる）
 """
@@ -24,6 +26,7 @@ SEPARATOR_LABEL = "編集とプレビューの境目"
 RATIO_MIN, RATIO_MAX, RATIO_STEP = 20, 80, 5
 HIT_OUTSIDE_LINE = 12           # 見た目の線の右端から、この px 先（プレビューの側）でもつかめる
 RESIZER_GROUP_TITLE = "エディタの境目（管理者のみ）"
+INDENT = " " * 4                # 入力欄の Tab の字下げ（editor.js）
 SHEET_FIRST_GROUP_TITLE = f"{E2E_SHORTCUT_SHEET} .shortcut-sheet-group:not([hidden]) .shortcut-sheet-sec"
 
 
@@ -112,6 +115,47 @@ def test_境目を選んでいるときのショートカット一覧は境目�
     page.keyboard.press("Shift+Slash")
     expect(page.locator(E2E_SHORTCUT_SHEET)).to_have_class(re.compile(r"\bactive\b"))
     expect(page.locator(SHEET_FIRST_GROUP_TITLE).first).to_have_text(RESIZER_GROUP_TITLE)
+
+
+# ---------- 入力欄から出る（X-17） ----------
+
+def test_入力欄のTabは字下げで_Escのあとは字下げせずに次へ移る(e2e):
+    page = e2e.open_path("/editor")
+    textarea = page.locator(TEXTAREA)
+    textarea.click()
+    page.keyboard.press("Tab")
+    expect(textarea).to_be_focused()
+    expect(textarea).to_have_value(INDENT)
+    page.keyboard.press("Escape")
+    page.keyboard.press("Tab")
+    expect(page.locator(E2E_EDITOR_RESIZER)).to_be_focused()    # 入力欄の次は境目
+    expect(textarea).to_have_value(INDENT)                      # 字下げしていない
+
+
+def test_Escのあとのシフトタブで前へ移り_ほかのキーを打つと字下げに戻る(e2e):
+    page = e2e.open_path("/editor")
+    textarea = page.locator(TEXTAREA)
+    textarea.click()
+    page.keyboard.press("Escape")
+    page.keyboard.press("Shift+Tab")
+    expect(textarea).not_to_be_focused()
+    assert page.evaluate(f"""() => document.activeElement.compareDocumentPosition(document.querySelector('{TEXTAREA}'))
+        & Node.DOCUMENT_POSITION_FOLLOWING""") != 0, "Shift+Tab で入力欄より前の欄へ移っていない"
+    expect(textarea).to_have_value("")
+
+    textarea.click()
+    page.keyboard.press("Escape")
+    page.keyboard.type("a")
+    page.keyboard.press("Tab")      # Esc のあとに別のキーを打ったので、字下げに戻っている
+    expect(textarea).to_be_focused()
+    expect(textarea).to_have_value("a" + INDENT)
+
+
+def test_入力欄はエディタの下の段の説明とつながっている(e2e):
+    page = e2e.open_path("/editor")
+    described_by = page.locator(TEXTAREA).get_attribute("aria-describedby")
+    hints = page.locator(f"#{described_by}")
+    expect(hints).to_contain_text("Tab で出る")
 
 
 def test_スマホの幅では境目を選べない(e2e):
