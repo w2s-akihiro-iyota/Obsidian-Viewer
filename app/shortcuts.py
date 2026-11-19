@@ -150,6 +150,8 @@ SHORTCUT_GROUPS: tuple[ShortcutGroup, ...] = (
         shortcuts=(
             Shortcut((("Ctrl", "S"),), "保存する", "保存"),
             Shortcut((("Tab",),), "字下げ（スペース4つ）", "字下げ"),
+            # Esc の直後の Tab・Shift+Tab だけ、字下げせずに入力欄から出る（キーボードだけで出られるように。X-17）
+            Shortcut((("Esc",),), "続けて [Tab] で入力欄から次へ、[Shift]+[Tab] で前へ移る（字下げしない）", "Tab で出る"),
         ),
     ),
     ShortcutGroup(

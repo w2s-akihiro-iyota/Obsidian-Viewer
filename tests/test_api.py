@@ -1489,6 +1489,41 @@ def test_プレビューの描画エラーは例外の文字をエスケープ�
     assert "&lt;img src=x onerror=&quot;s10xss()&quot;&gt;" in html
 
 
+# ---------- エディタの API は読めない本文に 400 を返す（B-31） ----------
+
+_EDITOR_POST_APIS = ("/api/editor/preview", "/api/editor/update", "/api/editor/save")
+_UNREADABLE_BODIES = {
+    "UTF-8 でない": json.dumps({"content": "本文", "path": "a.md", "filename": "a"}, ensure_ascii=False).encode("cp932"),
+    "JSON でない": b'{"content": ',
+    "オブジェクトでない": json.dumps(["本文"], ensure_ascii=False).encode("utf-8"),
+}
+
+
+@pytest.mark.parametrize("path", _EDITOR_POST_APIS)
+@pytest.mark.parametrize("body", list(_UNREADABLE_BODIES.values()), ids=list(_UNREADABLE_BODIES))
+def test_エディタのAPIは読めない本文に400を返す(site, path, body):
+    from app.utils.messages import get_error
+    resp = TestClient(app, base_url=ADMIN, raise_server_exceptions=False).post(
+        path, content=body, headers={"Content-Type": "application/json"})
+    assert resp.status_code == 400
+    assert resp.json() == {"status": "error", "message": get_error("E210")}
+
+
+@pytest.mark.parametrize("path, body", [
+    ("/api/editor/preview", {"content": 1}),
+    ("/api/editor/update", {"path": 1, "content": "本文", "base_hash": ""}),
+    ("/api/editor/update", {"path": "a.md", "content": ["本文"], "base_hash": ""}),
+    ("/api/editor/update", {"path": "a.md", "content": "本文", "base_hash": 1}),
+    ("/api/editor/save", {"filename": 1, "content": "本文"}),
+    ("/api/editor/save", {"filename": "a", "content": None}),
+])
+def test_エディタのAPIは文字でない項目に400を返す(site, path, body):
+    from app.utils.messages import get_error
+    resp = TestClient(app, base_url=ADMIN, raise_server_exceptions=False).post(path, json=body)
+    assert resp.status_code == 400
+    assert resp.json() == {"status": "error", "message": get_error("E210")}
+
+
 # ---------- ノートに書いた生の HTML はサニタイズして返す（S-10） ----------
 
 # 記事ページは説明（OGP）などにも本文の文字が出るので、要素・属性として残っていないことを見る
