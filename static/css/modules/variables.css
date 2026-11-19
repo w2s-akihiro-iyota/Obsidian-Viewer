@@ -83,9 +83,14 @@
     --z-header: 100;
     --z-dropdown: 1000;
     --z-modal: 3000;
-    /* クイックスイッチャー（検索）。Ctrl+K で、ヘルプ・設定（--z-modal）とようこそ（tutorial.css の 3100）の上からも開くので、
-       それらより上に出す（前は 2000 で、重ねて開くと下に隠れていた。B-29）。画像の拡大（content.css の 9999）とトーストより下 */
+    /* モーダルの重なり（core.js の MODALS_TOP_FIRST の並びの根拠。数字を CSS に直書きしない。Q-33）
+       ようこそ（tutorial.css の #welcome-modal）。ヘルプ・設定・? の一覧（--z-modal）より上 */
+    --z-welcome: calc(var(--z-modal) + 100);
+    /* クイックスイッチャー（検索）。Ctrl+K で、ヘルプ・設定（--z-modal）とようこそ（--z-welcome）の上からも開くので、
+       それらより上に出す（前は 2000 で、重ねて開くと下に隠れていた。B-29）。画像の拡大（--z-lightbox）とトーストより下 */
     --z-quick-switcher: calc(var(--z-modal) + 200);
+    /* 画像の拡大（content.css の .lightbox-overlay）。どのモーダル・検索より上。閉じるボタンはその 1 つ上 */
+    --z-lightbox: 9999;
     --z-toast: 9999;
     /* 公開チェック（F-5）のバッジと注意書き。どのテーマの地でも読めるよう、
        バッジは濃い塗り＋白文字、注意書きは半透明の地（文字は --text-normal）にして全テーマ共通で使う */

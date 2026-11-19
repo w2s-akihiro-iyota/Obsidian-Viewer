@@ -304,7 +304,7 @@
 
 /* ===== Welcome Modal Overrides ===== */
 #welcome-modal.settings-modal {
-    z-index: 3100;
+    z-index: var(--z-welcome);
 }
 
 #welcome-modal .settings-modal-container {
@@ -381,7 +381,7 @@
 
 /* ===== Help Modal Overrides ===== */
 #help-modal.settings-modal {
-    z-index: 3000;
+    z-index: var(--z-modal);
 }
 
 #help-modal .settings-modal-container {

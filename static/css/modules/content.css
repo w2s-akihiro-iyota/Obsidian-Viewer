@@ -525,7 +525,7 @@
     width: 100vw;
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.85);
-    z-index: 9999;
+    z-index: var(--z-lightbox);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -568,7 +568,7 @@
     align-items: center;
     cursor: pointer;
     transition: background-color var(--motion-fast);
-    z-index: 10000;
+    z-index: calc(var(--z-lightbox) + 1);
 }
 
 .lightbox-close:hover {
