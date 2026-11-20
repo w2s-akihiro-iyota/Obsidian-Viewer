@@ -20,6 +20,9 @@
     <!-- 描く前に <html> へテーマ・サイドバーの開閉と幅・読みやすい幅・文字サイズ・プロパティの開閉と、コードの配色を付ける（ちらつき防止）。
          defer を付けない。#highlight-theme より後ろに置く -->
     <script src="{{ static_url('js/modules/before-paint.js') }}"></script>
+    <!-- 本文を読みながら、サイドバーを前回のタブ（ファイル・目次・閲覧履歴）と閲覧履歴の一覧のまま組み立てる（B-32。ちらつき防止）。
+         defer を付けない（defer では本文を読み終えたところの最初の描画に間に合わない） -->
+    <script src="{{ static_url('js/modules/history.js') }}"></script>
     <script src="{{ static_url('js/vendor/highlight.min.js') }}"></script>
     {# HTMX は eval（hx-trigger の [...] のフィルタ・hx-on など）と、差し替えた中身の script 要素を動かさない（S-10。どちらも CSP でも止まる） #}
     <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false}'>
@@ -31,7 +34,6 @@
     <script src="{{ static_url('js/modules/file-tree.js') }}" defer></script>
     <script src="{{ static_url('js/modules/search.js') }}" defer></script>
     <script src="{{ static_url('js/modules/settings.js') }}" defer></script>
-    <script src="{{ static_url('js/modules/history.js') }}" defer></script>
     <script src="{{ static_url('js/modules/public-view-links.js') }}" defer></script>
     <script src="{{ static_url('js/modules/reading-position.js') }}" defer></script>
     <script src="{{ static_url('js/modules/editor.js') }}" defer></script>
@@ -152,12 +154,11 @@
                         <div class="tree-empty">読み込み中…</div>
                     </div>
                 </div>
-                <div id="sidebar-outline" class="sidebar-panel">
-                    <div class="toc-empty">見出しがありません</div>
-                </div>
-                <div id="sidebar-history" class="sidebar-panel">
-                    <div class="history-empty">閲覧履歴はありません</div>
-                </div>
+                {# 目次と閲覧履歴の中身は JS が入れる（空のまま出す。仮の「ありません」を出すと、中身が来るまで違う中身に見える。B-32）。
+                   目次は sidebar.js が本文を読み終えてから、閲覧履歴は history.js が本文を読みながら入れる。閲覧履歴を最後のパネルにする（history.js が、
+                   これが現れたらサイドバーを読み終えたとみなす）。閲覧履歴は、あとから中身が足されないよう、閉じタグまで 1 行に書く #}
+                <div id="sidebar-outline" class="sidebar-panel"></div>
+                <div id="sidebar-history" class="sidebar-panel"></div>
             </div>
             <!-- ファイルツリーの操作ヒント（ツリーか絞り込み欄にフォーカスがある間だけ file-tree.js が出す。F-9） -->
             <div id="file-tree-hints" class="key-hint-bar file-tree-hints" hidden>

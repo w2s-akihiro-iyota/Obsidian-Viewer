@@ -63,8 +63,8 @@
     --local-graph-shadow-small: 0 4px 14px rgba(0, 0, 0, 0.25);
     --local-graph-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
     --local-graph-backdrop: rgba(0, 0, 0, 0.35);
-    /* 読みやすい幅の設定（readableWidth）での本文の最大幅 */
-    --readable-width: 900px;
+    /* 読みやすい幅の設定（readableWidth）での本文の最大幅（左右の余白込み。前の 900px では細かったので 1.125 倍に。D-23） */
+    --readable-width: 1012px;
     /* グラフの線（地の色を問わず見えるよう、薄い文字色を半透明にする）と、
        ホバー中・?focus で選んだ点の色（明るい地では濃くする） */
     --graph-link: color-mix(in srgb, var(--text-muted) 45%, transparent);
