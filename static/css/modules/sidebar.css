@@ -453,6 +453,11 @@ body.resizing iframe {
 
 .sidebar-panel.active {
     display: block;
+}
+
+/* タブを押して切り替えたときだけ、中身をふわっと出す（.fade-in は history.js の showSidebarTab が付ける）。
+   ページを開くたびに出すと、サイドバーを描き直したように見える（B-32） */
+.sidebar-panel.active.fade-in {
     animation: fadeIn var(--motion-fast) var(--ease-out);
 }
 

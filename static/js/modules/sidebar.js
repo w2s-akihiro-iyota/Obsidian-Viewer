@@ -74,9 +74,10 @@ function initSidebar() {
         const outlineContainer = document.getElementById('sidebar-outline');
         const content = document.querySelector('.markdown-body');
 
-        if (!outlineContainer || !content) return;
+        if (!outlineContainer) return;
 
-        const headers = Array.from(content.querySelectorAll('h1, h2, h3'));
+        // パネルは空のまま出てくる（base.html）。本文の無い画面（一覧など）でも「ありません」を入れる
+        const headers = content ? Array.from(content.querySelectorAll('h1, h2, h3')) : [];
 
         if (headers.length === 0) {
             outlineContainer.innerHTML = '<div class="toc-empty">見出しがありません</div>';
@@ -166,8 +167,8 @@ function initSidebar() {
         outlineContainer.appendChild(rootUl);
     }
 
-    // Run TOC generation after a slight delay
-    setTimeout(generateTOC, 100);
+    // 本文は読み終えているので、すぐ描く（前は 100ms 待っていて、目次のタブを選んでいると中身が遅れて出た。B-32）
+    generateTOC();
 
     // --- Link Preview Logic ---
     const previewCache = new Map();

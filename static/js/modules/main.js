@@ -20,8 +20,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // await の前に実行する（メッセージの取得を待たずに、閉じた状態へ切り替える）
     initNoteProperties();
     // ファイルツリーもメッセージを使わないので、取得を待たずに描く。前に取った木（Q-21）があれば、
-    // 最初の描画に間に合い、サイドバーが空のまま出てから埋まることがない
+    // 取り直しを待たずにすぐ埋まる
     initFileTree();
+    // サイドバー（目次）と閲覧履歴もメッセージを使わないので、取得を待たずに動かす（B-32。目次のタブを選んでいると、
+    // 目次の中身が取得のぶん遅れて出ていた）。前回のタブと閲覧履歴の一覧は、history.js が本文を読みながら組み立ててある
+    initSidebar();
+    initHistory();
 
     // Load messages first
     await loadMessages();
@@ -253,8 +257,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Initialize modules ---
     initSearch();
-    initSidebar();
-    initHistory();
     initPublicViewLinks();
     initReadingPosition();
     initSettingsModule();
